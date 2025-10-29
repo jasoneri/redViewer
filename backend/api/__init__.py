@@ -1,12 +1,19 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 
-from api.routes.comic import index_router, conf
+from api.routes.comic import index_router, conf, bh
 from api.routes.kemono import index_router as kemono_index_router
 
 global_whitelist = ['']
 staticFiles = StaticFiles(directory=str(conf.comic_path))
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await bh.get_books_index()
+    yield
 
 
 def create_app() -> FastAPI:
@@ -21,6 +28,7 @@ def create_app() -> FastAPI:
         docs_url="/api/docs",  # 自定义文档地址
         openapi_url="/api/openapi.json",
         redoc_url=None,   # 禁用redoc文档
+        lifespan=lifespan
     )
     # 其余的一些全局配置可以写在这里 多了可以考虑拆分到其他文件夹
 
