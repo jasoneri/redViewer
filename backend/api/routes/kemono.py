@@ -10,7 +10,8 @@ from pydantic import BaseModel
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
-from utils import conf, KemonoBookCursor
+from utils import conf
+from utils.butils import KemonoBookCursor
 
 index_router = APIRouter(prefix='/kemono')
 step = 25   # step与前端保持一致

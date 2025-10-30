@@ -12,10 +12,11 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from send2trash import send2trash
 
-from utils import conf, BookCursor, BookSort, quote
+from utils import conf
+from utils.butils import BookCursor, BookSort, quote
 
 index_router = APIRouter(prefix='/comic')
-step = 25   # step与前端保持一致
+step = 25
 executor = ThreadPoolExecutor(max_workers=12)
 
 
@@ -32,8 +33,8 @@ cache = Cache()
 
 
 class BookData:
-    def __init__(self, md5, name: str, mtime: float):
-        self.md5 = md5
+    def __init__(self, _md5, name: str, mtime: float):
+        self.md5 = _md5
         self.name = name
         self.mtime = mtime
         self.first_img = None

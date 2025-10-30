@@ -22,8 +22,8 @@ def create_app() -> FastAPI:
     :return:
     """
     app = FastAPI(
-        title="demo_api",
-        description="https://www.comic.com",
+        title="rV",
+        description="https://github.com/jasoneri/redViewer",
         version="1.2.2",
         docs_url="/api/docs",  # 自定义文档地址
         openapi_url="/api/openapi.json",
