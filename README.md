@@ -13,7 +13,7 @@
   <img src="https://img.shields.io/badge/-👈%20CGS过来的请涨它吧%20😹-red.svg" alt="tag">
 
   <p align="center">
-  <a href="#️部署更新运行多合一脚本">📦多功能脚本</a> | 
+  <a href="https://github.com/jasoneri/redViewer#️1-部署更新运行多合一脚本">📦多功能脚本</a> | 
   <a href="https://github.com/jasoneri/redViewer/wiki/FAQ">📖FAQ</a> | 
   <a href="https://github.com/jasoneri/redViewer/wiki/Feat">🎲功能说明</a>
   </p>
