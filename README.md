@@ -104,8 +104,10 @@ curl -fsSL https://gitee.com/json_eri/redViewer/raw/master/deploy/online_scripts
 
 ## 📢更新
 
-🚧 v1.2.3施工中  
-✅ 优化缓存，提高列表页处理过多书本时性能  
+### [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/jasoneri/ComicGUISpider?color=blue&label=Ver&sort=semver)](https://github.com/jasoneri/redViewer/releases/latest)
+
+✅ 后端增加缓存系统，列表页加载大优化  
+✅ 文件变动监控，对应在线外部操作的缓存处理，兼离线外部操作后启动同步校验  
 
 ### TODO LIST
 
