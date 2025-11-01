@@ -7,7 +7,6 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from loguru import logger
 
 from utils import conf_dir, md5
 from utils.butils import BookData
@@ -49,7 +48,7 @@ class ComicCacheManager:
                 book = BookData(_md5, name, mtime)
                 book.first_img = first_img
                 self.books_index[_md5] = book
-        logger.debug(f"Loaded {len(self.books_index)} books from cache table '{self.table_name}'.")
+        # logger.debug(f"Loaded {len(self.books_index)} books from cache table '{self.table_name}'.")
 
     def is_scanned(self) -> bool:
         with self._get_conn() as conn:
@@ -58,7 +57,7 @@ class ComicCacheManager:
             return cursor.fetchone() is not None
 
     def initial_scan(self):
-        logger.debug(f"Performing initial full scan for table '{self.table_name}'...")
+        # logger.debug(f"Performing initial full scan for table '{self.table_name}'...")
         with self._get_conn() as conn:
             conn.execute(f'DELETE FROM "{self.table_name}"')
         
@@ -67,7 +66,7 @@ class ComicCacheManager:
                 if entry.is_dir():
                     # 这里改为同步调用，因为 initial_scan 整体已在线程中运行
                     self.update_book_sync(entry.name)
-        logger.debug("Initial scan complete.")
+        # logger.debug("Initial scan complete.")
 
     async def update_book_async(self, book_name: str):
         loop = asyncio.get_running_loop()
@@ -76,7 +75,7 @@ class ComicCacheManager:
     def update_book_sync(self, book_name):
         book_path = self.comic_path.joinpath(book_name)
         if not os.path.exists(book_path):
-            logger.debug(f"Skipping update for non-existent path: {book_name}")
+            # logger.debug(f"Skipping update for non-existent path: {book_name}")
             return
         stat = os.stat(book_path)
         bmd5 = md5(book_name)
@@ -91,7 +90,7 @@ class ComicCacheManager:
         book = BookData(bmd5, book_name, stat.st_mtime)
         book.first_img = first_img
         self.books_index[bmd5] = book
-        logger.debug(f"Updated cache for: {book_name}")
+        # logger.debug(f"Updated cache for: {book_name}")
 
     async def remove_book_async(self, book_name: str):
         loop = asyncio.get_running_loop()
@@ -103,7 +102,7 @@ class ComicCacheManager:
             conn.execute(f'DELETE FROM "{self.table_name}" WHERE md5 = ?', (bmd5,))
         if bmd5 in self.books_index:
             del self.books_index[bmd5]
-        logger.debug(f"Removed from cache: {book_name}")
+        # logger.debug(f"Removed from cache: {book_name}")
 
     def _get_first_img_sync(self, book_path):
         try:
@@ -130,7 +129,7 @@ class ComicChangeHandler(FileSystemEventHandler):
         await self.pages_handler.invalidate(book_name)
         # update_book_async 会更新封面、mtime等元数据
         await self.cache.update_book_async(book_name)
-        logger.debug(f"Debounced update completed for: {book_name}")
+        # logger.debug(f"Debounced update completed for: {book_name}")
         self._pending_updates.pop(book_name, None)
 
     def _schedule_update(self, path):
@@ -156,9 +155,9 @@ class ComicChangeHandler(FileSystemEventHandler):
             parts = relative_path.split(os.path.sep)
             book_name = parts[0]
         except (ValueError, IndexError):
-            logger.warning(f"Could not determine book name from deleted path: {event.src_path}")
+            # logger.warning(f"Could not determine book name from deleted path: {event.src_path}")
             return
-        logger.debug(f"Deletion event detected for path '{event.src_path}', affecting book: '{book_name}'. "
+        # logger.debug(f"Deletion event detected for path '{event.src_path}', affecting book: '{book_name}'. "
                     f"Triggering cache removal and invalidation regardless of is_directory flag.")
 
         asyncio.run_coroutine_threadsafe(
@@ -213,18 +212,18 @@ class ComicLibraryManager:
                         if entry.is_dir():
                             fs_book_names.add(entry.name)
             except OSError as e:
-                logger.error(f"Failed to scan comic path {new_comic_path}: {e}")
+                # logger.error(f"Failed to scan comic path {new_comic_path}: {e}")
             deleted_books = db_book_names - fs_book_names
             added_books = fs_book_names - db_book_names
             if deleted_books:
-                logger.info(f"Found {len(deleted_books)} books deleted offline. Removing from cache...")
+                # logger.info(f"Found {len(deleted_books)} books deleted offline. Removing from cache...")
                 for book_name in deleted_books:
                     cache_manager.remove_book(book_name) 
             if added_books:
-                logger.info(f"Found {len(added_books)} books added offline. Adding to cache...")
+                # logger.info(f"Found {len(added_books)} books added offline. Adding to cache...")
                 for book_name in added_books:
                     await asyncio.to_thread(cache_manager.update_book_sync, book_name)
-            logger.debug("Startup synchronization complete.")
+            # logger.debug("Startup synchronization complete.")
             
         new_comic_path = Path(new_comic_path)
         if new_comic_path == self.active_path:
@@ -264,7 +263,7 @@ class ComicLibraryManager:
         self.observer = Observer()
         self.observer.schedule(event_handler, str(new_comic_path), recursive=True)
         self.observer.start()
-        logger.debug(f"Now monitoring: {new_comic_path} in table '{self.active_cache.table_name}'")
+        # logger.debug(f"Now monitoring: {new_comic_path} in table '{self.active_cache.table_name}'")
 
 
 lib_mgr = ComicLibraryManager()
