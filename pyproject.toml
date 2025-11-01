@@ -6,6 +6,7 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi",
     "httpx",
+    "loguru>=0.7.3",
     "packaging>=25.0",
     "platformdirs",
     "py7zr",
