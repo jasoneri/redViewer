@@ -15,5 +15,6 @@ dependencies = [
     "starlette",
     "tqdm",
     "uvicorn>=0.30.1",
+    "watchdog>=6.0.0",
     "watchfiles",
 ]

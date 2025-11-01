@@ -4,6 +4,51 @@ import re
 from urllib.parse import quote
 
 
+class QuerySort:
+    sort_funcs = {
+        'time': lambda x: x.mtime,
+        'name': lambda x: x.name
+    }
+    
+    sort_directions = {
+        'asc': False,
+        'desc': True
+    }
+    
+    def __init__(self, sort_str):
+        self.sort = sort_str
+        func, _sort = sort_str.split("_")
+        self.func = func
+        self._sort = _sort
+    
+    @property
+    def sort_key(self):
+        return self.sort_funcs[self.func]
+    
+    @property
+    def reverse(self):
+        return self.sort_directions[self._sort]
+    
+    @classmethod
+    def check_name(cls, books_data):
+        if all(bool(BookSort.section_regex.search(book.name)) for book in books_data):
+            cls.sort_funcs['name'] = lambda x: BookSort.get_sort_key(x.name)
+
+
+class BookData:
+    def __init__(self, _md5, name: str, mtime: float):
+        self.md5 = _md5
+        self.name = name
+        self.mtime = mtime
+        self.first_img = None
+    
+    def to_api(self):
+        return {
+            "book_name": self.name,
+            "first_img": f"/static/{quote(self.name)}/{self.first_img}" if self.first_img else None
+        }
+
+
 class BookCursor:
     head = 0
     static = "/static/"

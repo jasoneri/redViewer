@@ -1,9 +1,11 @@
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 
-from api.routes.comic import index_router, conf, bh
+from api.routes.comic import index_router, conf
+from api.routes.cache import lib_mgr
 from api.routes.kemono import index_router as kemono_index_router
 
 global_whitelist = ['']
@@ -12,8 +14,12 @@ staticFiles = StaticFiles(directory=str(conf.comic_path))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await bh.get_books_index()
+    main_loop = asyncio.get_running_loop()
+    await lib_mgr.switch_library(conf.comic_path, main_loop)
     yield
+    if lib_mgr.observer and lib_mgr.observer.is_alive():
+        lib_mgr.observer.stop()
+        lib_mgr.observer.join()
 
 
 def create_app() -> FastAPI:
@@ -24,7 +30,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="rV",
         description="https://github.com/jasoneri/redViewer",
-        version="1.2.2",
+        version="1.2.3",
         docs_url="/api/docs",  # 自定义文档地址
         openapi_url="/api/openapi.json",
         redoc_url=None,   # 禁用redoc文档

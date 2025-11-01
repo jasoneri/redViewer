@@ -1,9 +1,11 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import pathlib
+import hashlib
 import shutil
 import typing as t
 from dataclasses import dataclass, asdict, field
+from concurrent.futures import ThreadPoolExecutor
 
 import yaml
 from platformdirs import user_config_path
@@ -90,7 +92,12 @@ class Conf:
         self.init()
 
 
+def md5(string):
+    return hashlib.md5(string.encode('utf-8')).hexdigest()
+
+
 conf = Conf()
+executor = ThreadPoolExecutor(max_workers=12)
 
 
 if __name__ == '__main__':
