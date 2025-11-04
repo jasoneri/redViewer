@@ -100,5 +100,13 @@ conf = Conf()
 executor = ThreadPoolExecutor(max_workers=12)
 
 
-if __name__ == '__main__':
-    print(conf)
+def scan_book_dir(book_path: pathlib.Path, return_all=False) -> tuple | None:
+    # if not book_path.is_dir(): 
+    try:
+        mtime = book_path.stat().st_mtime
+        entries_iter = book_path.iterdir()
+        if return_all:
+            return (book_path.name, mtime, list(map(lambda x: x.name, entries_iter)))
+        return (book_path.name, mtime, next(map(lambda x: x.name, filter(lambda x: x.is_file(), entries_iter))))
+    except (OSError, IndexError, StopIteration):
+        return None

@@ -1,12 +1,11 @@
-import os
 import time
 import asyncio
+from pathlib import Path
 from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Optional, List
-from urllib.parse import quote # 用于URL编码
-
-from utils import executor, md5
+from urllib.parse import quote
+from utils import executor, md5, scan_book_dir
 
 
 @dataclass
@@ -19,8 +18,8 @@ class CacheEntry:
 
 
 class BookPagesHandler:
-    def __init__(self, comic_path: str, max_entries: int = 200, loop: Optional[asyncio.AbstractEventLoop] = None):
-        self.comic_path = comic_path
+    def __init__(self, comic_path, max_entries: int = 200, loop: Optional[asyncio.AbstractEventLoop] = None):
+        self.comic_path = Path(comic_path)
         self.max_entries = max_entries
         self.loop = loop or asyncio.get_event_loop()
         self._cache: "OrderedDict[str, CacheEntry]" = OrderedDict()
@@ -30,19 +29,15 @@ class BookPagesHandler:
         formatted_pages = [f"/static/{safe_book_name}/{page}" for page in pages]
         return {"pages": formatted_pages, "page_count": len(formatted_pages)}
 
-    def _book_dir(self, book_name: str) -> str:
-        return os.path.join(self.comic_path, book_name)
+    def _book_dir(self, book_name: str) -> Path:
+        return self.comic_path / book_name
 
-    async def _scan_dir(self, book_dir: str) -> Optional[tuple]:
+    async def _scan_dir(self, book_dir) -> Optional[tuple]:
         def _worker():
-            if not os.path.isdir(book_dir):
+            if not book_dir.is_dir():
                 return None
             try:
-                entries = os.listdir(book_dir)
-                entries = [e for e in entries if not e.startswith('.')]  # 去掉隐藏文件
-                entries.sort()
-                mtime = os.path.getmtime(book_dir)
-                return (entries, mtime)
+                return scan_book_dir(book_dir, return_all=True)
             except Exception:
                 return None
         return await self.loop.run_in_executor(executor, _worker)
@@ -51,9 +46,8 @@ class BookPagesHandler:
         book_md5 = md5(book_name)
         entry = self._cache.get(book_md5)
         book_dir = self._book_dir(book_name)
-        # 获取当前目录 mtime（若目录不存在会在后面处理）
         try:
-            current_mtime = os.path.getmtime(book_dir) if os.path.isdir(book_dir) else None
+            current_mtime = book_dir.stat().st_mtime if book_dir.is_dir() else None
         except Exception:
             current_mtime = None
         if (not hard_refresh and
@@ -91,7 +85,7 @@ class BookPagesHandler:
                     except KeyError:
                         pass
                 return None
-            pages_list, mtime = scan_result
+            _, mtime, pages_list = scan_result
             # 更新 entry 并标记为最近使用
             entry.pages = pages_list
             entry.mtime = mtime
@@ -107,7 +101,7 @@ class BookPagesHandler:
     
     def _evict_one(self):
         try:
-            md5_key, _ = self._cache.popitem(last=False)
+            _, __ = self._cache.popitem(last=False)
         except Exception:
             pass
 

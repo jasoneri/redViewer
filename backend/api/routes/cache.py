@@ -9,17 +9,16 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from loguru import logger
 
-from utils import conf_dir, md5
+from utils import conf_dir, md5, scan_book_dir
 from utils.butils import BookData
 from .model import BookPagesHandler
 
 
 class ComicCacheManager:
     def __init__(self, comic_path, table_name: str):
-        self.comic_path = comic_path
+        self.comic_path = Path(comic_path)
         self.db_path = conf_dir.joinpath("lib_cache.db")
         self.table_name = table_name
-        # self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.executor = ThreadPoolExecutor(max_workers=10)
 
         self.books_index = {} # {md5: BookData}
@@ -59,14 +58,33 @@ class ComicCacheManager:
 
     def initial_scan(self):
         logger.debug(f"Performing initial full scan for table '{self.table_name}'...")
-        with self._get_conn() as conn:
-            conn.execute(f'DELETE FROM "{self.table_name}"')
-        
-        with os.scandir(self.comic_path) as entries:
-            for entry in entries:
-                if entry.is_dir():
-                    # 这里改为同步调用，因为 initial_scan 整体已在线程中运行
-                    self.update_book_sync(entry.name)
+        # 1. 获取所有书籍目录的路径
+        try:
+            all_book_paths = [entry for entry in self.comic_path.iterdir() if entry.is_dir()]
+        except OSError as e:
+            return
+        # 2. 使用线程池并行扫描所有目录
+        books_data_for_db = []
+        results = self.executor.map(scan_book_dir, all_book_paths)
+        for result in results:
+            if result:
+                book_name, mtime, first_img = result
+                bmd5 = md5(book_name)
+                books_data_for_db.append((bmd5, book_name, mtime, first_img))
+                book = BookData(bmd5, book_name, mtime)
+                book.first_img = first_img
+                self.books_index[bmd5] = book
+        # 3. 使用 executemany 进行批量数据库写入，效率极高
+        if books_data_for_db:
+            with self._get_conn() as conn:
+                conn.execute(f'DELETE FROM "{self.table_name}"')
+                with conn:
+                    conn.executemany(
+                        f'''INSERT INTO "{self.table_name}" (md5, name, mtime, first_img) 
+                            VALUES (?, ?, ?, ?)''',
+                        books_data_for_db
+                    )
+            logger.debug(f"Batch inserted {len(books_data_for_db)} books into cache.")
         logger.debug("Initial scan complete.")
 
     async def update_book_async(self, book_name: str):
@@ -75,20 +93,20 @@ class ComicCacheManager:
 
     def update_book_sync(self, book_name):
         book_path = self.comic_path.joinpath(book_name)
-        if not os.path.exists(book_path):
-            logger.debug(f"Skipping update for non-existent path: {book_name}")
+        
+        scan_result = scan_book_dir(book_path)
+        if not scan_result:
+            logger.debug(f"Skipping update for non-existent or empty path: {book_name}")
             return
-        stat = os.stat(book_path)
+        _, mtime, first_img = scan_result
         bmd5 = md5(book_name)
-        first_img = self._get_first_img_sync(book_path)
-
         with self._get_conn() as conn:
             conn.execute(
                 f'''REPLACE INTO "{self.table_name}" (md5, name, mtime, first_img) 
                         VALUES (?, ?, ?, ?)''',
-                (bmd5, book_name, stat.st_mtime, first_img)
+                (bmd5, book_name, mtime, first_img)
             )
-        book = BookData(bmd5, book_name, stat.st_mtime)
+        book = BookData(bmd5, book_name, mtime)
         book.first_img = first_img
         self.books_index[bmd5] = book
         logger.debug(f"Updated cache for: {book_name}")
@@ -104,13 +122,6 @@ class ComicCacheManager:
         if bmd5 in self.books_index:
             del self.books_index[bmd5]
         logger.debug(f"Removed from cache: {book_name}")
-
-    def _get_first_img_sync(self, book_path):
-        try:
-            with os.scandir(book_path) as entries:
-                return next(entries).name
-        except (StopIteration, OSError):
-            return None
 
 
 class ComicChangeHandler(FileSystemEventHandler):
@@ -135,10 +146,11 @@ class ComicChangeHandler(FileSystemEventHandler):
 
     def _schedule_update(self, path):
         try:
-            relative_path = os.path.relpath(path, self.cache.comic_path)
-            if relative_path == '.': return
-            book_name = relative_path.split(os.path.sep)[0]
-        except (ValueError, IndexError):
+            relative_path = Path(path).relative_to(self.cache.comic_path)
+            if not relative_path.parts: 
+                return
+            book_name = relative_path.parts[0]
+        except ValueError:
             return
         if book_name in self._pending_updates:
             self._pending_updates[book_name].cancel()
@@ -150,15 +162,15 @@ class ComicChangeHandler(FileSystemEventHandler):
 
     def on_deleted(self, event):
         try:
-            relative_path = os.path.relpath(event.src_path, self.cache.comic_path)
-            if relative_path == '.' or relative_path.startswith('..'):
+            deleted_path = Path(event.src_path)
+            relative_path = deleted_path.relative_to(self.cache.comic_path)
+            if not relative_path.parts: # 对应 relative_path == '.'
                 return
-            parts = relative_path.split(os.path.sep)
-            book_name = parts[0]
+            book_name = relative_path.parts[0]
         except (ValueError, IndexError):
-            logger.warning(f"Could not determine book name from deleted path: {event.src_path}")
+            logger.warning(f"Could not determine book name from deleted path: {deleted_path}")
             return
-        logger.debug(f"Deletion event detected for path '{event.src_path}', affecting book: '{book_name}'. "
+        logger.debug(f"Deletion event detected for path '{deleted_path}', affecting book: '{book_name}'. "
                     f"Triggering cache removal and invalidation regardless of is_directory flag.")
 
         asyncio.run_coroutine_threadsafe(
@@ -176,8 +188,8 @@ class ComicChangeHandler(FileSystemEventHandler):
     def on_moved(self, event):
         # 相当于一次删除和一次创建
         if event.is_directory:
-            old_book_name = os.path.basename(event.src_path)
-            new_book_name = os.path.basename(event.dest_path)
+            old_book_name = Path(event.src_path).name
+            new_book_name = Path(event.dest_path).name
             asyncio.run_coroutine_threadsafe(
                 self.cache.remove_book_async(old_book_name), self.loop)
             asyncio.run_coroutine_threadsafe(
@@ -208,10 +220,9 @@ class ComicLibraryManager:
             db_book_names = {book.name for book in cache_manager.books_index.values()}
             fs_book_names = set()
             try:
-                with os.scandir(new_comic_path) as entries:
-                    for entry in entries:
-                        if entry.is_dir():
-                            fs_book_names.add(entry.name)
+                for entry in new_comic_path.iterdir():
+                    if entry.is_dir():
+                        fs_book_names.add(entry.name)
             except OSError as e:
                 logger.error(f"Failed to scan comic path {new_comic_path}: {e}")
             deleted_books = db_book_names - fs_book_names
