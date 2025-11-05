@@ -63,11 +63,10 @@ async def duel_conf(request: Request, conf_content: ConfContent = None):
 @index_router.get("/{book_name}")
 async def get_book(request: Request, book_name: str, hard_refresh: bool = False):
     pages_obj = await lib_mgr.active_pages_handler.get_pages(book_name, hard_refresh)
-    # TODO[1](2025-11-01): 前端做一个刷新按钮，更新掉前端的 pages
-    pages = pages_obj.get("pages")
-    if pages is None:
+    # TODO[3](2025-11-01): 可能在下载某本多页途中触发pages进active_pages_handler的缓存，解决想法是前端做一个刷新按钮，请求带 hard_refresh 更新掉前端的 pages
+    if not pages_obj or not pages_obj.get("pages"):
         return JSONResponse(status_code=404, content=f"book[{book_name}] not exist")
-    return pages
+    return pages_obj.get("pages")
 
 
 class Book(BaseModel):
@@ -82,9 +81,6 @@ async def handle(request: Request, book: Book):
         return JSONResponse(status_code=404, content=f"book[{book.name}] not exist]")
     with open(conf.handle_path.joinpath("record.txt"), "a+", encoding="utf-8") as f:
         f.writelines(f"<{book.handle}>{book.name}\n")
-    # 显示调用，并与 watchdog 监听操作幂等 
-    await lib_mgr.active_cache.remove_book_async(book.name)
-    await lib_mgr.active_pages_handler.invalidate(book.name)
     lp = asyncio.get_event_loop()
     if book.handle == "del":
         await lp.run_in_executor(executor, shutil.rmtree, book_path)

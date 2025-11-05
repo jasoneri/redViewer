@@ -1,5 +1,4 @@
 # comic_cache.py (新文件)
-import os
 import asyncio
 import sqlite3
 from pathlib import Path
@@ -129,24 +128,19 @@ class ComicChangeHandler(FileSystemEventHandler):
         self.cache = cache_manager
         self.pages_handler = pages_handler
         self.loop = main_loop
-        # 防抖机制：记录最近处理的事件，避免重复触发
         self._pending_updates = {}  # {book_name: asyncio.Task}
-        self._debounce_delay = 2.0  # 1秒防抖延迟
+        self._debounce_delay = 2.0
 
     async def _debounced_update(self, book_name):
-        # 这个函数保持不变，但现在只会被 on_created 和 on_deleted 调用
         await asyncio.sleep(self._debounce_delay)
-        # 核心：无论是新增还是删除文件，都统一执行“刷新”操作
         # invalidate 会清空页面缓存，下次访问时会重新扫描
         await self.pages_handler.invalidate(book_name)
-        # update_book_async 会更新封面、mtime等元数据
         await self.cache.update_book_async(book_name)
-        logger.debug(f"Debounced update completed for: {book_name}")
         self._pending_updates.pop(book_name, None)
 
-    def _schedule_update(self, path):
+    def on_created(self, event):
         try:
-            relative_path = Path(path).relative_to(self.cache.comic_path)
+            relative_path = Path(event.src_path).relative_to(self.cache.comic_path)
             if not relative_path.parts: 
                 return
             book_name = relative_path.parts[0]
@@ -157,45 +151,24 @@ class ComicChangeHandler(FileSystemEventHandler):
         task = asyncio.run_coroutine_threadsafe(self._debounced_update(book_name), self.loop)
         self._pending_updates[book_name] = task
 
-    def on_created(self, event):
-        self._schedule_update(event.src_path)
-
     def on_deleted(self, event):
         try:
-            deleted_path = Path(event.src_path)
-            relative_path = deleted_path.relative_to(self.cache.comic_path)
+            relative_path = Path(event.src_path).relative_to(self.cache.comic_path)
             if not relative_path.parts: # 对应 relative_path == '.'
                 return
             book_name = relative_path.parts[0]
         except (ValueError, IndexError):
-            logger.warning(f"Could not determine book name from deleted path: {deleted_path}")
             return
-        logger.debug(f"Deletion event detected for path '{deleted_path}', affecting book: '{book_name}'. "
-                    f"Triggering cache removal and invalidation regardless of is_directory flag.")
-
-        asyncio.run_coroutine_threadsafe(
-            self.cache.remove_book_async(book_name), self.loop)
-        asyncio.run_coroutine_threadsafe(
-            self.pages_handler.invalidate(book_name), self.loop)    
-
-    def on_modified(self, event):
-        """
-        处理修改事件，仅响应漫画目录内的文件变化
-        使用防抖机制避免频繁触发
-        """
-        ...
+        if len(relative_path.parts) == 1:   
+            # remark 不能对已删除的文件路径进行诸如 is_file/is_dir 等操作，因为 event.src_path 是已经被执行(删除/转移)前的路径，现已为空
+            asyncio.run_coroutine_threadsafe(
+                self.cache.remove_book_async(book_name), self.loop)
+            asyncio.run_coroutine_threadsafe(
+                self.pages_handler.invalidate(book_name), self.loop)    
 
     def on_moved(self, event):
-        # 相当于一次删除和一次创建
-        if event.is_directory:
-            old_book_name = Path(event.src_path).name
-            new_book_name = Path(event.dest_path).name
-            asyncio.run_coroutine_threadsafe(
-                self.cache.remove_book_async(old_book_name), self.loop)
-            asyncio.run_coroutine_threadsafe(
-                self.pages_handler.invalidate(old_book_name), self.loop)
-            asyncio.run_coroutine_threadsafe(
-                self.cache.update_book_async(new_book_name), self.loop)
+        # 受监控的是 web , 路由函数处理的 web_handle 与 web 同级，对 watchdog 而言相当于删除，所以 on_moved 并没有起作用
+        ...
 
 
 class ComicLibraryManager:
