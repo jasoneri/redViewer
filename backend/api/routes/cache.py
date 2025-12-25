@@ -8,7 +8,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from loguru import logger
 
-from utils import conf_dir, md5, scan_book_dir
+from utils import conf_dir, md5, scan_book_dir, extract_parent_and_chapter
 from utils.butils import BookData
 from .model import BookPagesHandler
 
@@ -33,18 +33,73 @@ class ComicCacheManager:
                 CREATE TABLE IF NOT EXISTS "{self.table_name}" (
                     md5 TEXT PRIMARY KEY,
                     name TEXT NOT NULL UNIQUE,
+                    parent_md5 TEXT,
                     mtime REAL NOT NULL,
                     first_img TEXT
                 )
             """)
+            # 创建 parent_md5 索引以提高关联查询性能
+            conn.execute(f"""
+                CREATE INDEX IF NOT EXISTS idx_{self.table_name}_parent
+                ON "{self.table_name}"(parent_md5)
+            """)
+        
+        # 检查并迁移旧表结构
+        self._migrate_table_if_needed()
+    
+    def _migrate_table_if_needed(self):
+        """检查表结构并在需要时添加 parent_md5 列"""
+        with self._get_conn() as conn:
+            cursor = conn.cursor()
+            # 检查 parent_md5 列是否存在
+            cursor.execute(f'PRAGMA table_info("{self.table_name}")')
+            columns = [row[1] for row in cursor.fetchall()]
+            
+            if 'parent_md5' not in columns:
+                logger.info(f"Migrating table '{self.table_name}': adding parent_md5 column...")
+                try:
+                    # 添加 parent_md5 列
+                    conn.execute(f'ALTER TABLE "{self.table_name}" ADD COLUMN parent_md5 TEXT')
+                    
+                    # 为现有数据填充 parent_md5
+                    cursor.execute(f'SELECT md5, name FROM "{self.table_name}"')
+                    updates = []
+                    for row in cursor.fetchall():
+                        book_md5, book_name = row
+                        # 重新构建 book_path 以提取 parent_md5
+                        book_path = self.comic_path / book_name
+                        if not book_path.exists():
+                            # 尝试 .cbz 扩展名
+                            book_path = self.comic_path / f"{book_name}.cbz"
+                        
+                        if book_path.exists():
+                            parent_name, _, _ = extract_parent_and_chapter(book_path, self.comic_path)
+                            parent_md5_value = md5(parent_name)
+                            updates.append((parent_md5_value, book_md5))
+                    
+                    if updates:
+                        conn.executemany(
+                            f'UPDATE "{self.table_name}" SET parent_md5 = ? WHERE md5 = ?',
+                            updates
+                        )
+                    
+                    # 创建索引
+                    conn.execute(f"""
+                        CREATE INDEX IF NOT EXISTS idx_{self.table_name}_parent
+                        ON "{self.table_name}"(parent_md5)
+                    """)
+                    
+                    logger.info(f"Migration complete: updated {len(updates)} records.")
+                except sqlite3.Error as e:
+                    logger.error(f"Migration failed: {e}")
 
     def load_from_db(self):
         with self._get_conn() as conn:
             cursor = conn.cursor()
-            cursor.execute(f'SELECT md5, name, mtime, first_img FROM "{self.table_name}"')
+            cursor.execute(f'SELECT md5, name, mtime, first_img, parent_md5 FROM "{self.table_name}"')
             for row in cursor.fetchall():
-                _md5, name, mtime, first_img = row
-                book = BookData(_md5, name, mtime)
+                _md5, name, mtime, first_img, parent_md5 = row
+                book = BookData(_md5, name, mtime, parent_md5)
                 book.first_img = first_img
                 self.books_index[_md5] = book
         logger.debug(f"Loaded {len(self.books_index)} books from cache table '{self.table_name}'.")
@@ -57,30 +112,41 @@ class ComicCacheManager:
 
     def initial_scan(self):
         logger.debug(f"Performing initial full scan for table '{self.table_name}'...")
-        # 1. 获取所有书籍目录的路径
+        # 1. 获取所有书籍目录和 .cbz 文件的路径
         try:
-            all_book_paths = [entry for entry in self.comic_path.iterdir() if entry.is_dir()]
+            all_book_paths = [entry for entry in self.comic_path.iterdir()
+                            if entry.is_dir() or (entry.is_file() and entry.suffix.lower() == '.cbz')]
         except OSError as e:
             return
-        # 2. 使用线程池并行扫描所有目录
+        
+        # 2. 使用线程池并行扫描所有目录，传入 comic_path 参数
         books_data_for_db = []
-        results = self.executor.map(scan_book_dir, all_book_paths)
+        results = self.executor.map(
+            lambda path: scan_book_dir(path, comic_path=self.comic_path),
+            all_book_paths
+        )
+        
         for result in results:
             if result:
-                book_name, mtime, first_img = result
-                bmd5 = md5(book_name)
-                books_data_for_db.append((bmd5, book_name, mtime, first_img))
-                book = BookData(bmd5, book_name, mtime)
+                display_name, parent_name, chapter_name, mtime, first_img = result
+                # md5 基于 display_name（例如："異世界叔叔_第73话"）
+                bmd5 = md5(display_name)
+                # parent_md5 基于 parent_name（例如："異世界叔叔"）
+                parent_md5_value = md5(parent_name)
+                
+                books_data_for_db.append((bmd5, display_name, parent_md5_value, mtime, first_img))
+                book = BookData(bmd5, display_name, mtime, parent_md5_value)
                 book.first_img = first_img
                 self.books_index[bmd5] = book
+        
         # 3. 使用 executemany 进行批量数据库写入，效率极高
         if books_data_for_db:
             with self._get_conn() as conn:
                 conn.execute(f'DELETE FROM "{self.table_name}"')
                 with conn:
                     conn.executemany(
-                        f'''INSERT INTO "{self.table_name}" (md5, name, mtime, first_img) 
-                            VALUES (?, ?, ?, ?)''',
+                        f'''INSERT INTO "{self.table_name}" (md5, name, parent_md5, mtime, first_img)
+                            VALUES (?, ?, ?, ?, ?)''',
                         books_data_for_db
                     )
             logger.debug(f"Batch inserted {len(books_data_for_db)} books into cache.")
@@ -93,22 +159,34 @@ class ComicCacheManager:
     def update_book_sync(self, book_name):
         book_path = self.comic_path.joinpath(book_name)
         
-        scan_result = scan_book_dir(book_path)
+        # 检查是否存在对应的 .cbz 文件或目录
+        if not book_path.exists():
+            # 如果路径不存在，可能是 .cbz 文件，尝试添加扩展名
+            if not book_path.suffix:
+                cbz_path = book_path.parent / f"{book_path.name}.cbz"
+                if cbz_path.exists():
+                    book_path = cbz_path
+        
+        scan_result = scan_book_dir(book_path, comic_path=self.comic_path)
         if not scan_result:
             logger.debug(f"Skipping update for non-existent or empty path: {book_name}")
             return
-        _, mtime, first_img = scan_result
-        bmd5 = md5(book_name)
+        
+        display_name, parent_name, chapter_name, mtime, first_img = scan_result
+        bmd5 = md5(display_name)
+        parent_md5_value = md5(parent_name)
+        
         with self._get_conn() as conn:
             conn.execute(
-                f'''REPLACE INTO "{self.table_name}" (md5, name, mtime, first_img) 
-                        VALUES (?, ?, ?, ?)''',
-                (bmd5, book_name, mtime, first_img)
+                f'''REPLACE INTO "{self.table_name}" (md5, name, parent_md5, mtime, first_img)
+                        VALUES (?, ?, ?, ?, ?)''',
+                (bmd5, display_name, parent_md5_value, mtime, first_img)
             )
-        book = BookData(bmd5, book_name, mtime)
+        
+        book = BookData(bmd5, display_name, mtime, parent_md5_value)
         book.first_img = first_img
         self.books_index[bmd5] = book
-        logger.debug(f"Updated cache for: {book_name}")
+        logger.debug(f"Updated cache for: {display_name}")
 
     async def remove_book_async(self, book_name: str):
         loop = asyncio.get_running_loop()
@@ -194,7 +272,7 @@ class ComicLibraryManager:
             fs_book_names = set()
             try:
                 for entry in new_comic_path.iterdir():
-                    if entry.is_dir():
+                    if entry.is_dir() or (entry.is_file() and entry.suffix.lower() == '.cbz'):
                         fs_book_names.add(entry.name)
             except OSError as e:
                 logger.error(f"Failed to scan comic path {new_comic_path}: {e}")

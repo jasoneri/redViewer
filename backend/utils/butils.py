@@ -36,10 +36,11 @@ class QuerySort:
 
 
 class BookData:
-    def __init__(self, _md5, name: str, mtime: float):
+    def __init__(self, _md5, name: str, mtime: float, parent_md5: str = None):
         self.md5 = _md5
         self.name = name
         self.mtime = mtime
+        self.parent_md5 = parent_md5
         self.first_img = None
     
     def to_api(self):

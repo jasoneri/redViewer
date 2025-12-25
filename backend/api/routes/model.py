@@ -26,18 +26,30 @@ class BookPagesHandler:
 
     def _format_pages_for_api(self, book_name: str, pages: list) -> dict:
         safe_book_name = quote(book_name)
-        formatted_pages = [f"/static/{safe_book_name}/{page}" for page in pages]
+        # 检查是否是 .cbz 文件
+        book_path = self.comic_path / book_name
+        if book_path.is_file() and book_path.suffix.lower() == '.cbz':
+            # 对于 .cbz 文件，使用特殊的 API 路径
+            formatted_pages = [f"/comic/cbz_image/{safe_book_name}/{quote(page)}" for page in pages]
+        else:
+            # 对于普通目录，使用静态文件路径
+            formatted_pages = [f"/static/{safe_book_name}/{page}" for page in pages]
         return {"pages": formatted_pages, "page_count": len(formatted_pages)}
 
-    def _book_dir(self, book_name: str) -> Path:
+    def _book_path(self, book_name: str) -> Path:
+        """返回书籍路径，可能是目录或 .cbz 文件"""
+        # 先检查是否存在 .cbz 文件
+        cbz_path = self.comic_path / book_name
+        if cbz_path.exists() and cbz_path.is_file():
+            return cbz_path
+        # 否则当作目录处理
         return self.comic_path / book_name
 
-    async def _scan_dir(self, book_dir) -> Optional[tuple]:
+    async def _scan_path(self, book_path) -> Optional[tuple]:
+        """扫描书籍路径，支持目录和 .cbz 文件"""
         def _worker():
-            if not book_dir.is_dir():
-                return None
             try:
-                return scan_book_dir(book_dir, return_all=True)
+                return scan_book_dir(book_path, return_all=True)
             except Exception:
                 return None
         return await self.loop.run_in_executor(executor, _worker)
@@ -45,9 +57,9 @@ class BookPagesHandler:
     async def get_pages(self, book_name: str, hard_refresh: bool = False):
         book_md5 = md5(book_name)
         entry = self._cache.get(book_md5)
-        book_dir = self._book_dir(book_name)
+        book_path = self._book_path(book_name)
         try:
-            current_mtime = book_dir.stat().st_mtime if book_dir.is_dir() else None
+            current_mtime = book_path.stat().st_mtime if book_path.exists() else None
         except Exception:
             current_mtime = None
         if (not hard_refresh and
@@ -74,8 +86,8 @@ class BookPagesHandler:
                 entry.last_access = time.time()
                 self._cache.move_to_end(book_md5)
                 return self._format_pages_for_api(book_name, entry.pages)
-            # 在线程池中扫描目录（IO 密集）
-            scan_result = await self._scan_dir(book_dir)
+            # 在线程池中扫描路径（目录或 .cbz 文件）
+            scan_result = await self._scan_path(book_path)
             if not scan_result:
                 # 目录不存在或扫描失败：从缓存中删除该占位 entry 并返回 None（与旧行为一致）
                 # 注意：invalidate 由外部 FS watcher 调用；此处仅在无法读取目录时清缓存占位

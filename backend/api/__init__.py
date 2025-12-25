@@ -7,6 +7,7 @@ from starlette.staticfiles import StaticFiles
 from api.routes.comic import index_router, conf
 from api.routes.cache import lib_mgr
 from api.routes.kemono import index_router as kemono_index_router
+from utils.cbz_cache import close_cbz_cache
 
 global_whitelist = ['']
 staticFiles = StaticFiles(directory=str(conf.comic_path))
@@ -14,12 +15,19 @@ staticFiles = StaticFiles(directory=str(conf.comic_path))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # 应用启动
     main_loop = asyncio.get_running_loop()
     await lib_mgr.switch_library(conf.comic_path, main_loop)
+    
     yield
+    
+    # 应用关闭
     if lib_mgr.observer and lib_mgr.observer.is_alive():
         lib_mgr.observer.stop()
         lib_mgr.observer.join()
+    
+    # 关闭 CBZ 缓存，释放所有打开的 ZipFile
+    close_cbz_cache()
 
 
 def create_app() -> FastAPI:

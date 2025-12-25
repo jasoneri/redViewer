@@ -3,14 +3,16 @@
 import os
 import shutil
 import asyncio
+from pathlib import Path
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 from send2trash import send2trash
 
 from utils import conf, executor
 from utils.butils import QuerySort
+from utils.cbz_cache import get_cbz_cache
 from .cache import lib_mgr
 
 
@@ -91,3 +93,35 @@ async def handle(request: Request, book: Book):
     else:
         _ = await lp.run_in_executor(executor, shutil.move, book_path, conf.handle_path.joinpath(book.handle, book.name))
         return {"path": _, "handled": f"{book.handle}d"}
+
+
+@index_router.get("/cbz_image/{book_name}/{image_path:path}")
+async def get_cbz_image(book_name: str, image_path: str):
+    """从 .cbz 文件中提取图片（使用缓存优化）"""
+    cbz_path = conf.comic_path.joinpath(book_name)
+    
+    # 检查文件是否存在且是 .cbz 文件
+    if not cbz_path.exists() or not cbz_path.is_file() or cbz_path.suffix.lower() != '.cbz':
+        return JSONResponse(status_code=404, content="CBZ file not found")
+    
+    # 使用 CBZCache 提取图片（性能优化）
+    cbz_cache = get_cbz_cache()
+    loop = asyncio.get_event_loop()
+    image_data = await loop.run_in_executor(executor, cbz_cache.extract_image, cbz_path, image_path)
+    
+    if image_data is None:
+        return JSONResponse(status_code=404, content="Image not found in CBZ")
+    
+    # 根据文件扩展名确定 MIME 类型
+    ext = Path(image_path).suffix.lower()
+    mime_types = {
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.png': 'image/png',
+        '.gif': 'image/gif',
+        '.webp': 'image/webp',
+        '.bmp': 'image/bmp'
+    }
+    media_type = mime_types.get(ext, 'application/octet-stream')
+    
+    return Response(content=image_data, media_type=media_type)

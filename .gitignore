@@ -60,6 +60,7 @@ conf.yml
 _bug_log
 # ide
 .cursor
+/plans
 
 # uv
 .python-version
