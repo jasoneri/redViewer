@@ -17,7 +17,8 @@ export const useSettingsStore = defineStore('settings', {
     viewSettings: JSON.parse(localStorage.getItem('viewSettings') || JSON.stringify({
       isDark: false,
       isListMode: false,
-      isCompleteDel: false
+      isCompleteDel: false,
+      isEro: false
     })),
     displaySettings: JSON.parse(localStorage.getItem('displaySettings') || JSON.stringify({
       showSlider: false,
@@ -63,6 +64,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     toggleDeleteMode() {
       this.viewSettings.isCompleteDel = !this.viewSettings.isCompleteDel
+      localStorage.setItem('viewSettings', JSON.stringify(this.viewSettings))
+    },
+    toggle18Mode() {
+      this.viewSettings.isEro = !this.viewSettings.isEro
       localStorage.setItem('viewSettings', JSON.stringify(this.viewSettings))
     },
     saveScrollTopRecord(bookName, page) {

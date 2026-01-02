@@ -10,6 +10,13 @@ const routes = [{
   },
   component: () => import('@/view/books_list.vue')
 },{
+  path: '/ep_list',
+  name: 'ep_list',
+  meta: {
+    title: "episodes"
+  },
+  component: () => import('@/view/ep_list.vue')
+},{
   path: '/book',
   name: 'book',
   meta: {

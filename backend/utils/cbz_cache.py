@@ -110,7 +110,7 @@ class CBZCache:
             return None
         
         try:
-            return zf.read(image_name)
+            return zf.read(image_name.split('/')[-1])
         except (KeyError, RuntimeError, Exception) as e:
             logger.error(f"Failed to extract {image_name} from {cbz_path.name}: {e}")
             # 如果读取失败，可能是文件损坏，从缓存中移除

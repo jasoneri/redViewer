@@ -22,9 +22,9 @@
         <topBottom v-if="settingsStore.displaySettings.showNavBtn" :scrollbarRef="scrollbarRef" />
       </el-scrollbar>
       <div v-show="showBtn">
-        <bookHandleBtn 
-            :retainCallBack="retainCallBack" :removeCallBack="removeCallBack" :delCallBack="delCallBack" 
-            :bookName="route.query.book"  :bookHandlePath="'/comic/handle'" :verticalMode="true"
+        <bookHandleBtn
+            :retainCallBack="retainCallBack" :removeCallBack="removeCallBack" :delCallBack="delCallBack"
+            :bookName="route.query.book" :epName="route.query.ep" :bookHandlePath="'/comic/handle'" :verticalMode="true"
         />
       </div>
     </el-main>
@@ -77,8 +77,9 @@ const maxScrollHeight = ref(0)   // 最大滚动高度
     const btnShowThreshold = 0.15
     const errorText = computed(() => '已经说过没图片了！..')
 
-    const getBook = async(book, callBack) => {
-      await axios.get(backend + '/comic/' + encodeURIComponent(book))
+    const getBook = async(book, ep, callBack) => {
+      const params = ep ? { ep } : {};
+      await axios.get(backend + '/comic/' + encodeURIComponent(book), { params })
         .then(res => {
           let result = res.data.map((_) => {
             return backend + _
@@ -91,31 +92,85 @@ const maxScrollHeight = ref(0)   // 最大滚动高度
           console.log(error);
         })
     }
-    const bookIndex = computed(() => {
-      return filteredBookList.arr.findIndex(item => item.book_name === route.query.book)
+    // 当前书籍对象
+    const currentBook = computed(() => {
+      return filteredBookList.arr.find(item => item.book === route.query.book)
     });
-    const init = (_book) => {
-      getBook(_book, callBack)
+    // 当前章节索引（有章节时）
+    const currentEpIndex = computed(() => {
+      if (!route.query.ep || !currentBook.value?.eps) return -1
+      return currentBook.value.eps.findIndex(e => e.ep === route.query.ep)
+    });
+    // 无章节书籍列表
+    const singlesOnly = computed(() => {
+      return filteredBookList.arr.filter(item => !item.eps)
+    });
+    // 当前书籍在无章节列表中的索引
+    const singleIndex = computed(() => {
+      return singlesOnly.value.findIndex(item => item.book === route.query.book)
+    });
+    
+    const init = () => {
+      const book = route.query.book
+      const ep = route.query.ep || null
+      getBook(book, ep, callBack)
       function callBack(data){
         imgUrls.arr = data
       }
     }
-    init(route.query.book)
-    function triggerInit(_book){
+    init()
+    function triggerInit(book, ep = null){
       imgUrls.arr = []
-      router.replace({path:'book',query:{book:_book}})
-      init(_book)
+      const query = ep ? { book, ep } : { book }
+      router.replace({path:'/book', query})
+      getBook(book, ep, (data) => { imgUrls.arr = data })
     }
     function previousBook(){
-        triggerInit(filteredBookList.arr[bookIndex.value-1].book_name)
+      const ep = route.query.ep
+      if (ep && currentBook.value?.eps) {
+        // 有章节：在同系列章节中导航
+        const prevIdx = currentEpIndex.value - 1
+        if (prevIdx >= 0) {
+          triggerInit(route.query.book, currentBook.value.eps[prevIdx].ep)
+        }
+      } else {
+        // 无章节：在无章节书籍中导航
+        const prevIdx = singleIndex.value - 1
+        if (prevIdx >= 0) {
+          triggerInit(singlesOnly.value[prevIdx].book)
+        }
+      }
     }
     function nextBook(){
-        triggerInit(filteredBookList.arr[bookIndex.value+1].book_name)
+      const ep = route.query.ep
+      if (ep && currentBook.value?.eps) {
+        // 有章节：在同系列章节中导航
+        const nextIdx = currentEpIndex.value + 1
+        if (nextIdx < currentBook.value.eps.length) {
+          triggerInit(route.query.book, currentBook.value.eps[nextIdx].ep)
+        }
+      } else {
+        // 无章节：在无章节书籍中导航
+        const nextIdx = singleIndex.value + 1
+        if (nextIdx < singlesOnly.value.length) {
+          triggerInit(singlesOnly.value[nextIdx].book)
+        }
+      }
     }
 
-    function retainCallBack(done, path) {MsgOpen(done, Finished, 'success', path)}
-    function removeCallBack(done, path) {MsgOpen(done, Warning, 'warning', path)}
-    function delCallBack(done, path) {MsgOpen(done, Delete, 'error', path)}
+    function removeFromList() {
+      const ep = route.query.ep
+      if (ep && currentBook.value?.eps) {
+        const idx = currentBook.value.eps.findIndex(e => e.ep === ep)
+        if (idx !== -1) currentBook.value.eps.splice(idx, 1)
+      } else {
+        const idx = filteredBookList.arr.findIndex(b => b.book === route.query.book)
+        if (idx !== -1) filteredBookList.arr.splice(idx, 1)
+      }
+    }
+    function retainCallBack(done, path) {removeFromList(); MsgOpen(done, Finished, 'success', path)}
+    function removeCallBack(done, path) {removeFromList(); MsgOpen(done, Warning, 'warning', path)}
+    function delCallBack(done, path) {removeFromList(); MsgOpen(done, Delete, 'error', path)}
     const MsgOpen = (handle, _ico, _type, book) => {
       function back_index(){router.push({path: '/'})}
       ElMessageBox.confirm(

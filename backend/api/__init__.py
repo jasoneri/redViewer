@@ -4,8 +4,9 @@ from fastapi import FastAPI, Request, Response
 from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 
-from api.routes.comic import index_router, conf
-from api.routes.cache import lib_mgr
+from utils import conf
+from core import lib_mgr
+from api.routes.comic import index_router
 from api.routes.kemono import index_router as kemono_index_router
 from utils.cbz_cache import close_cbz_cache
 

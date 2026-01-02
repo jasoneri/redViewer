@@ -1,8 +1,8 @@
 <template>
     <el-container>
       <el-header height="5vh" :style="`min-height: 40px`">
-        <TopBtnGroup :reload="reload" :items="bookList" :filtered-items="filteredBookList" :handle-conf="handleConf" 
-                     :handle-filter="handleFilter" :keywords_list="keywords_list" v-model="isListMode" @send_sort="sv_sort"/>
+        <TopBtnGroup :reload="reload" :items="bookList" :filtered-items="filteredBookList" :handle-conf="handleConf"
+                     :handle-filter="handleFilter" :keywords_list="keywords_list" v-model="isListMode" @send_sort="sv_sort" @switchEro="handleswitchEro"/>
       </el-header>
       <el-main>
         <el-empty v-if="bookList.arr.length===0"
@@ -18,18 +18,22 @@
           <!-- 列表视图 -->
           <el-table v-if="isListMode" :data="pagedBook">
             <el-table-column prop="book" label="Book" >
-              <template v-slot="scope">
+              <template v-slot="{ row: item }">
                 <el-space wrap :size="'small'">
-                  <el-button type="info"  style="width: 20%;height: 100%;" @click="setFilter(scope.row.book_name)">
+                  <el-button v-if="!item.eps" type="info" style="width: 20%;height: 100%;" @click="setFilter(item.book)">
                     <el-icon size="large"><Filter /></el-icon>
                   </el-button>
-                  <el-button-group>
+                  <el-button-group v-if="!item.eps">
                     <bookHandleBtn :retainCallBack="retainCallBack" :removeCallBack="removeCallBack" :delCallBack="delCallBack"
-                                   :bookName="scope.row.book_name" :bookHandlePath="'/comic/handle'" />
+                                   :bookName="item.book" :bookHandlePath="'/comic/handle'" />
                   </el-button-group>
+                  <span v-else class="eps-badge">
+                    <EpisodesIcon />
+                    {{ item.eps.length }} Epsiodes
+                  </span>
                   <router-link :style="`font-size: var(--el-font-size-extra-large)`"
-                               :to="{ path: 'book', query: { book: scope.row.book_name}}">
-                    {{ scope.row.book_name }}
+                               :to="item.eps ? { path: '/ep_list', query: { book: item.book }} : { path: '/book', query: { book: item.book }}">
+                    {{ item.book }}
                   </router-link>
                 </el-space>
               </template>
@@ -38,10 +42,10 @@
           <!-- 网格视图 -->
           <div v-else class="grid-container">
             <el-row :gutter="20">
-              <el-col v-for="book in pagedBook" :key="book.book_name" :span="4" :xs="12" :sm="8" :md="6" :lg="4">
+              <el-col v-for="item in pagedBook" :key="item.book" :span="4" :xs="12" :sm="8" :md="6" :lg="4">
                 <el-card :body-style="{ padding: '0px' }" class="book-card">
-                  <router-link :to="{ path: 'book', query: { book: book.book_name}}">
-                    <el-image :src="backend+book.first_img" class="book-image" :title="book.book_name" fit="cover">
+                  <router-link :to="item.eps ? { path: '/ep_list', query: { book: item.book }} : { path: '/book', query: { book: item.book }}">
+                    <el-image :src="backend+item.first_img" class="book-image" :title="item.book" fit="cover">
                       <template #error>
                         <div class="error-container">
                           <img src="/empty.png" :alt="errorText" />
@@ -50,18 +54,22 @@
                       </template>
                     </el-image>
                     <div class="book-info">
-                      <span class="book-title">{{ book.book_name }}</span>
+                      <span class="book-title">{{ item.book }}</span>
                     </div>
                   </router-link>
                   <div class="book-actions">
-                    <el-button style="width: 20%;height: 100%;" type="info" @click="setFilter(book.book_name)">
+                    <el-button v-if="!item.eps" style="width: 20%;height: 100%;" type="info" @click="setFilter(item.book)" >
                       <el-icon size="large"><Filter /></el-icon>
                     </el-button>
-                    <el-button-group :style="`width:100%;`">
+                    <el-button-group v-if="!item.eps" :style="`width:100%;`">
                       <bookHandleBtn
                         :retainCallBack="retainCallBack" :removeCallBack="removeCallBack" :delCallBack="delCallBack"
-                        :bookName="book.book_name" :bookHandlePath="'/comic/handle'" />
+                        :bookName="item.book" :bookHandlePath="'/comic/handle'" />
                     </el-button-group>
+                    <span v-else class="eps-badge">
+                      <EpisodesIcon />
+                      {{ item.eps.length }} Epsiodes
+                    </span>
                   </div>
                 </el-card>
               </el-col>
@@ -81,14 +89,17 @@
 </template>
 
 <script setup>
-    import {computed, h, ref} from 'vue';
+    import {computed, h, ref, onMounted} from 'vue';
     import axios from "axios";
-    import {backend,indexPage,bookList,filteredBookList,sortVal,pageSize} from "@/static/store.js";
+    import {backend,indexPage,bookList,filteredBookList,sortVal,pageSize, useSettingsStore} from "@/static/store.js";
     import {ElNotification,ElMessage} from "element-plus";
     import TopBtnGroup from '@/components/TopBtnGroup.vue'
     import bookHandleBtn from '@/components/bookHandleBtn.vue'
     import topBottom from '@/components/topBottom.vue'
     import { Filter } from '@element-plus/icons-vue';
+    import { EpisodesIcon } from '@/icons';
+
+    const settingsStore = useSettingsStore()
 
     const isListMode = ref(true);
     const apiErr = ref(false);
@@ -102,17 +113,15 @@
     // 添加过滤方法
     const applyFilter = (data) => {
       if (filterKeyword.value) {
-        filteredBookList.arr = data.filter(item => item.book_name.includes(filterKeyword.value))
+        filteredBookList.arr = data.filter(item => item.book.includes(filterKeyword.value))
       } else {
         filteredBookList.arr = data
       }
     }
 
-    const extractKeywords = (book_name) => {
-      if (book_name.includes('[') && book_name.includes(']')) {
-        return book_name.split('[')[1].split(']')[0]
-      } else if (book_name.includes('_')) {
-        return book_name.split('_')[0]
+    const extractKeywords = (book) => {
+      if (book.includes('[') && book.includes(']')) {
+        return book.split('[')[1].split(']')[0]
       }
       return null
     }
@@ -140,19 +149,20 @@
     });
     const handleConf = async(param) => {
       if (typeof param === "function") {
+        // GET 配置，返回 JSON 对象
         await axios.get(backend + '/comic/conf')
           .then(res => {param(res.data);})
           .catch(function (error) {console.log(error);})
-      } else if (typeof param === "string") {
-        let body = {text: param};
-        await axios.post(backend + '/comic/conf', body)
+      } else if (typeof param === "object") {
+        // POST 配置，发送 JSON 对象
+        await axios.post(backend + '/comic/conf', param)
           .then(res => {
             reload();
             ElNotification.success({
               title: '配置更改已成功',
               message: h('i', { style: 'white-space: pre-wrap; word-wrap: break-word;' }, `配置后端的静态资源锚点已更新`),
-              offset: 100,
-              duration: 7000
+              offset: 150,
+              duration: 1300
             })
             handleFilter('')  // 换配置时清除筛选值
           })
@@ -190,15 +200,22 @@
         // 异步提取关键词
         setTimeout(() => {
           const keywords = new Set()
-          data.forEach(book => {
-            const keyword = extractKeywords(book.book_name)
+          data.forEach(item => {
+            const keyword = extractKeywords(item.book)
             if (keyword) keywords.add(keyword.slice(0, 20))
           })
           keywords_list.value = Array.from(keywords).sort((a, b) => a.localeCompare(b))
         }, 0)
       }
     }
-    init()
+
+    onMounted(async () => {
+      const res = await axios.get(backend + '/comic/switch_ero/')
+      if (res.data !== settingsStore.viewSettings.isEro) {
+        settingsStore.viewSettings.isEro = res.data
+      }
+      init()
+    })
     const reload = (refreshFilterKeyword = false) => {
       if (refreshFilterKeyword) {
         filterKeyword.value = ''
@@ -231,22 +248,22 @@
       reload()
     }
 
+    const handleswitchEro = async (enable) => {
+      await axios.post(backend + '/comic/switch_ero', null, { params: { enable } })
+      init()
+    }
+
     const handleFilter = (keyword) => {
       filterKeyword.value = keyword
       localStorage.setItem('filterKeyword', keyword)
       applyFilter(bookList.arr)
     }
 
-    const setFilter = (book_name) => {
-      // 1. 当book_name为`[artist]xxx`形式时，keyword=artist
-      // 2. 当book_name为`xxx_第N话`形式时，keyword=xxx
-      // 3. 当book_name为`xxx`形式时，keyword=xxx
+    const setFilter = (book) => {
+      // 当book为`[artist]xxx`形式时，keyword=artist
       let keyword
-      if (book_name.includes('[') && book_name.includes(']')) {
-        keyword = book_name.split('[')[1].split(']')[0]
-        handleFilter(keyword)
-      } else if (book_name.includes('_')) {
-        keyword = book_name.split('_')[0]
+      if (book.includes('[') && book.includes(']')) {
+        keyword = book.split('[')[1].split(']')[0]
         handleFilter(keyword)
       } else {
         ElMessage({
@@ -260,6 +277,22 @@
 <style lang="scss" scoped>
     @use '@/styles/books_list.scss';
     @use '@/styles/empty.scss';
+
+.eps-badge {
+  display: inline-flex;
+  align-items: center;
+  width: 100%;
+  height: 32px;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--el-border-radius-large);
+  background: var(--el-fill-color-light);
+  box-shadow: var(--el-box-shadow);
+  font-size: 14px;
+  color: var(--el-text-color-primary);
+  box-sizing: border-box;
+  svg { flex-shrink: 0; }
+}
 
 .error-container {
   position: relative;

@@ -4,7 +4,7 @@
       type="success" 
       @click="retain(props.bookName)"
   >
-      <el-icon size="large"><svg class="feather feather-save" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></el-icon>
+      <el-icon size="large"><SaveIcon /></el-icon>
   </el-button>
   <el-button 
       :class="['handle-btn', { 'vertical-btn-del': verticalMode }]"
@@ -14,7 +14,8 @@
 </template>
 
 <script setup>
-    import { Delete, Download } from '@element-plus/icons-vue'
+    import { Delete } from '@element-plus/icons-vue'
+    import { SaveIcon } from '@/icons'
     import axios from "axios";
     import {backend} from "@/static/store.js";
     import { ElMessage } from 'element-plus'
@@ -26,6 +27,7 @@
 
     const props = defineProps({
       bookName:{type: String, required: true},
+      epName:{type: String, required: false, default: null},
       retainCallBack:{type: Function, required: true},
       removeCallBack:{type: Function, required: true},
       delCallBack:{type: Function, required: true},
@@ -35,11 +37,11 @@
     })
 
     const handleBook = async(handle, book, callBack) => {
-      let body = {handle: handle, name: book};
+      let body = {handle: handle, book: book, ep: props.epName};
       body = {...body, ...props.handleApiBodyExtra}
       axios.post(backend + props.bookHandlePath, body)
         .then(res => {
-          callBack(res.data.handled, res.data.path)
+          callBack(res.data.handled, res.data.path, props.epName)
         })
         .catch(function (error) {
           console.log(error);

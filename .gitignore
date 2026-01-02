@@ -61,7 +61,7 @@ _bug_log
 # ide
 .cursor
 /plans
-
+.kilocode/*
 # uv
 .python-version
 uv.lock
