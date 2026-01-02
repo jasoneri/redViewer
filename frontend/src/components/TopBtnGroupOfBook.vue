@@ -12,6 +12,12 @@
     </el-button>
     <template #dropdown>
       <el-dropdown-menu>
+        <el-dropdown-item>
+          <el-radio-group v-model="readingMode">
+            <el-radio-button value="scroll"><el-icon ><ArrowsVertical /></el-icon>滚动</el-radio-button>
+            <el-radio-button value="page"><el-icon ><ArrowsHorizontal /></el-icon>翻页</el-radio-button>
+          </el-radio-group>
+        </el-dropdown-item>
         <el-dropdown-item :icon="ArrowDownBold" @click="showScrollConfDia">自动下滑设置</el-dropdown-item>
         <el-dropdown-item>
           <el-switch v-model="showSlider" :active-action-icon="View" :inactive-action-icon="Hide" active-text="页数滚动条"></el-switch>
@@ -47,6 +53,7 @@
 
 <script setup>
 import {ArrowDownBold, ArrowLeft, ArrowRight, Operation, Hide, View} from "@element-plus/icons-vue";
+import { ArrowsHorizontal, ArrowsVertical } from "@/icons"
 import { BackIcon } from '@/icons';
 import ScrollSpeedDialog from '@/components/func/ScrollSpeedDialog.vue';
 import {ref, watch} from "vue";
@@ -58,6 +65,11 @@ const settingsStore = useSettingsStore()
 const showCenterNextPrev = ref(settingsStore.displaySettings.showCenterNextPrev)
 const showSlider = ref(settingsStore.displaySettings.showSlider)
 const showNavBtn = ref(settingsStore.displaySettings.showNavBtn)
+const readingMode = ref(settingsStore.displaySettings.readingMode || 'scroll')
+
+watch(readingMode, (newValue) => {
+  settingsStore.setReadingMode(newValue)
+})
 
 watch(showSlider, (newValue) => {
   settingsStore.toggleSlider(newValue)

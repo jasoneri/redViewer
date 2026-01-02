@@ -209,6 +209,7 @@ const handleSortChange = (value) => {
 }
 
 const handleSeriesOnly = () => {
+  settingsStore.setSeriesOnly(true)
   props.filteredItems.arr = props.items.arr.filter(item => item.eps)
 }
 </script>

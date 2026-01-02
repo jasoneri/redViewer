@@ -112,11 +112,14 @@
 
     // 添加过滤方法
     const applyFilter = (data) => {
+      let result = data
       if (filterKeyword.value) {
-        filteredBookList.arr = data.filter(item => item.book.includes(filterKeyword.value))
-      } else {
-        filteredBookList.arr = data
+        result = result.filter(item => item.book.includes(filterKeyword.value))
       }
+      if (settingsStore.isSeriesOnly) {
+        result = result.filter(item => item.eps)
+      }
+      filteredBookList.arr = result
     }
 
     const extractKeywords = (book) => {
@@ -220,6 +223,7 @@
       if (refreshFilterKeyword) {
         filterKeyword.value = ''
         localStorage.removeItem('filterKeyword')
+        settingsStore.setSeriesOnly(false)
       }
       init()
     }

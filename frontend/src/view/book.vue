@@ -6,21 +6,46 @@
       </el-button-group>
     </el-header>
     <el-main id="main">
-      <el-scrollbar class="demo-image__lazy" :height="showBtn?`90vh`:`95vh`" always 
-      ref="scrollbarRef" @scroll.native.capture="handleRealScroll">
-        <div ref="imageContainer">
-          <el-image 
-            v-for="url in imgUrls.arr" 
-            :key="url" 
-            :src="url" 
-            :lazy="!settingsStore.displaySettings.showSlider"
-            @load="handleImageLoad"
+      <!-- 滚动模式 -->
+      <template v-if="readingMode === 'scroll'">
+        <el-scrollbar class="demo-image__lazy" :height="showBtn?`90vh`:`95vh`" always
+        ref="scrollbarRef" @scroll.native.capture="handleRealScroll">
+          <div ref="imageContainer">
+            <el-image
+              v-for="url in imgUrls.arr"
+              :key="url"
+              :src="url"
+              :lazy="!settingsStore.displaySettings.showSlider"
+              @load="handleImageLoad"
+            />
+            <el-empty class="custom-empty" v-if="!loadedFlag && imgUrls.arr.length===0"
+              image="/empty.png" :description="errorText" />
+          </div>
+          <topBottom v-if="settingsStore.displaySettings.showNavBtn" :scrollbarRef="scrollbarRef" />
+        </el-scrollbar>
+        <!-- 滚动模式滑块 -->
+        <div v-if="settingsStore.displaySettings.showSlider" class="slider-container">
+          <el-icon class="edit-pen" @click="saveCurrScrollTop">
+            <EditPen />
+          </el-icon>
+          <el-slider
+            v-model="currScrollTop"
+            :max="maxScrollHeight"
+            :show-tooltip="false"
+            @input="inputSlider"
           />
-          <el-empty class="custom-empty" v-if="!loadedFlag && imgUrls.arr.length===0"
-            image="/empty.png" :description="errorText" />
         </div>
-        <topBottom v-if="settingsStore.displaySettings.showNavBtn" :scrollbarRef="scrollbarRef" />
-      </el-scrollbar>
+      </template>
+      
+      <!-- 翻页模式 -->
+      <PageReader
+        v-else
+        :imgUrls="imgUrls.arr"
+        :bookName="route.query.book"
+        :class="{ 'page-reader-fullscreen': !showBtn }"
+        @showBtnChange="(v) => showBtn = v"
+      />
+      
       <div v-show="showBtn">
         <bookHandleBtn
             :retainCallBack="retainCallBack" :removeCallBack="removeCallBack" :delCallBack="delCallBack"
@@ -28,18 +53,6 @@
         />
       </div>
     </el-main>
-    <!-- [slider.vue] template -->
-    <div v-if="settingsStore.displaySettings.showSlider" class="slider-container">
-        <el-icon class="edit-pen" @click="saveCurrScrollTop">
-          <EditPen />
-        </el-icon>
-      <el-slider
-        v-model="currScrollTop"
-        :max="maxScrollHeight"
-        :show-tooltip="false"
-        @input="inputSlider"
-      />
-    </div>
   </el-container>
 </template>
 
@@ -53,7 +66,7 @@
     import {Delete, Finished, Warning,} from "@element-plus/icons-vue"
     import topBottom from '@/components/topBottom.vue'
     import TopBtnGroupOfBook from '@/components/TopBtnGroupOfBook.vue'
-    // import slider from '@/components/func/slider.vue'
+    import PageReader from '@/components/func/PageReader.vue'
 
 // [slider.vue] script
 import {EditPen} from "@element-plus/icons-vue";
@@ -76,6 +89,7 @@ const maxScrollHeight = ref(0)   // 最大滚动高度
     const showBtn = ref(true)
     const btnShowThreshold = 0.15
     const errorText = computed(() => '已经说过没图片了！..')
+    const readingMode = computed(() => settingsStore.displaySettings.readingMode || 'scroll')
 
     const getBook = async(book, ep, callBack) => {
       const params = ep ? { ep } : {};
@@ -223,7 +237,7 @@ const loadedFlag = computed(() => {
   if (totalImages.value === 0) return
   const _loadFlag = loadedImages.value === totalImages.value
   if (!settingsStore.displaySettings.showSlider && _loadFlag) return true;
-  if (!(imageContainer.value || _loadFlag)) return;
+  if (!imageContainer.value) return _loadFlag;
   const imgs = imageContainer.value.querySelectorAll('.el-image');
   return !imgs || imgs.length === totalImages.value
 })
@@ -324,5 +338,22 @@ watch(() => settingsStore.displaySettings.showSlider, (newValue, oldValue) => {
 
   :deep(.el-slider) {
     width: 100%;
+  }
+
+  // 翻页模式非全屏：保持在容器内居中
+  :deep(.page-reader) {
+    height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .page-reader-fullscreen {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 1000;
   }
 </style>

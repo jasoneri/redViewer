@@ -95,7 +95,8 @@ curl -fsSL https://gitee.com/json_eri/redViewer/raw/master/deploy/online_scripts
 
 ✅ 支持系列带子级章节，系列与单章节  
 ✅ 支持读 `.cbz`  
-✅ CGS 下载后用 rV 设配置目录后完全无感使用，包括以上两点  
+✨ CGS 下载后用 rV 设配置目录后完全无感使用，包括以上两点  
+✨ 增加左右翻页阅读模式，同样采用 15~85% 阅读进度阈值，隐藏按钮组并设置全屏化  
 ✅ 配置/过滤等操作优化  
 
 ### ROAD MAP
