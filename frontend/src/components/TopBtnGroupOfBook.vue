@@ -4,8 +4,8 @@
     <el-button style="flex: 1; height: 100%" type="info" @click="goBack">
       <el-icon size="large"><BackIcon /></el-icon>
     </el-button>
-    <el-button style="flex: 4; height: 100%" type="primary" :icon="ArrowLeft" @click="previousBook">上一本</el-button>
-    <el-button style="flex: 4; height: 100%" type="primary" @click="nextBook">下一本<el-icon class="el-icon--right"><ArrowRight /></el-icon></el-button>
+    <el-button style="flex: 4; height: 100%" type="primary" @click="previousBook"><el-icon class="el-icon--left" size="large"><ArrowLeft /></el-icon>上一本</el-button>
+    <el-button style="flex: 4; height: 100%" type="primary" @click="nextBook">下一本<el-icon class="el-icon--right" size="large"><ArrowRight /></el-icon></el-button>
   <el-dropdown trigger="click" style="flex: 1; height: 100%;" placement="bottom-end" size="large">
     <el-button type="info"  @click="menuVisible = true" style="width: 100%; height: 100%;">
       <el-icon size="large"><Operation /></el-icon>

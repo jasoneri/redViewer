@@ -44,6 +44,7 @@ test/*
 .lh/
 .env
 *.psd
+*.clip
 # self/build
 temp
 *-in.txt

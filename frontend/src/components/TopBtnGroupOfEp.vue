@@ -4,17 +4,17 @@
       <el-icon size="large"><BackIcon /></el-icon>
     </el-button>
     <el-button :type="isCompleteDel ? 'danger' : 'warning'" @click="switchDelMode" style="flex: 1; height: 100%;">
-      <el-icon><Switch /></el-icon>
+      <el-icon size="large"><Switch /></el-icon>
       <span class="btn-text">模式:{{ isCompleteDel ? '彻底删除' : '扔回收站' }}</span>
     </el-button>
     <el-button type="primary" style="flex: 1; height: 100%;" @click="props.previousSeries">
-      <el-icon><ArrowLeft /></el-icon>
+      <el-icon size="large"><ArrowLeft /></el-icon>
       <span class="btn-text">上一系列</span>
     </el-button>
     <el-button disabled class="book-name-btn" style="flex: 6; height: 100%;">{{ props.bookName }}</el-button>
     <el-button type="primary" style="flex: 1; height: 100%;" @click="props.nextSeries">
       <span class="btn-text">下一系列</span>
-      <el-icon><ArrowRight /></el-icon>
+      <el-icon size="large"><ArrowRight /></el-icon>
     </el-button>
   </el-button-group>
 </template>

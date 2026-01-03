@@ -10,7 +10,7 @@
   <br>
   <img src="https://img.shields.io/badge/-👉-red.svg" alt="tag">
   <img src="https://img.shields.io/github/stars/jasoneri/redViewer?style=social&logo=github" alt="tag">
-  <img src="https://img.shields.io/badge/-👈%20CGS过来的请涨它吧%20😹-red.svg" alt="tag">
+  <img src="https://img.shields.io/badge/-👈%20CGS过来的支持一下吧%20-red.svg" alt="tag">
 
   <p align="center">
   <a href="https://github.com/jasoneri/redViewer#️1-部署更新运行多合一脚本">📦多功能脚本</a> | 
@@ -97,6 +97,7 @@ curl -fsSL https://gitee.com/json_eri/redViewer/raw/master/deploy/online_scripts
 ✅ 支持读 `.cbz`  
 ✨ CGS 下载后用 rV 设配置目录后完全无感使用，包括以上两点  
 ✨ 增加左右翻页阅读模式，同样采用 15~85% 阅读进度阈值，隐藏按钮组并设置全屏化  
+✨ 主题色改为 red !!  
 ✅ 配置/过滤等操作优化  
 
 ### ROAD MAP

@@ -179,7 +179,7 @@ watch(() => props.bookName, () => {
   justify-content: center;
   
   .el-image {
-    max-height: 100%;
+    height: 100%;
     max-width: 100%;
   }
 }
@@ -234,6 +234,6 @@ watch(() => props.bookName, () => {
 }
 
 :deep(.el-slider__bar) {
-  background-color: #409eff;
+  background-color: var(--el-color-primary);
 }
 </style>
