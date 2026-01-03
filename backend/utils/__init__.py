@@ -1,8 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+import json
 import pathlib
 import hashlib
-import shutil
 import typing as t
 from dataclasses import dataclass, asdict, field
 from concurrent.futures import ThreadPoolExecutor
@@ -16,14 +16,6 @@ conf_dir = user_config_path("redViewer", ensure_exists=False).parent
 conf_dir.mkdir(parents=True, exist_ok=True)
 
 
-def toAppConfigLocation(ori_file: pathlib.Path):
-    file = ori_file.name
-    location_file = conf_dir.joinpath(file)
-    if ori_file.exists() and not location_file.exists():
-        shutil.move(str(ori_file), str(location_file))
-    return location_file
-
-
 def yaml_update(_f, yaml_string):
     with open(_f, 'r+', encoding='utf-8') as fp:
         fp.seek(0)
@@ -31,11 +23,17 @@ def yaml_update(_f, yaml_string):
         fp.write(yaml_string)
 
 
+class Var:
+    doujinshi = "本子"
+
+
 @dataclass
 class Conf:
     comic_path = None
-    handle_path = None
-    file = toAppConfigLocation(basepath.parent.joinpath('conf.yml'))
+    to_sv_path = None
+    cbz_mode = False
+    ero = 0
+    file = conf_dir.joinpath('conf.yml')
     path: t.Union[str, pathlib.Path] = None
     kemono_path: t.Union[str, pathlib.Path] = None
     scrollConf: dict = field(default_factory=dict)
@@ -57,18 +55,14 @@ class Conf:
                 v.mkdir(parents=True, exist_ok=True)
             self.__setattr__(k, v or getattr(self, k, None))
         self._get_path(yml_config)
+        self.check_cbz()
 
     def _get_path(self, yml_config):
-        def makedirs():
-            comic_path.mkdir(exist_ok=True)
-            handle_path.mkdir(exist_ok=True)
-            handle_path.joinpath('save').mkdir(exist_ok=True)
-            handle_path.joinpath('remove').mkdir(exist_ok=True)
-        comic_path = pathlib.Path(yml_config['path']).joinpath('web')
-        handle_path = comic_path.parent.joinpath(f"{comic_path.stem}_handle")
-        makedirs()
+        comic_path = pathlib.Path(yml_config['path'])
         self.comic_path = comic_path
-        self.handle_path = handle_path
+        self.to_sv_path = comic_path.joinpath('_save')
+        comic_path.mkdir(exist_ok=True)
+        self.to_sv_path.mkdir(exist_ok=True)
 
     def __new__(cls, *args, **kwargs):
         if not hasattr(Conf, "_instance"):
@@ -78,35 +72,62 @@ class Conf:
     def get_content(self):
         return self.file.read_text()
 
-    def update(self, cfg):
+    def update(self, cfg=None, **kw):
         if isinstance(cfg, str):
             cfg_string = cfg
         else:
-            _cfg = asdict(self)
-            _cfg.update(cfg)
-            for k, v in _cfg.items():
+            # 合并 cfg 和 kw
+            updates = {}
+            if cfg:
+                updates.update(cfg)
+            updates.update(kw)
+            
+            # 只更新传入的字段
+            with open(self.file, 'r', encoding='utf-8') as f:
+                current_cfg = yaml.load(f.read(), Loader=yaml.FullLoader) or {}
+            current_cfg.update(updates)
+            for k, v in current_cfg.items():
                 if isinstance(v, pathlib.Path):
-                    _cfg[k] = str(v)
-            cfg_string = yaml.dump(_cfg, allow_unicode=True, sort_keys=False)
+                    current_cfg[k] = str(v)
+            cfg_string = yaml.dump(current_cfg, allow_unicode=True, sort_keys=False)
         yaml_update(self.file, cfg_string)
         self.init()
+
+    def check_cbz(self):
+        cgsRule_f = self.comic_path.joinpath(".cgsRule.json")
+        if cgsRule_f.exists():
+            self.cbz_mode = json.loads(cgsRule_f.read_text(encoding='utf-8')).get('downloaded_handle') == '.cbz'
+        else:
+            self.cbz_mode = False
 
 
 def md5(string):
     return hashlib.md5(string.encode('utf-8')).hexdigest()
 
 
+def extract_parent_and_chapter(book_path: pathlib.Path, comic_path: pathlib.Path) -> tuple:
+    try:
+        rel_path = book_path.relative_to(comic_path)
+        
+        # 处理子目录结构：父目录/章节
+        if len(rel_path.parts) == 2:
+            parent_name = rel_path.parts[0]
+            chapter_name = rel_path.parts[1].replace('.cbz', '')
+            display_name = f"{parent_name}_{chapter_name}"
+            return (parent_name, chapter_name, display_name)
+        
+        # 处理单体文件或目录
+        elif len(rel_path.parts) == 1:
+            name = rel_path.parts[0].replace('.cbz', '')
+            return (name, name, name)
+        
+        # 不应该到达这里，但以防万一
+        return (book_path.name, book_path.name, book_path.name)
+    except (ValueError, IndexError):
+        # 如果路径处理失败，返回文件名作为默认值
+        name = book_path.name.replace('.cbz', '')
+        return (name, name, name)
+
+
 conf = Conf()
 executor = ThreadPoolExecutor(max_workers=12)
-
-
-def scan_book_dir(book_path: pathlib.Path, return_all=False) -> tuple | None:
-    # if not book_path.is_dir(): 
-    try:
-        mtime = book_path.stat().st_mtime
-        entries_iter = book_path.iterdir()
-        if return_all:
-            return (book_path.name, mtime, list(map(lambda x: x.name, entries_iter)))
-        return (book_path.name, mtime, next(map(lambda x: x.name, filter(lambda x: x.is_file(), entries_iter))))
-    except (OSError, IndexError, StopIteration):
-        return None

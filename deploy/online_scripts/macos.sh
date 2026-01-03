@@ -95,7 +95,7 @@ install_environment() {
             brew_path="/usr/local/bin/brew"
         fi
         
-        echo "eval \"(\$brew_path shellenv)\"" >> $HOME/.zshrc
+        echo "eval \"\$($brew_path shellenv)\"" >> $HOME/.zshrc
         source $HOME/.zshrc
     fi
     

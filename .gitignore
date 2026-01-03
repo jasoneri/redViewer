@@ -44,6 +44,7 @@ test/*
 .lh/
 .env
 *.psd
+*.clip
 # self/build
 temp
 *-in.txt
@@ -60,7 +61,8 @@ conf.yml
 _bug_log
 # ide
 .cursor
-
+/plans
+.kilocode/*
 # uv
 .python-version
 uv.lock

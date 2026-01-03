@@ -4,51 +4,6 @@ import re
 from urllib.parse import quote
 
 
-class QuerySort:
-    sort_funcs = {
-        'time': lambda x: x.mtime,
-        'name': lambda x: x.name
-    }
-    
-    sort_directions = {
-        'asc': False,
-        'desc': True
-    }
-    
-    def __init__(self, sort_str):
-        self.sort = sort_str
-        func, _sort = sort_str.split("_")
-        self.func = func
-        self._sort = _sort
-    
-    @property
-    def sort_key(self):
-        return self.sort_funcs[self.func]
-    
-    @property
-    def reverse(self):
-        return self.sort_directions[self._sort]
-    
-    @classmethod
-    def check_name(cls, books_data):
-        if all(bool(BookSort.section_regex.search(book.name)) for book in books_data):
-            cls.sort_funcs['name'] = lambda x: BookSort.get_sort_key(x.name)
-
-
-class BookData:
-    def __init__(self, _md5, name: str, mtime: float):
-        self.md5 = _md5
-        self.name = name
-        self.mtime = mtime
-        self.first_img = None
-    
-    def to_api(self):
-        return {
-            "book_name": self.name,
-            "first_img": f"/static/{quote(self.name)}/{self.first_img}" if self.first_img else None
-        }
-
-
 class BookCursor:
     head = 0
     static = "/static/"
@@ -69,32 +24,8 @@ class BookCursor:
         return sorted(pages, key=func)
 
     def get(self, cursor=None):
-        # 当内容非常非常多时，考虑后端根据游标返回批次内容时使用, 有游标时需要处理tail与step的比较, head递进step再比较tail（step与前端保持一致）
         return [f"{self.static}{quote(self.book_name)}/{pages}"
                 for pages in self._pages[self.head:self.tail]]
-
-
-class BookSort:
-    section_regex = re.compile(r'_第?(\d+\.?\d*)([话卷])')
-    volume_regex = re.compile(r'_第?(\d+\.?\d*)卷')
-
-    @classmethod
-    def by_section(cls, book_with_section):
-        _s = cls.section_regex.search(book_with_section)
-        book_name = book_with_section.split('_')[0]
-        if not _s:
-            return book_name, 2, 0
-        num = float(_s.group(1))
-        type_ = _s.group(2)
-        priority = 0 if type_ == '卷' else 1
-        if type_ == '卷' and '番外' in book_with_section:
-            return book_name, priority, num + 0.5
-        return book_name, priority, num
-
-    @classmethod
-    def get_sort_key(cls, book):
-        name, priority, num = cls.by_section(book)
-        return (name, priority, num)
 
 
 class KemonoBookCursor(BookCursor):

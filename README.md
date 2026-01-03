@@ -10,7 +10,7 @@
   <br>
   <img src="https://img.shields.io/badge/-👉-red.svg" alt="tag">
   <img src="https://img.shields.io/github/stars/jasoneri/redViewer?style=social&logo=github" alt="tag">
-  <img src="https://img.shields.io/badge/-👈%20CGS过来的请涨它吧%20😹-red.svg" alt="tag">
+  <img src="https://img.shields.io/badge/-👈%20CGS过来的支持一下吧%20-red.svg" alt="tag">
 
   <p align="center">
   <a href="https://github.com/jasoneri/redViewer#️1-部署更新运行多合一脚本">📦多功能脚本</a> | 
@@ -21,7 +21,8 @@
 
 ## 📑介绍
 
-用手机浏览器局域网等阅读pc本地的漫画
+轻简风漫画阅读器，个人手机局域网自用  
+~~先有 CGS 后有 rV, 但 rV 写着写着, CGS 就倒反天罡为 rV 服务了~~
 
 ### ▼ 📚列表/网格预览 ▼
 
@@ -29,6 +30,12 @@
 
 > [!Tip]  
 > - 快速筛选的匹配模式请参考 [🎲功能说明](https://github.com/jasoneri/redViewer/wiki/Feat)，用 CGS 下的就不用参考了😎  
+
+### ▼ 📑章节页预览 ▼
+
+跟网格展示相同，手机端需要注意顶部按钮组的含义如下（手机宽度问题只保留图标）
+
+![books_list.jpg](docs/assets/ep_list_head.png)
 
 ### ▼ 📗阅读预览 ▼
 
@@ -41,27 +48,7 @@
 
 ### 0. 准备
 
-<details>
-<summary> 内容目录树参考 👈点击展开</summary>
-
-CGS 下载漫画<u>**并整合章节后(表漫的话)**</u>的话就是这结构，否则把漫画放进该目录的 `web` 文件夹内
-
-```shell
-D:\Comic                              
-   ├── web                            # 放内容（使用`CGS`的话目录结构就是已定的，使用自定义的话就需要创建这个`web`文件夹）
-   |    └── GrandBlue碧蓝之海_第62话
-   |         ├── 1.jpg
-   |         ├── 2.jpg
-   |         ......
-   └── web_handle                     # 程序创建的操作处理目录
-        ├── save                      # 被保存的书
-        ├── remove                    # 被移除的书
-        └── record.txt                # 保存/移除/删除的记录，与`CGS.exe`的工具箱中的`已阅最新话数记录`关联
-```
-
-配置：`backend/conf.yml`中`path`的值，默认`D:\Comic`
-
-</details>
+[🔗目录结构参考](https://github.com/jasoneri/redViewer/wiki/ScanFloder), 使用 CGS 下载可跳过阅读  
 
 ### ♦️1. 部署/更新/运行—多合一脚本
 
@@ -106,11 +93,16 @@ curl -fsSL https://gitee.com/json_eri/redViewer/raw/master/deploy/online_scripts
 
 ### [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/jasoneri/redViewer?color=blue&label=Ver&sort=semver)](https://github.com/jasoneri/redViewer/releases/latest)
 
-✅ 后端增加缓存系统，列表页加载大优化  
-✅ 文件变动监控，对应在线外部操作的缓存处理，兼离线外部操作后启动同步校验  
+✅ 支持系列带子级章节，系列与单章节  
+✅ 支持读 `.cbz`  
+✨ CGS 下载后用 rV 设配置目录后完全无感使用，包括以上两点  
+✨ 增加左右翻页阅读模式，同样采用 15~85% 阅读进度阈值，隐藏按钮组并设置全屏化  
+✨ 主题色改为 red !!  
+✅ 配置/过滤等操作优化  
 
-### TODO LIST
+### ROAD MAP
 
+🔳以`rV.db`开展元数据 筛选/展示 等  
 🔳方向：前端部分通过Capacitor往app发展，重点为离线缓存/在线激活后同步离线操作  
 🔳githb-pages做成体验（修改前后的部分细则），寻找免费后端服务  
 

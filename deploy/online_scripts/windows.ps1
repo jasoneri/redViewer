@@ -25,7 +25,7 @@ $ps1Script = Join-Path $originalWorkingDir "rV.ps1"
 $batScript = Join-Path $originalWorkingDir "rV.bat"
 $localVerFile = Join-Path $originalWorkingDir "ver.txt"
 $releasesApiUrl = "https://api.github.com/repos/$owner/$repo/releases"
-$script:updateInfo = {
+$script:updateInfo = @{
     UpdateAvailable = $false
     LatestTag = $null
 }
@@ -278,7 +278,7 @@ function Start-RedViewer {
         $backendJob = Start-Job -ScriptBlock {
             Set-Location $using:realProjPath
             uv run backend/app.py
-        } | Out-Null
+        }
         # 等待后端启动
         Start-Sleep -Seconds 1
         

@@ -6,40 +6,53 @@
       </el-button-group>
     </el-header>
     <el-main id="main">
-      <el-scrollbar class="demo-image__lazy" :height="showBtn?`90vh`:`95vh`" always 
-      ref="scrollbarRef" @scroll.native.capture="handleRealScroll">
-        <div ref="imageContainer">
-          <el-image 
-            v-for="url in imgUrls.arr" 
-            :key="url" 
-            :src="url" 
-            :lazy="!settingsStore.displaySettings.showSlider"
-            @load="handleImageLoad"
+      <!-- 滚动模式 -->
+      <template v-if="readingMode === 'scroll'">
+        <el-scrollbar class="demo-image__lazy" :height="showBtn?`90vh`:`95vh`" always
+        ref="scrollbarRef" @scroll.native.capture="handleRealScroll">
+          <div ref="imageContainer">
+            <el-image
+              v-for="url in imgUrls.arr"
+              :key="url"
+              :src="url"
+              :lazy="!settingsStore.displaySettings.showSlider"
+              @load="handleImageLoad"
+            />
+            <el-empty class="custom-empty" v-if="!loadedFlag && imgUrls.arr.length===0"
+              image="/empty.png" :description="errorText" />
+          </div>
+          <topBottom v-if="settingsStore.displaySettings.showNavBtn" :scrollbarRef="scrollbarRef" />
+        </el-scrollbar>
+        <!-- 滚动模式滑块 -->
+        <div v-if="settingsStore.displaySettings.showSlider" class="slider-container">
+          <el-icon class="edit-pen" @click="saveCurrScrollTop">
+            <EditPen />
+          </el-icon>
+          <el-slider
+            v-model="currScrollTop"
+            :max="maxScrollHeight"
+            :show-tooltip="false"
+            @input="inputSlider"
           />
-          <el-empty class="custom-empty" v-if="!loadedFlag && imgUrls.arr.length===0"
-            image="/empty.png" :description="errorText" />
         </div>
-        <topBottom v-if="settingsStore.displaySettings.showNavBtn" :scrollbarRef="scrollbarRef" />
-      </el-scrollbar>
+      </template>
+      
+      <!-- 翻页模式 -->
+      <PageReader
+        v-else
+        :imgUrls="imgUrls.arr"
+        :bookName="route.query.book"
+        :class="{ 'page-reader-fullscreen': !showBtn }"
+        @showBtnChange="(v) => showBtn = v"
+      />
+      
       <div v-show="showBtn">
-        <bookHandleBtn 
-            :retainCallBack="retainCallBack" :removeCallBack="removeCallBack" :delCallBack="delCallBack" 
-            :bookName="route.query.book"  :bookHandlePath="'/comic/handle'" :verticalMode="true"
+        <bookHandleBtn
+            :retainCallBack="retainCallBack" :removeCallBack="removeCallBack" :delCallBack="delCallBack"
+            :bookName="route.query.book" :epName="route.query.ep" :bookHandlePath="'/comic/handle'" :verticalMode="true"
         />
       </div>
     </el-main>
-    <!-- [slider.vue] template -->
-    <div v-if="settingsStore.displaySettings.showSlider" class="slider-container">
-        <el-icon class="edit-pen" @click="saveCurrScrollTop">
-          <EditPen />
-        </el-icon>
-      <el-slider
-        v-model="currScrollTop"
-        :max="maxScrollHeight"
-        :show-tooltip="false"
-        @input="inputSlider"
-      />
-    </div>
   </el-container>
 </template>
 
@@ -53,7 +66,7 @@
     import {Delete, Finished, Warning,} from "@element-plus/icons-vue"
     import topBottom from '@/components/topBottom.vue'
     import TopBtnGroupOfBook from '@/components/TopBtnGroupOfBook.vue'
-    // import slider from '@/components/func/slider.vue'
+    import PageReader from '@/components/func/PageReader.vue'
 
 // [slider.vue] script
 import {EditPen} from "@element-plus/icons-vue";
@@ -76,9 +89,11 @@ const maxScrollHeight = ref(0)   // 最大滚动高度
     const showBtn = ref(true)
     const btnShowThreshold = 0.15
     const errorText = computed(() => '已经说过没图片了！..')
+    const readingMode = computed(() => settingsStore.displaySettings.readingMode || 'scroll')
 
-    const getBook = async(book, callBack) => {
-      await axios.get(backend + '/comic/' + encodeURIComponent(book))
+    const getBook = async(book, ep, callBack) => {
+      const params = ep ? { ep } : {};
+      await axios.get(backend + '/comic/' + encodeURIComponent(book), { params })
         .then(res => {
           let result = res.data.map((_) => {
             return backend + _
@@ -91,31 +106,85 @@ const maxScrollHeight = ref(0)   // 最大滚动高度
           console.log(error);
         })
     }
-    const bookIndex = computed(() => {
-      return filteredBookList.arr.findIndex(item => item.book_name === route.query.book)
+    // 当前书籍对象
+    const currentBook = computed(() => {
+      return filteredBookList.arr.find(item => item.book === route.query.book)
     });
-    const init = (_book) => {
-      getBook(_book, callBack)
+    // 当前章节索引（有章节时）
+    const currentEpIndex = computed(() => {
+      if (!route.query.ep || !currentBook.value?.eps) return -1
+      return currentBook.value.eps.findIndex(e => e.ep === route.query.ep)
+    });
+    // 无章节书籍列表
+    const singlesOnly = computed(() => {
+      return filteredBookList.arr.filter(item => !item.eps)
+    });
+    // 当前书籍在无章节列表中的索引
+    const singleIndex = computed(() => {
+      return singlesOnly.value.findIndex(item => item.book === route.query.book)
+    });
+    
+    const init = () => {
+      const book = route.query.book
+      const ep = route.query.ep || null
+      getBook(book, ep, callBack)
       function callBack(data){
         imgUrls.arr = data
       }
     }
-    init(route.query.book)
-    function triggerInit(_book){
+    init()
+    function triggerInit(book, ep = null){
       imgUrls.arr = []
-      router.replace({path:'book',query:{book:_book}})
-      init(_book)
+      const query = ep ? { book, ep } : { book }
+      router.replace({path:'/book', query})
+      getBook(book, ep, (data) => { imgUrls.arr = data })
     }
     function previousBook(){
-        triggerInit(filteredBookList.arr[bookIndex.value-1].book_name)
+      const ep = route.query.ep
+      if (ep && currentBook.value?.eps) {
+        // 有章节：在同系列章节中导航
+        const prevIdx = currentEpIndex.value - 1
+        if (prevIdx >= 0) {
+          triggerInit(route.query.book, currentBook.value.eps[prevIdx].ep)
+        }
+      } else {
+        // 无章节：在无章节书籍中导航
+        const prevIdx = singleIndex.value - 1
+        if (prevIdx >= 0) {
+          triggerInit(singlesOnly.value[prevIdx].book)
+        }
+      }
     }
     function nextBook(){
-        triggerInit(filteredBookList.arr[bookIndex.value+1].book_name)
+      const ep = route.query.ep
+      if (ep && currentBook.value?.eps) {
+        // 有章节：在同系列章节中导航
+        const nextIdx = currentEpIndex.value + 1
+        if (nextIdx < currentBook.value.eps.length) {
+          triggerInit(route.query.book, currentBook.value.eps[nextIdx].ep)
+        }
+      } else {
+        // 无章节：在无章节书籍中导航
+        const nextIdx = singleIndex.value + 1
+        if (nextIdx < singlesOnly.value.length) {
+          triggerInit(singlesOnly.value[nextIdx].book)
+        }
+      }
     }
 
-    function retainCallBack(done, path) {MsgOpen(done, Finished, 'success', path)}
-    function removeCallBack(done, path) {MsgOpen(done, Warning, 'warning', path)}
-    function delCallBack(done, path) {MsgOpen(done, Delete, 'error', path)}
+    function removeFromList() {
+      const ep = route.query.ep
+      if (ep && currentBook.value?.eps) {
+        const idx = currentBook.value.eps.findIndex(e => e.ep === ep)
+        if (idx !== -1) currentBook.value.eps.splice(idx, 1)
+      } else {
+        const idx = filteredBookList.arr.findIndex(b => b.book === route.query.book)
+        if (idx !== -1) filteredBookList.arr.splice(idx, 1)
+      }
+    }
+    function retainCallBack(done, path) {removeFromList(); MsgOpen(done, Finished, 'success', path)}
+    function removeCallBack(done, path) {removeFromList(); MsgOpen(done, Warning, 'warning', path)}
+    function delCallBack(done, path) {removeFromList(); MsgOpen(done, Delete, 'error', path)}
     const MsgOpen = (handle, _ico, _type, book) => {
       function back_index(){router.push({path: '/'})}
       ElMessageBox.confirm(
@@ -168,7 +237,7 @@ const loadedFlag = computed(() => {
   if (totalImages.value === 0) return
   const _loadFlag = loadedImages.value === totalImages.value
   if (!settingsStore.displaySettings.showSlider && _loadFlag) return true;
-  if (!(imageContainer.value || _loadFlag)) return;
+  if (!imageContainer.value) return _loadFlag;
   const imgs = imageContainer.value.querySelectorAll('.el-image');
   return !imgs || imgs.length === totalImages.value
 })
@@ -269,5 +338,22 @@ watch(() => settingsStore.displaySettings.showSlider, (newValue, oldValue) => {
 
   :deep(.el-slider) {
     width: 100%;
+  }
+
+  // 翻页模式非全屏：保持在容器内居中
+  :deep(.page-reader) {
+    height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .page-reader-fullscreen {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 1000;
   }
 </style>

@@ -17,13 +17,17 @@ export const useSettingsStore = defineStore('settings', {
     viewSettings: JSON.parse(localStorage.getItem('viewSettings') || JSON.stringify({
       isDark: false,
       isListMode: false,
-      isCompleteDel: false
+      isCompleteDel: false,
+      isEro: false
     })),
+    isSeriesOnly: false,
     displaySettings: JSON.parse(localStorage.getItem('displaySettings') || JSON.stringify({
       showSlider: false,
       showNavBtn: true,
-      showCenterNextPrev: true
+      showCenterNextPrev: true,
+      readingMode: 'scroll'  // 'scroll' | 'page'
     })),
+    pageRecords: JSON.parse(localStorage.getItem('pageRecords') || '{}'),
     scrollConf: JSON.parse(localStorage.getItem('scrollConf') || JSON.stringify({
       intervalTime: 15,
       intervalPixel: 1
@@ -53,6 +57,17 @@ export const useSettingsStore = defineStore('settings', {
       this.displaySettings.showCenterNextPrev = value
       localStorage.setItem('displaySettings', JSON.stringify(this.displaySettings))
     },
+    setReadingMode(mode) {
+      this.displaySettings.readingMode = mode
+      localStorage.setItem('displaySettings', JSON.stringify(this.displaySettings))
+    },
+    savePageRecord(bookName, page) {
+      this.pageRecords[bookName] = page
+      localStorage.setItem('pageRecords', JSON.stringify(this.pageRecords))
+    },
+    getPageRecord(bookName) {
+      return this.pageRecords[bookName]
+    },
     setSortValue(value) {
       this.sortValue = value
       localStorage.setItem('sortValue', value)
@@ -64,6 +79,13 @@ export const useSettingsStore = defineStore('settings', {
     toggleDeleteMode() {
       this.viewSettings.isCompleteDel = !this.viewSettings.isCompleteDel
       localStorage.setItem('viewSettings', JSON.stringify(this.viewSettings))
+    },
+    toggle18Mode() {
+      this.viewSettings.isEro = !this.viewSettings.isEro
+      localStorage.setItem('viewSettings', JSON.stringify(this.viewSettings))
+    },
+    setSeriesOnly(value) {
+      this.isSeriesOnly = value
     },
     saveScrollTopRecord(bookName, page) {
       this.scrollTopRecords[bookName] = page
