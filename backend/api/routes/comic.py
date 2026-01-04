@@ -156,17 +156,25 @@ async def handle(request: Request, book: Book):
     
     cache.scan_strategy.invalidate_cache(book_path)
     
+    # 获取系列目录（用于后续检查是否需要删除）
+    series_dir = book_path.parent if ep_name else None
+    
     lp = asyncio.get_event_loop()
     if book.handle == "del":
-        await lp.run_in_executor(executor, book_path.unlink if book_path.is_file() else lambda: shutil.rmtree(book_path))
+        lp.run_in_executor(executor, book_path.unlink if book_path.is_file() else lambda: shutil.rmtree(book_path))
     elif book.handle == "remove":
         lp.run_in_executor(executor, send2trash, book_path)
     else:
         dest = conf.to_sv_path / book_name / book_path.name if ep_name else conf.to_sv_path / book_path.name
         dest.parent.mkdir(parents=True, exist_ok=True)
-        await lp.run_in_executor(executor, shutil.move, book_path, dest)
-    
+        lp.run_in_executor(executor, shutil.move, book_path, dest)
     cache.set_handle(book_name, ep_name, book.handle)
+    
+    if series_dir and series_dir.exists():
+        remaining = list(series_dir.iterdir())
+        if not remaining:
+            lp.run_in_executor(executor, series_dir.rmdir)
+    
     return {"book": book_name, "ep": book.ep, "handled": f"{book.handle}d"}
 
 

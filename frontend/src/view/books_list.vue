@@ -92,7 +92,7 @@
     import {computed, h, ref, onMounted} from 'vue';
     import axios from "axios";
     import {backend,indexPage,bookList,filteredBookList,sortVal,pageSize, useSettingsStore} from "@/static/store.js";
-    import {ElNotification,ElMessage} from "element-plus";
+    import {ElNotification,ElMessage,ElLoading} from "element-plus";
     import TopBtnGroup from '@/components/TopBtnGroup.vue'
     import bookHandleBtn from '@/components/bookHandleBtn.vue'
     import topBottom from '@/components/topBottom.vue'
@@ -259,6 +259,11 @@
     }
 
     const handleswitchEro = async (enable) => {
+      const loading = ElLoading.service({
+        lock: true,
+        text: '正在切换模式，请稍候...',
+        background: 'rgba(0, 0, 0, 0.7)',
+      })
       try {
         await axios.post(backend + '/comic/switch_ero', null, { params: { enable } })
         settingsStore.toggle18Mode()
@@ -271,6 +276,8 @@
         if (e.response?.status === 403) {
           ElMessage.error('切换同人志已被锁定')
         }
+      } finally {
+        loading.close()
       }
     }
 
