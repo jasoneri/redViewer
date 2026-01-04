@@ -1,46 +1,64 @@
 <template>
+  <div>
   <el-dialog v-model="dialogVisible" title="修改配置" width="80vw" top="15vh" @open="onOpen">
     <el-form label-width="100px">
-      <el-form-item label="漫画路径">
-        <el-tree-select
-          v-model="confForm.path"
-          :data="treeData"
-          lazy
-          :load="loadNode"
-          :props="treeProps"
-          check-strictly
-          placeholder="选择目录"
-          clearable
-          style="width: 100%"
-          :render-after-expand="false"
-        />
-      </el-form-item>
-      <el-form-item label="Kemono路径">
-        <el-tree-select
-          v-model="confForm.kemono_path"
-          :data="treeData"
-          lazy
-          :load="loadNode"
-          :props="treeProps"
-          check-strictly
-          placeholder="选择目录"
-          clearable
-          style="width: 100%"
-          :render-after-expand="false"
-        />
-      </el-form-item>
+      <template v-if="!settingsStore.locks.config_path">
+        <el-form-item label="漫画路径">
+          <el-tree-select
+            v-model="confForm.path"
+            :data="treeData"
+            lazy
+            :load="loadNode"
+            :props="treeProps"
+            check-strictly
+            placeholder="选择目录"
+            clearable
+            style="width: 100%"
+            :render-after-expand="false"
+          />
+        </el-form-item>
+        <el-form-item label="Kemono路径">
+          <el-tree-select
+            v-model="confForm.kemono_path"
+            :data="treeData"
+            lazy
+            :load="loadNode"
+            :props="treeProps"
+            check-strictly
+            placeholder="选择目录"
+            clearable
+            style="width: 100%"
+            :render-after-expand="false"
+          />
+        </el-form-item>
+      </template>
+      <el-empty v-else description="路径配置已锁定" :image-size="60" />
     </el-form>
     <template #footer>
-      <el-button @click="dialogVisible = false">取消</el-button>
-      <el-button type="primary" @click="submitConf">提交修改</el-button>
+      <el-button @click="rootDialogVisible = true" type="info" plain>
+        <el-icon><Setting /></el-icon>
+        超管
+      </el-button>
+      <el-button v-if="!settingsStore.locks.config_path" type="primary" @click="submitConf">提交修改</el-button>
     </template>
   </el-dialog>
+
+  <!-- 管理界面对话框 -->
+  <el-dialog v-model="rootDialogVisible" title="管理中心" width="90vw" style="max-width: 650px;" top="10vh" destroy-on-close>
+    <RootPanel @close="rootDialogVisible = false" />
+  </el-dialog>
+  </div>
 </template>
 
 <script setup>
 import { reactive, ref, computed, watch } from 'vue'
 import axios from 'axios'
-import { backend } from '@/static/store.js'
+import { backend, useSettingsStore } from '@/static/store.js'
+import { Setting } from '@element-plus/icons-vue'
+import RootPanel from '@/root/RootPanel.vue'
+
+const settingsStore = useSettingsStore()
+const rootDialogVisible = ref(false)
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
@@ -66,6 +84,7 @@ watch(() => props.visible, (val) => {
 })
 
 const onOpen = async () => {
+  await settingsStore.fetchLocks()
   const res = await axios.get(backend + '/comic/filesystem')
   const roots = res.data.roots || []
   treeData.value = roots.map(root => ({

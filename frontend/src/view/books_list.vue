@@ -169,15 +169,17 @@
             })
             handleFilter('')  // 换配置时清除筛选值
           })
-          .catch(
-              function (error) {
-                ElNotification.error({
-                  title: 'Error',
-                  message: '处理配置发生错误，自行去终端窗口查看报错堆栈',
-                  offset: 100,
-                })
-              }
-          )
+          .catch(function (error) {
+            if (error.response?.status === 403) {
+              ElMessage.error('路径配置已被锁定')
+            } else {
+              ElNotification.error({
+                title: 'Error',
+                message: '处理配置发生错误，自行去终端窗口查看报错堆栈',
+                offset: 100,
+              })
+            }
+          })
       } else {
          console.log("handleConf-param type = " + typeof param);
       }
@@ -213,9 +215,13 @@
     }
 
     onMounted(async () => {
-      const res = await axios.get(backend + '/comic/switch_ero/')
-      if (res.data !== settingsStore.viewSettings.isEro) {
-        settingsStore.viewSettings.isEro = res.data
+      try {
+        const res = await axios.get(backend + '/comic/switch_ero/')
+        if (res.data !== settingsStore.viewSettings.isEro) {
+          settingsStore.viewSettings.isEro = res.data
+        }
+      } catch (e) {
+        console.warn('获取 ero 状态失败，使用本地缓存')
       }
       init()
     })
@@ -253,8 +259,19 @@
     }
 
     const handleswitchEro = async (enable) => {
-      await axios.post(backend + '/comic/switch_ero', null, { params: { enable } })
-      init()
+      try {
+        await axios.post(backend + '/comic/switch_ero', null, { params: { enable } })
+        settingsStore.toggle18Mode()
+        ElMessage({
+          message: enable ? '已切换至「同人志」模式' : '已切换至「普通」模式',
+          type: enable ? 'success' : 'info', duration: 2500
+        })
+        init()
+      } catch (e) {
+        if (e.response?.status === 403) {
+          ElMessage.error('切换同人志已被锁定')
+        }
+      }
     }
 
     const handleFilter = (keyword) => {

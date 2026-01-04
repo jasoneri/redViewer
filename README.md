@@ -100,12 +100,13 @@ curl -fsSL https://gitee.com/json_eri/redViewer/raw/master/deploy/online_scripts
 ✨ 主题色改为 red !!  
 ✅ 配置/过滤等操作优化  
 
-### ROAD MAP
+### [ROAD MAP](https://www.yuque.com/baimusheng/programer/gl97dqsvrzhiin0c?singleDoc)
 
-🔳打包 msi 等  
-🔳以`rV.db`开展元数据 筛选/展示 等  
-🔳方向：前端部分通过Capacitor往app发展，重点为离线缓存/在线激活后同步离线操作  
-🔳githb-pages做成体验（修改前后的部分细则），寻找免费后端服务  
+[🎯 短期 todo/fix (语雀)](https://www.yuque.com/baimusheng/programer/gl97dqsvrzhiin0c?singleDoc)  
+🔳 打包 msi 等  
+🔳 以`rV.db`开展元数据 筛选/展示 等  
+🔳 方向：前端部分通过Capacitor往app发展，重点为离线缓存/在线激活后同步离线操作  
+🔳 githb-pages做成体验（修改前后的部分细则），寻找免费后端服务  
 
 > [🕑更新历史](https://github.com/jasoneri/redViewer/wiki/Changelog)
 

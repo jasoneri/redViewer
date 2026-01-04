@@ -8,6 +8,7 @@ from utils import conf
 from core import lib_mgr
 from api.routes.comic import index_router
 from api.routes.kemono import index_router as kemono_index_router
+from api.routes.root import root_router
 from utils.cbz_cache import close_cbz_cache
 
 global_whitelist = ['']
@@ -79,6 +80,7 @@ def register_router(app: FastAPI) -> None:
     # 项目API
     app.include_router(index_router, prefix="", tags=['comic'])
     app.include_router(kemono_index_router, prefix="", tags=['kemono'])
+    app.include_router(root_router, prefix="", tags=['root'])
 
 
 def register_cors(app: FastAPI) -> None:

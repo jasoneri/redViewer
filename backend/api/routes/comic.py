@@ -15,6 +15,7 @@ from utils import conf, executor
 from utils.cbz_cache import get_cbz_cache
 from models import QuerySort
 from core import lib_mgr, BooksAggregator
+from api.routes.root import require_lock
 
 
 index_router = APIRouter(prefix='/comic')
@@ -57,6 +58,7 @@ async def get_conf():
 
 
 @index_router.post("/conf")
+@require_lock("config_path")
 async def update_conf(conf_content: ConfContent):
     """接收 JSON 对象更新配置"""
     # 校验 path 必须存在
@@ -114,10 +116,14 @@ async def list_filesystem(path: str = None):
 
 
 @index_router.get("/switch_ero")
+async def get_ero_status():
+    """查询 ero 状态 - 不需要锁"""
+    return lib_mgr.ero
+
+
 @index_router.post("/switch_ero")
-async def switch_ero(request: Request, enable: bool = True):
-    if request.method == "GET":
-        return lib_mgr.ero
+@require_lock("switch_doujin")
+async def switch_ero(enable: bool = True):
     main_loop = asyncio.get_running_loop()
     await lib_mgr.switch_library(conf.comic_path, main_loop, ero=enable)
     return {"ero": enable, "scan_path": str(lib_mgr.active_cache.scan_path)}
@@ -138,6 +144,7 @@ class Book(BaseModel):
 
 
 @index_router.post("/handle")
+@require_lock("book_handle")
 async def handle(request: Request, book: Book):
     cache = lib_mgr.active_cache
     book_name, ep_name = book.book, book.ep or ""
