@@ -4,7 +4,9 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
 from watchdog.observers import Observer
-from loguru import logger
+from .logging import get_logger
+
+logger = get_logger()
 
 from utils import conf, Var
 from models import BookData
@@ -159,7 +161,7 @@ class ComicCacheManager:
             conn.execute('UPDATE episodes SET exist = 0 WHERE book = ? AND ep = ?', (book, ep))
         if (book, ep) in self.books_index:
             del self.books_index[(book, ep)]
-        logger.debug(f"Removed from cache: {book}/{ep}")
+            logger.debug(f"Removed from cache: {book}/{ep}")
 
     def set_handle(self, book: str, ep: str, handle: str):
         with self._get_conn() as conn:

@@ -10,7 +10,9 @@ import zipfile
 from collections import OrderedDict
 from pathlib import Path
 from typing import Optional
-from loguru import logger
+from core.logging import get_logger
+
+logger = get_logger()
 
 
 class CBZCache:
