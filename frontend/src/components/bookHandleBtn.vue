@@ -1,15 +1,17 @@
 <template>
-  <el-button 
+  <el-button
       :class="['handle-btn', { 'vertical-btn-sv': verticalMode }]"
-      type="success" 
+      type="success"
       @click="retain(props.bookName)"
+      :disabled="settingsStore.locks.book_handle"
   >
       <el-icon size="large"><SaveIcon /></el-icon>
   </el-button>
-  <el-button 
+  <el-button
       :class="['handle-btn', { 'vertical-btn-del': verticalMode }]"
-      :type="isCompleteDel ? 'danger' : 'warning'" 
+      :type="isCompleteDel ? 'danger' : 'warning'"
       @click="isCompleteDel ? delBook(props.bookName) : removeBook(props.bookName)"
+      :disabled="settingsStore.locks.book_handle"
   ><el-icon size="large"><Delete /></el-icon></el-button>
 </template>
 
@@ -44,8 +46,11 @@
           callBack(res.data.handled, res.data.path, props.epName)
         })
         .catch(function (error) {
-          console.log(error);
-          ElMessage('此为缓存，【'+book+'】已经处理过了，无法再次处理')
+          if (error.response?.status === 403) {
+            ElMessage.error('书籍操作已被锁定')
+          } else {
+            ElMessage('此为缓存，【'+book+'】已经处理过了，无法再次处理')
+          }
         })
     }
     const retain = (book) => {

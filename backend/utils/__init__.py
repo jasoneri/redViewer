@@ -37,6 +37,7 @@ class Conf:
     path: t.Union[str, pathlib.Path] = None
     kemono_path: t.Union[str, pathlib.Path] = None
     scrollConf: dict = field(default_factory=dict)
+    locks: dict = field(default_factory=lambda: {'config_path': False, 'book_handle': False, 'switch_doujin': False})
 
     def __init__(self):
         self.init()
@@ -54,6 +55,9 @@ class Conf:
                 v = pathlib.Path(v)
                 v.mkdir(parents=True, exist_ok=True)
             self.__setattr__(k, v or getattr(self, k, None))
+        # 确保 locks 有默认值
+        if not hasattr(self, 'locks') or self.locks is None:
+            self.locks = {'config_path': False, 'book_handle': False, 'switch_doujin': False}
         self._get_path(yml_config)
         self.check_cbz()
 

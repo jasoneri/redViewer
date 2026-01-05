@@ -320,6 +320,7 @@ while ($true) {
     Write-Host "╚══════════════════════════════════╝" -ForegroundColor Cyan
     Write-Host "`n1: ♻️ 更新/部署"
     Write-Host "2: 🚀 运行"
+    Write-Host "3: 📡 只启动后端"
     Write-Host "其他任意键: 🔚 退出`n"
     Write-Host "请选择操作，5秒内无输入将自动尝试运行..."
     
@@ -365,6 +366,14 @@ while ($true) {
             } else {
                 Start-RedViewer
             }
+        }
+        '3' { # 只启动后端
+            if (-not (Test-Path $realProjPath)) {
+                Write-Host "❌ 未找到本地安装[$realProjPath]，请先部署" -ForegroundColor Red
+                continue
+            }
+            Set-Location $realProjPath
+            uv run backend/app.py
         }
         default {
             exit

@@ -3,6 +3,8 @@ from pathlib import Path
 
 from watchdog.events import FileSystemEventHandler
 
+IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'}
+
 
 class ComicChangeHandler(FileSystemEventHandler):
     def __init__(self, cache_manager, pages_handler, main_loop):
@@ -25,7 +27,12 @@ class ComicChangeHandler(FileSystemEventHandler):
                 return name, ""
             elif len(parts) >= 2:
                 book = parts[0]
-                ep = parts[1].replace('.cbz', '')
+                second = parts[1]
+                # 如果第二部分是图片文件，说明是单本书籍，ep为空
+                if Path(second).suffix.lower() in IMAGE_EXTENSIONS:
+                    return book, ""
+                # 否则是系列中的章节
+                ep = second.replace('.cbz', '')
                 return book, ep
         except ValueError:
             pass

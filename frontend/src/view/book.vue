@@ -172,7 +172,25 @@ const maxScrollHeight = ref(0)   // 最大滚动高度
       }
     }
 
+    // 保存操作前的导航目标
+    const savedNextBook = ref(null)
+    const savedPrevBook = ref(null)
+    
+    function saveNavTargets() {
+      const ep = route.query.ep
+      if (ep && currentBook.value?.eps) {
+        const idx = currentEpIndex.value
+        savedPrevBook.value = idx > 0 ? { book: route.query.book, ep: currentBook.value.eps[idx - 1].ep } : null
+        savedNextBook.value = idx < currentBook.value.eps.length - 1 ? { book: route.query.book, ep: currentBook.value.eps[idx + 1].ep } : null
+      } else {
+        const idx = singleIndex.value
+        savedPrevBook.value = idx > 0 ? { book: singlesOnly.value[idx - 1].book } : null
+        savedNextBook.value = idx < singlesOnly.value.length - 1 ? { book: singlesOnly.value[idx + 1].book } : null
+      }
+    }
+    
     function removeFromList() {
+      saveNavTargets()
       const ep = route.query.ep
       if (ep && currentBook.value?.eps) {
         const idx = currentBook.value.eps.findIndex(e => e.ep === ep)
@@ -187,6 +205,16 @@ const maxScrollHeight = ref(0)   // 最大滚动高度
     function delCallBack(done, path) {removeFromList(); MsgOpen(done, Delete, 'error', path)}
     const MsgOpen = (handle, _ico, _type, book) => {
       function back_index(){router.push({path: '/'})}
+      function goNext() {
+        if (savedNextBook.value) {
+          triggerInit(savedNextBook.value.book, savedNextBook.value.ep)
+        }
+      }
+      function goPrev() {
+        if (savedPrevBook.value) {
+          triggerInit(savedPrevBook.value.book, savedPrevBook.value.ep)
+        }
+      }
       ElMessageBox.confirm(
         book,
         handle + ' (点消息框右上x返回目录)',
@@ -200,10 +228,10 @@ const maxScrollHeight = ref(0)   // 最大滚动高度
         }
       )
       .then(() => {
-        nextBook()
+        goNext()
       })
       .catch((action) => {
-        const catch_func = action === 'cancel' ? previousBook : back_index;
+        const catch_func = action === 'cancel' ? goPrev : back_index;
         catch_func();
       })
     }

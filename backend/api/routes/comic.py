@@ -15,6 +15,7 @@ from utils import conf, executor
 from utils.cbz_cache import get_cbz_cache
 from models import QuerySort
 from core import lib_mgr, BooksAggregator
+from api.routes.root import require_lock
 
 
 index_router = APIRouter(prefix='/comic')
@@ -57,6 +58,7 @@ async def get_conf():
 
 
 @index_router.post("/conf")
+@require_lock("config_path")
 async def update_conf(conf_content: ConfContent):
     """接收 JSON 对象更新配置"""
     # 校验 path 必须存在
@@ -113,11 +115,27 @@ async def list_filesystem(path: str = None):
     return {"current": str(p), "parent": str(p.parent) if p.parent != p else None, "directories": dirs, "roots": roots}
 
 
+@index_router.post("/force_rescan")
+@require_lock("force_rescan")
+async def force_rescan():
+    """强制重新扫描：释放资源，重置数据库，重新扫描目录"""
+    await ensure_library_loaded()
+    main_loop = asyncio.get_running_loop()
+    result = await lib_mgr.force_rescan(main_loop)
+    if "error" in result:
+        return JSONResponse(result, status_code=400)
+    return result
+
+
 @index_router.get("/switch_ero")
+async def get_ero_status():
+    """查询 ero 状态 - 不需要锁"""
+    return lib_mgr.ero
+
+
 @index_router.post("/switch_ero")
-async def switch_ero(request: Request, enable: bool = True):
-    if request.method == "GET":
-        return lib_mgr.ero
+@require_lock("switch_doujin")
+async def switch_ero(enable: bool = True):
     main_loop = asyncio.get_running_loop()
     await lib_mgr.switch_library(conf.comic_path, main_loop, ero=enable)
     return {"ero": enable, "scan_path": str(lib_mgr.active_cache.scan_path)}
@@ -137,7 +155,23 @@ class Book(BaseModel):
     handle: str
 
 
+def _handle_and_cleanup(book_path: Path, handle_type: str, dest: Path, series_dir: Path):
+    if handle_type == "del":
+        if book_path.is_file():
+            book_path.unlink()
+        else:
+            shutil.rmtree(book_path)
+    elif handle_type == "remove":
+        send2trash(book_path)
+    else:  # move
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(book_path, dest)
+    if series_dir and series_dir.exists() and not list(series_dir.iterdir()):
+        series_dir.rmdir()
+
+
 @index_router.post("/handle")
+@require_lock("book_handle")
 async def handle(request: Request, book: Book):
     cache = lib_mgr.active_cache
     book_name, ep_name = book.book, book.ep or ""
@@ -149,17 +183,13 @@ async def handle(request: Request, book: Book):
     
     cache.scan_strategy.invalidate_cache(book_path)
     
-    lp = asyncio.get_event_loop()
-    if book.handle == "del":
-        await lp.run_in_executor(executor, book_path.unlink if book_path.is_file() else lambda: shutil.rmtree(book_path))
-    elif book.handle == "remove":
-        lp.run_in_executor(executor, send2trash, book_path)
-    else:
-        dest = conf.to_sv_path / book_name / book_path.name if ep_name else conf.to_sv_path / book_path.name
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        await lp.run_in_executor(executor, shutil.move, book_path, dest)
+    series_dir = book_path.parent if ep_name else None
+    dest = conf.to_sv_path / book_name / book_path.name if ep_name else conf.to_sv_path / book_path.name
     
+    lp = asyncio.get_event_loop()
+    lp.run_in_executor(executor, _handle_and_cleanup, book_path, book.handle, dest, series_dir)
     cache.set_handle(book_name, ep_name, book.handle)
+    
     return {"book": book_name, "ep": book.ep, "handled": f"{book.handle}d"}
 
 

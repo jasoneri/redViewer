@@ -1,53 +1,79 @@
 <template>
+  <div>
   <el-dialog v-model="dialogVisible" title="修改配置" width="80vw" top="15vh" @open="onOpen">
     <el-form label-width="100px">
-      <el-form-item label="漫画路径">
-        <el-tree-select
-          v-model="confForm.path"
-          :data="treeData"
-          lazy
-          :load="loadNode"
-          :props="treeProps"
-          check-strictly
-          placeholder="选择目录"
-          clearable
-          style="width: 100%"
-          :render-after-expand="false"
-        />
-      </el-form-item>
-      <el-form-item label="Kemono路径">
-        <el-tree-select
-          v-model="confForm.kemono_path"
-          :data="treeData"
-          lazy
-          :load="loadNode"
-          :props="treeProps"
-          check-strictly
-          placeholder="选择目录"
-          clearable
-          style="width: 100%"
-          :render-after-expand="false"
-        />
-      </el-form-item>
+      <template v-if="!settingsStore.locks.config_path">
+        <el-form-item label="漫画路径">
+          <el-tree-select
+            v-model="confForm.path"
+            :data="treeData"
+            lazy
+            :load="loadNode"
+            :props="treeProps"
+            check-strictly
+            placeholder="选择目录"
+            clearable
+            style="width: 100%"
+            :render-after-expand="false"
+          />
+        </el-form-item>
+        <el-form-item label="Kemono路径">
+          <el-tree-select
+            v-model="confForm.kemono_path"
+            :data="treeData"
+            lazy
+            :load="loadNode"
+            :props="treeProps"
+            check-strictly
+            placeholder="选择目录"
+            clearable
+            style="width: 100%"
+            :render-after-expand="false"
+          />
+        </el-form-item>
+      </template>
+      <el-empty v-else description="路径配置已锁定" :image-size="60" />
     </el-form>
     <template #footer>
-      <el-button @click="dialogVisible = false">取消</el-button>
-      <el-button type="primary" @click="submitConf">提交修改</el-button>
+      <el-button
+        v-if="!settingsStore.locks.force_rescan"
+        @click="forceRescan" type="warning" plain :loading="rescanLoading"
+      >
+        <el-icon><RefreshRight /></el-icon>&nbsp;强制重载
+      </el-button>
+      <el-button @click="rootDialogVisible = true" type="info" plain>
+        <el-icon><AdminIcon /></el-icon>&nbsp;超管
+      </el-button>
+      <el-button v-if="!settingsStore.locks.config_path" type="primary" @click="submitConf">提交</el-button>
     </template>
   </el-dialog>
+
+  <!-- 管理界面对话框 -->
+  <el-dialog v-model="rootDialogVisible" title="管理中心" width="90vw" style="max-width: 650px;" top="10vh" destroy-on-close>
+    <RootPanel @close="rootDialogVisible = false" />
+  </el-dialog>
+  </div>
 </template>
 
 <script setup>
 import { reactive, ref, computed, watch } from 'vue'
 import axios from 'axios'
-import { backend } from '@/static/store.js'
+import { backend, useSettingsStore } from '@/static/store.js'
+import { Setting, RefreshRight } from '@element-plus/icons-vue'
+import { AdminIcon } from "@/icons"
+import { ElMessage, ElMessageBox } from 'element-plus'
+import RootPanel from '@/root/RootPanel.vue'
+
+const settingsStore = useSettingsStore()
+const rootDialogVisible = ref(false)
+const rescanLoading = ref(false)
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
   initialData: { type: Object, default: () => ({ path: '', kemono_path: '' }) }
 })
 
-const emit = defineEmits(['update:visible', 'submit'])
+const emit = defineEmits(['update:visible', 'submit', 'rescan-finished'])
 
 const dialogVisible = computed({
   get: () => props.visible,
@@ -66,6 +92,7 @@ watch(() => props.visible, (val) => {
 })
 
 const onOpen = async () => {
+  await settingsStore.fetchLocks()
   const res = await axios.get(backend + '/comic/filesystem')
   const roots = res.data.roots || []
   treeData.value = roots.map(root => ({
@@ -97,5 +124,29 @@ const loadNode = async (node, resolve) => {
 const submitConf = () => {
   emit('submit', { ...confForm })
   dialogVisible.value = false
+}
+
+const forceRescan = async () => {
+  try {
+    await ElMessageBox.confirm(
+      '此操作将重置扫描状态并重新扫描目录，可能需要一些时间。确定继续？',
+      '强制重新扫描',
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch {
+    return
+  }
+  
+  rescanLoading.value = true
+  try {
+    const res = await axios.post(backend + '/comic/force_rescan')
+    ElMessage.success(`扫描完成，找到 ${res.data.book_count} 本书籍`)
+    emit('rescan-finished')
+    dialogVisible.value = false
+  } catch (err) {
+    ElMessage.error('扫描失败: ' + (err.response?.data?.detail || err.message))
+  } finally {
+    rescanLoading.value = false
+  }
 }
 </script>

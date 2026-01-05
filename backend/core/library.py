@@ -4,11 +4,14 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
 from watchdog.observers import Observer
-from loguru import logger
+from .logging import get_logger
+
+logger = get_logger()
 
 from utils import conf, Var
 from models import BookData
 from utils.mode_strategy import ModeStrategyFactory
+from utils.cbz_cache import close_cbz_cache
 from .pages import BookPagesHandler
 from .watcher import ComicChangeHandler
 
@@ -159,7 +162,7 @@ class ComicCacheManager:
             conn.execute('UPDATE episodes SET exist = 0 WHERE book = ? AND ep = ?', (book, ep))
         if (book, ep) in self.books_index:
             del self.books_index[(book, ep)]
-        logger.debug(f"Removed from cache: {book}/{ep}")
+            logger.debug(f"Removed from cache: {book}/{ep}")
 
     def set_handle(self, book: str, ep: str, handle: str):
         with self._get_conn() as conn:
@@ -170,6 +173,13 @@ class ComicCacheManager:
         if (book, ep) in self.books_index:
             del self.books_index[(book, ep)]
         logger.debug(f"Set handle '{handle}' for: {book}/{ep}")
+
+    def reset_exist_flags(self):
+        """重置 exist 字段并清空内存缓存"""
+        with self._get_conn() as conn:
+            conn.execute('UPDATE episodes SET exist = 0 WHERE ero = ?', (self.ero,))
+        self.books_index.clear()
+        logger.info(f"Reset exist flags for ero={self.ero}")
 
 
 class ComicLibraryManager:
@@ -247,6 +257,42 @@ class ComicLibraryManager:
                 await asyncio.to_thread(cache_manager.update_book_sync, book, ep)
         
         logger.debug("Startup synchronization complete.")
+
+    async def force_rescan(self, main_loop=None):
+        """强制重新扫描：释放资源，重置数据库，重新扫描"""
+        if not self.active_cache:
+            return {"error": "No active library"}
+        
+        # 1. 停止文件监控
+        if self.observer and self.observer.is_alive():
+            self.observer.stop()
+            self.observer.join()
+            self.observer = None
+        
+        # 2. 关闭 CBZ 缓存
+        close_cbz_cache()
+        
+        # 3. 清空页面缓存
+        if self.active_pages_handler:
+            self.active_pages_handler.clear_cache()
+        
+        # 4. 重置数据库 exist 字段并清空内存缓存
+        self.active_cache.reset_exist_flags()
+        
+        # 5. 重新扫描
+        await asyncio.to_thread(self.active_cache.initial_scan)
+        
+        # 6. 重启文件监控
+        if main_loop:
+            event_handler = ComicChangeHandler(self.active_cache, self.active_pages_handler, main_loop)
+            self.observer = Observer()
+            self.observer.schedule(event_handler, str(self.active_cache.scan_path), recursive=True)
+            self.observer.start()
+            logger.info(f"Restarted monitoring: {self.active_cache.scan_path}")
+        
+        book_count = len(self.active_cache.books_index)
+        logger.info(f"Force rescan complete. Found {book_count} books.")
+        return {"success": True, "book_count": book_count}
 
 
 lib_mgr = ComicLibraryManager()

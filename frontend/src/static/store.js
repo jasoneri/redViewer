@@ -1,7 +1,8 @@
 import {reactive, ref} from "vue";
 import { defineStore } from 'pinia'
+import axios from 'axios'
 
-export const backend = import.meta.env.LAN_IP
+export const backend = localStorage.getItem('backendUrl') || import.meta.env.LAN_IP
 export let indexPage = ref(1)
 export const bookList = reactive({arr: []})
 export const filteredBookList = reactive({arr: []})
@@ -34,7 +35,8 @@ export const useSettingsStore = defineStore('settings', {
     })),
     sortValue: localStorage.getItem('sortValue') || '',
     customSorts: JSON.parse(localStorage.getItem('customSorts') || '[]'),
-    scrollTopRecords: JSON.parse(localStorage.getItem('scrollTopRecords') || '{}')
+    scrollTopRecords: JSON.parse(localStorage.getItem('scrollTopRecords') || '{}'),
+    locks: { config_path: false, book_handle: false, switch_doujin: false, force_rescan: false }
   }),
   actions: {
     toggleListMode() {
@@ -98,6 +100,17 @@ export const useSettingsStore = defineStore('settings', {
       this.scrollConf.intervalTime = intervalTime
       this.scrollConf.intervalPixel = intervalPixel
       localStorage.setItem('scrollConf', JSON.stringify(this.scrollConf))
+    },
+    async fetchLocks() {
+      try {
+        const res = await axios.get(backend + '/root/locks')
+        this.locks = res.data
+      } catch (e) {
+        console.error('获取锁状态失败', e)
+      }
+    },
+    setLocks(locks) {
+      this.locks = { ...this.locks, ...locks }
     }
   }
 })

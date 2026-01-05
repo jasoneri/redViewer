@@ -5,9 +5,16 @@
     </el-header>
     <el-main>
       <el-scrollbar ref="scrollbarRef">
+        <div class="demo-pagination-block">
+          <el-pagination
+            v-model:current-page="epPage"
+            :page-size="pageSize" :total="epTotal"
+            layout="prev, pager, next, jumper"
+          />
+        </div>
         <div class="grid-container">
           <el-row :gutter="20">
-            <el-col v-for="ep in eps" :key="ep.ep" :span="4" :xs="12" :sm="8" :md="6" :lg="4">
+            <el-col v-for="ep in pagedEps" :key="ep.ep" :span="4" :xs="12" :sm="8" :md="6" :lg="4">
               <el-card :body-style="{ padding: '0px' }" class="book-card">
                 <router-link :to="{ path: '/book', query: { book: bookName, ep: ep.ep }}">
                   <el-image :src="backend + ep.first_img" class="book-image" :title="ep.ep" fit="cover">
@@ -32,6 +39,13 @@
             </el-col>
           </el-row>
         </div>
+        <div class="demo-pagination-block">
+          <el-pagination
+            v-model:current-page="epPage"
+            :page-size="pageSize" :total="epTotal"
+            layout="prev, pager, next, jumper"
+          />
+        </div>
         <topBottom :scrollbarRef="scrollbarRef" :hideDown="true"/>
       </el-scrollbar>
     </el-main>
@@ -41,7 +55,7 @@
 <script setup>
 import { ref, computed, h } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { backend, filteredBookList } from '@/static/store.js';
+import { backend, filteredBookList, pageSize } from '@/static/store.js';
 import { ElNotification } from 'element-plus';
 import bookHandleBtn from '@/components/bookHandleBtn.vue';
 import topBottom from '@/components/topBottom.vue';
@@ -50,6 +64,7 @@ import TopBtnGroupOfEp from '@/components/TopBtnGroupOfEp.vue';
 const route = useRoute();
 const router = useRouter();
 const scrollbarRef = ref(null);
+const epPage = ref(1);
 
 const bookName = computed(() => route.query.book);
 
@@ -78,6 +93,12 @@ const currentBook = computed(() => {
 });
 
 const eps = computed(() => currentBook.value?.eps || []);
+const epTotal = computed(() => eps.value.length);
+const pagedEps = computed(() => {
+  const start = (epPage.value - 1) * pageSize;
+  const end = start + pageSize;
+  return eps.value.slice(start, end);
+});
 
 function retainCallBack(done, path, epName) {
   notification('已移至保留目录', 'success', path);

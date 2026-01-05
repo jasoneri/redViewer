@@ -54,6 +54,7 @@
     :initial-data="confForm"
     @update:visible="dialogVisible = $event"
     @submit="onConfSubmit"
+    @rescan-finished="props.reload()"
   />
 
   <FilterDialog
@@ -142,11 +143,6 @@ const switchDelMode = () => {
 const switchEroMode = () => {
   const newValue = !settingsStore.viewSettings.isEro
   emit('switchEro', newValue)
-  settingsStore.toggle18Mode()
-  ElMessage({
-    message: newValue ? '已切换至「同人志」模式' : '已切换至「普通」模式',
-    type: newValue ? 'success': 'info', duration: 2500
-  })
 }
 
 const dialogVisible = ref(false);

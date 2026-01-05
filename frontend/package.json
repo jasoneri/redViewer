@@ -1,14 +1,14 @@
 {
   "name": "redviewer",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.5.0",
   "type": "module",
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
     "start": "concurrently \"npm run start-python\" \"npm run dev\"",
-    "start-python": "python ../backend/app.py"
+    "start-python": "uv run ../backend/app.py"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
