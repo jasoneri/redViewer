@@ -115,6 +115,18 @@ async def list_filesystem(path: str = None):
     return {"current": str(p), "parent": str(p.parent) if p.parent != p else None, "directories": dirs, "roots": roots}
 
 
+@index_router.post("/force_rescan")
+@require_lock("force_rescan")
+async def force_rescan():
+    """强制重新扫描：释放资源，重置数据库，重新扫描目录"""
+    await ensure_library_loaded()
+    main_loop = asyncio.get_running_loop()
+    result = await lib_mgr.force_rescan(main_loop)
+    if "error" in result:
+        return JSONResponse(result, status_code=400)
+    return result
+
+
 @index_router.get("/switch_ero")
 async def get_ero_status():
     """查询 ero 状态 - 不需要锁"""

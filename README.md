@@ -93,6 +93,12 @@ curl -fsSL https://gitee.com/json_eri/redViewer/raw/master/deploy/online_scripts
 
 ### [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/jasoneri/redViewer?color=blue&label=Ver&sort=semver)](https://github.com/jasoneri/redViewer/releases/latest)
 
+✨ 增设"超级管理员", 可限制操作、切换后端api、~~CGS交互~~，配置对话框进超管看`超管指引`  
+✅ 多合一脚本加`只启动后端`的选项，后端加日志系统  
+✅ 修复 `v1.4.0` 的多个已知 bug  
+
+#### `v1.4.0`
+
 ✅ 支持读 `.cbz`，支持系列带子级章节  
 ✨ CGS(`v2.8.0`) 下载后用 rV 设配置目录后完全无感使用  
 ✨ 增加左右翻页阅读模式，同样采用 15~85% 阅读进度阈值，隐藏按钮组并设置全屏化  

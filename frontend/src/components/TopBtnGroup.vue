@@ -54,6 +54,7 @@
     :initial-data="confForm"
     @update:visible="dialogVisible = $event"
     @submit="onConfSubmit"
+    @rescan-finished="props.reload()"
   />
 
   <FilterDialog

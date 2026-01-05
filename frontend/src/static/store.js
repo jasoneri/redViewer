@@ -36,7 +36,7 @@ export const useSettingsStore = defineStore('settings', {
     sortValue: localStorage.getItem('sortValue') || '',
     customSorts: JSON.parse(localStorage.getItem('customSorts') || '[]'),
     scrollTopRecords: JSON.parse(localStorage.getItem('scrollTopRecords') || '{}'),
-    locks: { config_path: false, book_handle: false, switch_doujin: false }
+    locks: { config_path: false, book_handle: false, switch_doujin: false, force_rescan: false }
   }),
   actions: {
     toggleListMode() {

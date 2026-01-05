@@ -150,3 +150,6 @@ class BookPagesHandler:
                     del self._cache[book_md5]
                 except KeyError:
                     pass
+
+    def clear_cache(self):
+        self._cache.clear()

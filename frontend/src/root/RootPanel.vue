@@ -115,10 +115,11 @@
     </el-tour-step>
     <el-tour-step :target="readOnlySwitchRef?.$el" title="限制锁" placement="bottom">
       <p><el-text class="mx-1" type="primary">「纯阅读模式」</el-text>
-        开启后将统一激活所有独立锁<br><el-text class="mx-1" type="success">锁状态</el-text>储存于后端，限制将在<el-text class="mx-1" type="primary">各设备上实时生效</el-text></p>
+        开启后将统一激活所有独立锁<br><el-text class="mx-1" type="success">锁状态</el-text>储存于后端，限制将在<el-text class="mx-1" type="primary">各设备前端上实时生效</el-text></p>
     </el-tour-step>
     <el-tour-step :target="getTabHeader(1)" title="后端配置" placement="bottom">
       <p>配置远程后端地址，用于 "远程书库"</p>
+      <p>每一后端各自对应<el-text class="mx-1" type="primary">锁状态</el-text> 和 <el-text class="mx-1" type="primary">超管密钥</el-text>，<el-text class="mx-1" type="warning">理应事前设置</el-text></p>
     </el-tour-step>
     <el-tour-step :target="getTabHeader(2)" title="CGS 交互" placement="bottom">
       <p>计划开发中，敬请期待</p>
@@ -153,13 +154,15 @@ const tabsRef = ref(null)
 const locks = reactive({
   config_path: false,
   book_handle: false,
-  switch_doujin: false
+  switch_doujin: false,
+  force_rescan: false
 })
 
 const lockLabels = {
   config_path: '锁定路径配置',
   book_handle: '锁定书籍操作',
-  switch_doujin: '锁定切换同人志'
+  switch_doujin: '锁定切换同人志',
+  force_rescan: '锁定强制重扫'
 }
 
 const readOnlyMode = computed({
@@ -228,7 +231,7 @@ const authenticate = async (secret, silent = false) => {
 }
 
 const toggleReadOnlyMode = async (enabled) => {
-  const newLocks = { config_path: enabled, book_handle: enabled, switch_doujin: enabled }
+  const newLocks = { config_path: enabled, book_handle: enabled, switch_doujin: enabled, force_rescan: enabled }
   await updateLocks(newLocks)
 }
 

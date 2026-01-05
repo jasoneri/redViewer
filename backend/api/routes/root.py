@@ -59,6 +59,7 @@ class LocksUpdate(BaseModel):
     config_path: Optional[bool] = None
     book_handle: Optional[bool] = None
     switch_doujin: Optional[bool] = None
+    force_rescan: Optional[bool] = None
 
 
 @root_router.get("/")
@@ -84,7 +85,8 @@ async def get_locks():
     return {
         "config_path": locks.get('config_path', False),
         "book_handle": locks.get('book_handle', False),
-        "switch_doujin": locks.get('switch_doujin', False)
+        "switch_doujin": locks.get('switch_doujin', False),
+        "force_rescan": locks.get('force_rescan', False)
     }
 
 
