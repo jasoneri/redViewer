@@ -101,7 +101,6 @@ async def update_locks(req: LocksUpdate, x_secret: Optional[str] = Header(None))
     return {"success": True, "locks": current_locks}
 
 
-@root_router.get("/secret-path")
+@root_router.get("/secret-dir")
 async def get_secret_path():
-    """返回 .secret 文件的绝对路径"""
     return {"path": str(conf_dir.absolute())}

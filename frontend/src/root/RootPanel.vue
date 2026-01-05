@@ -172,7 +172,7 @@ onMounted(async () => {
     const [statusRes, locksRes, pathRes] = await Promise.all([
       axios.get(backend + '/root/'),
       axios.get(backend + '/root/locks'),
-      axios.get(backend + '/root/secret-path')
+      axios.get(backend + '/root/secret-dir')
     ])
     console.log('RootPanel 初始化:', { status: statusRes.data, locks: locksRes.data, path: pathRes.data })
     needAuth.value = statusRes.data.has_secret
@@ -248,6 +248,7 @@ const updateLocks = async (updates) => {
     ElMessage.error('更新失败')
     const res = await axios.get(backend + '/root/locks')
     Object.assign(locks, res.data)
+    settingsStore.setLocks(res.data)
   }
 }
 
