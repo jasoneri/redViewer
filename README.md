@@ -93,9 +93,8 @@ curl -fsSL https://gitee.com/json_eri/redViewer/raw/master/deploy/online_scripts
 
 ### [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/jasoneri/redViewer?color=blue&label=Ver&sort=semver)](https://github.com/jasoneri/redViewer/releases/latest)
 
-✅ 支持系列带子级章节，系列与单章节  
-✅ 支持读 `.cbz`  
-✨ CGS(`v2.8.0`) 下载后用 rV 设配置目录后完全无感使用，包括以上两点  
+✅ 支持读 `.cbz`，支持系列带子级章节  
+✨ CGS(`v2.8.0`) 下载后用 rV 设配置目录后完全无感使用  
 ✨ 增加左右翻页阅读模式，同样采用 15~85% 阅读进度阈值，隐藏按钮组并设置全屏化  
 ✨ 主题色改为 red !!  
 ✅ 配置/过滤等操作优化  
@@ -106,7 +105,6 @@ curl -fsSL https://gitee.com/json_eri/redViewer/raw/master/deploy/online_scripts
 🔳 打包 msi 等  
 🔳 以`rV.db`开展元数据 筛选/展示 等  
 🔳 方向：前端部分通过Capacitor往app发展，重点为离线缓存/在线激活后同步离线操作  
-🔳 githb-pages做成体验（修改前后的部分细则），寻找免费后端服务  
 
 > [🕑更新历史](https://github.com/jasoneri/redViewer/wiki/Changelog)
 
