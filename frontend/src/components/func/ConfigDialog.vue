@@ -39,12 +39,10 @@
         v-if="!settingsStore.locks.force_rescan"
         @click="forceRescan" type="warning" plain :loading="rescanLoading"
       >
-        <el-icon><RefreshRight /></el-icon>
-        强制重载
+        <el-icon><RefreshRight /></el-icon>&nbsp;强制重载
       </el-button>
       <el-button @click="rootDialogVisible = true" type="info" plain>
-        <el-icon><Setting /></el-icon>
-        超管
+        <el-icon><AdminIcon /></el-icon>&nbsp;超管
       </el-button>
       <el-button v-if="!settingsStore.locks.config_path" type="primary" @click="submitConf">提交</el-button>
     </template>
@@ -62,6 +60,7 @@ import { reactive, ref, computed, watch } from 'vue'
 import axios from 'axios'
 import { backend, useSettingsStore } from '@/static/store.js'
 import { Setting, RefreshRight } from '@element-plus/icons-vue'
+import { AdminIcon } from "@/icons"
 import { ElMessage, ElMessageBox } from 'element-plus'
 import RootPanel from '@/root/RootPanel.vue'
 

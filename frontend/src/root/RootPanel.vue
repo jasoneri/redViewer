@@ -41,8 +41,7 @@
         <span>未配置 .secret 文件，无需鉴权</span>
       </el-alert>
       <el-button type="primary" link @click="startTour" style="margin-left: 10px;">
-        <el-icon><Guide /></el-icon>
-        超管指引
+        <el-icon><Guide /></el-icon>&nbsp;超管指引
       </el-button>
     </div>
     
@@ -75,32 +74,11 @@
       </el-tab-pane>
 
       <el-tab-pane label="后端配置" name="backend">
-        <el-form label-position="top">
-          <el-form-item label="后端地址">
-            <el-input v-model="backendUrl" placeholder="http://your-ip:12345">
-              <template #prefix>
-                <el-icon><Link /></el-icon>
-              </template>
-            </el-input>
-          </el-form-item>
-          <el-form-item>
-            <el-text type="info" size="small">当前: {{ currentBackend }}</el-text>
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="saveBackend">
-              <el-icon><Check /></el-icon>
-              保存并刷新
-            </el-button>
-            <el-button @click="backendUrl = ''">
-              <el-icon><RefreshLeft /></el-icon>
-              重置为默认
-            </el-button>
-          </el-form-item>
-        </el-form>
+        <TabBackend />
       </el-tab-pane>
 
       <el-tab-pane label="CGS 交互" name="cgs">
-        <el-empty description="计划开发中" :image-size="80" />
+        <TabCgs />
       </el-tab-pane>
     </el-tabs>
   </div>
@@ -133,12 +111,12 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { backend, useSettingsStore } from '@/static/store.js'
 import { ElMessage } from 'element-plus'
-import { Lock, Key, Link, Check, RefreshLeft, Guide, Loading, CopyDocument } from '@element-plus/icons-vue'
+import { Lock, Key, Guide, Loading, CopyDocument } from '@element-plus/icons-vue'
+import TabBackend from './TabBackend.vue'
+import TabCgs from './TabCgs.vue'
 
 const emit = defineEmits(['close'])
 const settingsStore = useSettingsStore()
-const currentBackend = backend
-const backendUrl = ref(localStorage.getItem('backendUrl') || '')
 const secretInput = ref('')
 const activeTab = ref('locks')
 const isAuthenticated = ref(false)
@@ -162,7 +140,7 @@ const lockLabels = {
   config_path: '锁定路径配置',
   book_handle: '锁定书籍操作',
   switch_doujin: '锁定切换同人志',
-  force_rescan: '锁定强制重扫'
+  force_rescan: '锁定强制重载'
 }
 
 const readOnlyMode = computed({
@@ -258,12 +236,6 @@ const updateLocks = async (updates) => {
 const copyPath = () => {
   navigator.clipboard.writeText(secretPath.value)
   ElMessage.success('已复制')
-}
-
-const saveBackend = () => {
-  localStorage.setItem('backendUrl', backendUrl.value)
-  ElMessage.success('保存成功，即将刷新页面')
-  setTimeout(() => location.reload(), 500)
 }
 </script>
 

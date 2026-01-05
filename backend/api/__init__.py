@@ -40,7 +40,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="rV",
         description="https://github.com/jasoneri/redViewer",
-        version="1.4.0",
+        version="1.5.0",
         docs_url="/api/docs",  # 自定义文档地址
         openapi_url="/api/openapi.json",
         redoc_url=None,   # 禁用redoc文档

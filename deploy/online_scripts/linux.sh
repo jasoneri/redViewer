@@ -257,8 +257,8 @@ while true; do
             ;;
         3)
             [ ! -d "$realProjPath" ] && echo "❌ 项目目录不存在" && continue
-            cd "$realProjPath/frontend" || exit
-            npm run start-python
+            cd "$realProjPath" || exit
+            uv run backend/app.py
             ;;
         *)
             exit

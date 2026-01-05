@@ -372,8 +372,8 @@ while ($true) {
                 Write-Host "❌ 未找到本地安装[$realProjPath]，请先部署" -ForegroundColor Red
                 continue
             }
-            Set-Location (Join-Path $realProjPath "frontend")
-            npm run start-python
+            Set-Location $realProjPath
+            uv run backend/app.py
         }
         default {
             exit
