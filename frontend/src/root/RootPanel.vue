@@ -84,12 +84,20 @@
   </div>
 
   <!-- 引导 Tour -->
-  <el-tour v-model="tourOpen" :mask="{ color: 'rgba(0,0,0,0.5)' }" @change="onTourChange">
-    <el-tour-step :target="null" title="配置鉴权文件">
-      <p>在后端以下路径上创建 <code>.secret</code> 文件并写入<el-text class="mx-1" type="primary">超管密钥</el-text>：</p>
-      <el-tag type="info" style="word-break: break-all;">{{ secretPath }}</el-tag>
-      <el-button :icon="CopyDocument" size="small" text @click="copyPath" style="margin-left: 4px;" />
-      <p><el-text class="mx-1" type="danger">此密钥应该仅此你一人知晓</el-text></p>
+  <el-tour v-model="tourOpen" :mask="{ color: 'rgba(0,0,0,0.5)' }" @change="onTourChange" @close="onTourClose">
+    <el-tour-step :target="null" title="配置密钥">
+      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <el-input v-model="newSecret" type="password" placeholder="输入密钥" show-password style="flex: 1;" />
+        <el-button type="primary" @click="initSecret" :loading="initLoading" :disabled="secretSet">
+          {{ secretSet ? '已设置' : '设置' }}
+        </el-button>
+      </div>
+      <el-text type="info" size="small">密钥文件：</el-text>
+      <div style="display: flex; align-items: center; gap: 4px; margin: 4px 0 8px;">
+        <el-tag size="small" style="word-break: break-all; white-space: normal;">{{ secretPath }}</el-tag>
+        <el-button :icon="CopyDocument" size="small" text @click="copyPath" />
+      </div>
+      <el-text type="danger" size="small">此密钥应仅你一人知晓</el-text>
     </el-tour-step>
     <el-tour-step :target="readOnlySwitchRef?.$el" title="限制锁" placement="bottom">
       <p><el-text class="mx-1" type="primary">「纯阅读模式」</el-text>
@@ -117,6 +125,13 @@ import TabCgs from './TabCgs.vue'
 
 const emit = defineEmits(['close'])
 const settingsStore = useSettingsStore()
+
+// 加密函数框架，当前直接返回原文，后续实现加密
+const encrypt = (raw) => {
+  // TODO: 实现加密逻辑
+  return raw
+}
+
 const secretInput = ref('')
 const activeTab = ref('locks')
 const isAuthenticated = ref(false)
@@ -128,6 +143,9 @@ const tourOpen = ref(false)
 const secretPath = ref('')
 const readOnlySwitchRef = ref(null)
 const tabsRef = ref(null)
+const newSecret = ref('')
+const initLoading = ref(false)
+const secretSet = ref(false)
 
 const locks = reactive({
   config_path: false,
@@ -150,19 +168,18 @@ const readOnlyMode = computed({
 
 onMounted(async () => {
   try {
-    const [statusRes, locksRes, pathRes] = await Promise.all([
+    const [statusRes, locksRes] = await Promise.all([
       axios.get(backend + '/root/'),
-      axios.get(backend + '/root/locks'),
-      axios.get(backend + '/root/secret-dir')
+      axios.get(backend + '/root/locks')
     ])
-    console.log('RootPanel 初始化:', { status: statusRes.data, locks: locksRes.data, path: pathRes.data })
     needAuth.value = statusRes.data.has_secret
     Object.assign(locks, locksRes.data)
-    secretPath.value = pathRes.data.path
-    settingsStore.setLocks(locksRes.data)  // 同步到全局 store
+    settingsStore.setLocks(locksRes.data)
     
     if (!needAuth.value) {
       isAuthenticated.value = true
+      const pathRes = await axios.get(backend + '/root/secret-file')
+      secretPath.value = pathRes.data.path
     } else {
       const cached = localStorage.getItem('rootSecret')
       if (cached) authenticate(cached, true)
@@ -195,7 +212,8 @@ const authenticate = async (secret, silent = false) => {
   const pwd = typeof secret === 'string' ? secret : secretInput.value
   authLoading.value = true
   try {
-    const res = await axios.post(backend + '/root/auth', { secret: pwd })
+    const encrypted = encrypt(`${pwd}:${Date.now()}`)
+    const res = await axios.post(backend + '/root/auth', { secret: encrypted })
     isAuthenticated.value = true
     storedSecret.value = pwd
     localStorage.setItem('rootSecret', pwd)
@@ -219,8 +237,9 @@ const updateSingleLock = async (key, val) => {
 
 const updateLocks = async (updates) => {
   try {
+    const encrypted = encrypt(`${storedSecret.value}:${Date.now()}`)
     await axios.post(backend + '/root/locks', updates, {
-      headers: { 'X-Secret': storedSecret.value }
+      headers: { 'X-Secret': encrypted }
     })
     Object.assign(locks, updates)
     settingsStore.setLocks(locks)
@@ -236,6 +255,32 @@ const updateLocks = async (updates) => {
 const copyPath = () => {
   navigator.clipboard.writeText(secretPath.value)
   ElMessage.success('已复制')
+}
+
+const initSecret = async () => {
+  if (!newSecret.value.trim()) {
+    ElMessage.warning('密钥不能为空')
+    return
+  }
+  initLoading.value = true
+  try {
+    await axios.post(backend + '/root/init-secret', { secret: newSecret.value })
+    ElMessage.success('密钥设置成功，请继续了解其他功能')
+    storedSecret.value = newSecret.value
+    localStorage.setItem('rootSecret', newSecret.value)
+    secretSet.value = true
+  } catch (e) {
+    ElMessage.error(e.response?.data?.detail || '设置失败')
+  } finally {
+    initLoading.value = false
+  }
+}
+
+const onTourClose = () => {
+  if (secretSet.value) {
+    needAuth.value = true
+    isAuthenticated.value = true
+  }
 }
 </script>
 

@@ -1,3 +1,4 @@
+import time
 from functools import wraps
 from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel
@@ -17,18 +18,33 @@ def get_secret() -> Optional[str]:
     return secret_file.read_text().strip()
 
 
-def encrypt(raw: str) -> str:
-    """加密函数框架，当前直接返回原文，后续实现加密"""
-    # TODO: 实现加密逻辑
-    return raw
+def decrypt(encrypted: str) -> str:
+    """解密函数框架，当前直接返回原文，后续实现解密"""
+    # TODO: 实现解密逻辑
+    return encrypted
 
 
 def verify_secret(input_secret: str) -> bool:
-    """验证密钥，无 .secret 文件时视为不需要鉴权"""
+    """验证密钥，无 .secret 文件时视为不需要鉴权
+    
+    前端发送格式: encrypt(secret:timestamp)
+    后端解密后验证 secret 匹配且 timestamp 在 5 分钟内
+    """
     stored = get_secret()
     if stored is None:
-        return True  # 无 secret 文件，跳过鉴权
-    return encrypt(input_secret) == encrypt(stored)
+        return True
+    
+    try:
+        decrypted = decrypt(input_secret)
+        secret, timestamp = decrypted.rsplit(':', 1)
+        if secret != stored:
+            return False
+        ts = int(timestamp)
+        if abs(time.time() * 1000 - ts) > 5 * 60 * 1000:
+            return False
+        return True
+    except:
+        return False
 
 
 def is_auth_required() -> bool:
@@ -52,6 +68,10 @@ def require_lock(lock_name: str):
 
 # ===== API 路由 =====
 class AuthRequest(BaseModel):
+    secret: str
+
+
+class InitSecretRequest(BaseModel):
     secret: str
 
 
@@ -103,6 +123,20 @@ async def update_locks(req: LocksUpdate, x_secret: Optional[str] = Header(None))
     return {"success": True, "locks": current_locks}
 
 
-@root_router.get("/secret-dir")
+@root_router.get("/secret-file")
 async def get_secret_path():
-    return {"path": str(conf_dir.absolute())}
+    if is_auth_required():
+        raise HTTPException(403, ".secret 已存在")
+    return {"path": str(conf_dir.joinpath('.secret').absolute())}
+
+
+@root_router.post("/init-secret")
+async def init_secret(req: InitSecretRequest):
+    """初始化 .secret 文件（仅当不存在时）"""
+    secret_file = conf_dir.joinpath('.secret')
+    if secret_file.exists():
+        raise HTTPException(403, ".secret 已存在，禁止覆盖")
+    if not req.secret.strip():
+        raise HTTPException(400, "密钥不能为空")
+    secret_file.write_text(req.secret.strip())
+    return {"success": True}
