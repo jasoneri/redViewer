@@ -82,6 +82,10 @@ class LocksUpdate(BaseModel):
     force_rescan: Optional[bool] = None
 
 
+class WhitelistUpdate(BaseModel):
+    whitelist: list[str]
+
+
 @root_router.get("/")
 async def root_status():
     """检查服务状态"""
@@ -139,4 +143,19 @@ async def init_secret(req: InitSecretRequest):
     if not req.secret.strip():
         raise HTTPException(400, "密钥不能为空")
     secret_file.write_text(req.secret.strip())
+    return {"success": True}
+
+
+@root_router.get("/whitelist")
+async def get_whitelist():
+    """获取白名单"""
+    return {"whitelist": getattr(conf, 'root_whitelist', [])}
+
+
+@root_router.post("/whitelist")
+async def update_whitelist(req: WhitelistUpdate, x_secret: Optional[str] = Header(None)):
+    """更新白名单（需鉴权）"""
+    if is_auth_required() and not verify_secret(x_secret or ''):
+        raise HTTPException(401, "鉴权失败")
+    conf.update(root_whitelist=req.whitelist)
     return {"success": True}

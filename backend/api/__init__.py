@@ -1,4 +1,5 @@
 import asyncio
+import fnmatch
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.cors import CORSMiddleware
@@ -98,6 +99,11 @@ def register_cors(app: FastAPI) -> None:
     )
 
 
+def check_whitelist(value: str, whitelist: list) -> bool:
+    """检查值是否匹配白名单中的任一模式（支持 * 和 ? 通配符）"""
+    return any(fnmatch.fnmatch(value, pattern) for pattern in whitelist)
+
+
 def register_hook(app: FastAPI) -> None:
     """
     请求响应拦截 hook
@@ -107,6 +113,14 @@ def register_hook(app: FastAPI) -> None:
     """
     @app.middleware("http")
     async def logger_request(request: Request, call_next) -> Response:
+        # 白名单检查（仅对 /root 路由生效）
+        whitelist = getattr(conf, 'root_whitelist', [])
+        if whitelist:  # 白名单非空时才检查
+            origin = request.headers.get("origin", "")
+            client_ip = request.client.host if request.client else ""
+            if not (check_whitelist(origin, whitelist) or check_whitelist(client_ip, whitelist)):
+                return Response(status_code=403, content="Access denied")
+        
         response = await call_next(request)
         if request.url.path.startswith("/comic/conf") and request.method == "POST" and response.status_code == 200:
             staticFiles.directory = str(conf.comic_path)

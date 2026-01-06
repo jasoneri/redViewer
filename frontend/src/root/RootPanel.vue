@@ -74,7 +74,7 @@
       </el-tab-pane>
 
       <el-tab-pane label="后端配置" name="backend">
-        <TabBackend />
+        <TabBackend :stored-secret="storedSecret" />
       </el-tab-pane>
 
       <el-tab-pane label="CGS 交互" name="cgs">
