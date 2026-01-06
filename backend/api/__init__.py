@@ -1,5 +1,6 @@
 import asyncio
 import fnmatch
+from urllib.parse import urlparse
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from starlette.middleware.cors import CORSMiddleware
@@ -113,12 +114,17 @@ def register_hook(app: FastAPI) -> None:
     """
     @app.middleware("http")
     async def logger_request(request: Request, call_next) -> Response:
-        # 白名单检查（仅对 /root 路由生效）
         whitelist = getattr(conf, 'root_whitelist', [])
         if whitelist:  # 白名单非空时才检查
-            origin = request.headers.get("origin", "")
+            origin_header = request.headers.get("origin", "") or ""
+            parsed_origin = urlparse(origin_header) if origin_header else None
+            origin_host = parsed_origin.hostname if parsed_origin and parsed_origin.hostname else ""
+            origin_to_check = origin_host or origin_header
             client_ip = request.client.host if request.client else ""
-            if not (check_whitelist(origin, whitelist) or check_whitelist(client_ip, whitelist)):
+            if not (
+                check_whitelist(origin_to_check, whitelist)
+                or check_whitelist(client_ip, whitelist)
+            ):
                 return Response(status_code=403, content="Access denied")
         
         response = await call_next(request)

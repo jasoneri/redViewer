@@ -26,7 +26,8 @@ export const useSettingsStore = defineStore('settings', {
       showSlider: false,
       showNavBtn: true,
       showCenterNextPrev: true,
-      readingMode: 'scroll'  // 'scroll' | 'page'
+      readingMode: 'scroll',  // 'scroll' | 'page'
+      btnGroupPosition: 'top'  // 'top' | 'bottom'
     })),
     pageRecords: JSON.parse(localStorage.getItem('pageRecords') || '{}'),
     scrollConf: JSON.parse(localStorage.getItem('scrollConf') || JSON.stringify({
@@ -61,6 +62,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     setReadingMode(mode) {
       this.displaySettings.readingMode = mode
+      localStorage.setItem('displaySettings', JSON.stringify(this.displaySettings))
+    },
+    setBtnGroupPosition(position) {
+      this.displaySettings.btnGroupPosition = position
       localStorage.setItem('displaySettings', JSON.stringify(this.displaySettings))
     },
     savePageRecord(bookName, page) {

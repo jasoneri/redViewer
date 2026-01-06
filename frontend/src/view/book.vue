@@ -1,6 +1,6 @@
 <template>
   <el-container>
-    <el-header height="5vh" :style="`min-height: 40px`" v-show="showBtn">
+    <el-header v-if="btnGroupPosition === 'top'" height="5vh" :style="`min-height: 40px`" v-show="showBtn">
       <el-button-group style="width: 100%; height: 100%;" id="top-btn-group">
         <TopBtnGroupOfBook :nextBook="nextBook" :previousBook="previousBook" />
       </el-button-group>
@@ -53,6 +53,11 @@
         />
       </div>
     </el-main>
+    <el-footer v-if="btnGroupPosition === 'bottom'" height="5vh" :style="`min-height: 40px`" v-show="showBtn">
+      <el-button-group style="width: 100%; height: 100%;" id="bottom-btn-group">
+        <TopBtnGroupOfBook :nextBook="nextBook" :previousBook="previousBook" />
+      </el-button-group>
+    </el-footer>
   </el-container>
 </template>
 
@@ -90,6 +95,7 @@ const maxScrollHeight = ref(0)   // 最大滚动高度
     const btnShowThreshold = 0.15
     const errorText = computed(() => '已经说过没图片了！..')
     const readingMode = computed(() => settingsStore.displaySettings.readingMode || 'scroll')
+    const btnGroupPosition = computed(() => settingsStore.displaySettings.btnGroupPosition || 'top')
 
     const getBook = async(book, ep, callBack) => {
       const params = ep ? { ep } : {};

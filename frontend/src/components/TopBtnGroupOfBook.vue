@@ -20,6 +20,9 @@
         </el-dropdown-item>
         <el-dropdown-item :icon="ArrowDownBold" @click="showScrollConfDia">自动下滑设置</el-dropdown-item>
         <el-dropdown-item>
+          <el-switch v-model="btnGroupPosition" :active-action-icon="Top" :inactive-action-icon="Bottom" active-text="按钮组在顶部" inactive-text="按钮组在底部" active-value="top" inactive-value="bottom"></el-switch>
+        </el-dropdown-item>
+        <el-dropdown-item>
           <el-switch v-model="showSlider" :active-action-icon="View" :inactive-action-icon="Hide" active-text="页数滚动条"></el-switch>
         </el-dropdown-item>
         <el-dropdown-item>
@@ -52,7 +55,7 @@
 </template>
 
 <script setup>
-import {ArrowDownBold, ArrowLeft, ArrowRight, Operation, Hide, View} from "@element-plus/icons-vue";
+import {ArrowDownBold, ArrowLeft, ArrowRight, Operation, Hide, View, Top, Bottom} from "@element-plus/icons-vue";
 import { ArrowsHorizontal, ArrowsVertical } from "@/icons"
 import { BackIcon } from '@/icons';
 import ScrollSpeedDialog from '@/components/func/ScrollSpeedDialog.vue';
@@ -67,9 +70,14 @@ const showCenterNextPrev = ref(settingsStore.displaySettings.showCenterNextPrev)
 const showSlider = ref(settingsStore.displaySettings.showSlider)
 const showNavBtn = ref(settingsStore.displaySettings.showNavBtn)
 const readingMode = ref(settingsStore.displaySettings.readingMode || 'scroll')
+const btnGroupPosition = ref(settingsStore.displaySettings.btnGroupPosition || 'top')
 
 watch(readingMode, (newValue) => {
   settingsStore.setReadingMode(newValue)
+})
+
+watch(btnGroupPosition, (newValue) => {
+  settingsStore.setBtnGroupPosition(newValue)
 })
 
 watch(showSlider, (newValue) => {
