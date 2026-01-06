@@ -1,7 +1,7 @@
 <template>
     <el-container>
       <el-header height="5vh" :style="`min-height: 40px`">
-        <TopBtnGroup :reload="reload" :items="bookList" :filtered-items="filteredBookList" :handle-conf="handleConf"
+        <TopBtnGroup :reload="reload" :items="bookList" :filtered-items="filteredBookList"
                      :handle-filter="handleFilter" :keywords_list="keywords_list" v-model="isListMode" @send_sort="sv_sort" @switchEro="handleswitchEro"/>
       </el-header>
       <el-main>
@@ -150,40 +150,6 @@
       const end = start + pageSize;
       return filteredBookList.arr.slice(start, end);
     });
-    const handleConf = async(param) => {
-      if (typeof param === "function") {
-        // GET 配置，返回 JSON 对象
-        await axios.get(backend + '/comic/conf')
-          .then(res => {param(res.data);})
-          .catch(function (error) {console.log(error);})
-      } else if (typeof param === "object") {
-        // POST 配置，发送 JSON 对象
-        await axios.post(backend + '/comic/conf', param)
-          .then(res => {
-            reload();
-            ElNotification.success({
-              title: '配置更改已成功',
-              message: h('i', { style: 'white-space: pre-wrap; word-wrap: break-word;' }, `配置后端的静态资源锚点已更新`),
-              offset: 150,
-              duration: 1300
-            })
-            handleFilter('')  // 换配置时清除筛选值
-          })
-          .catch(function (error) {
-            if (error.response?.status === 403) {
-              ElMessage.error('路径配置已被锁定')
-            } else {
-              ElNotification.error({
-                title: 'Error',
-                message: '处理配置发生错误，自行去终端窗口查看报错堆栈',
-                offset: 100,
-              })
-            }
-          })
-      } else {
-         console.log("handleConf-param type = " + typeof param);
-      }
-    }
     // ------------------------渲染相关
     const init = () => {
       // 从 localStorage 读取排序值

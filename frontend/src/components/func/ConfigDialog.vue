@@ -61,7 +61,7 @@ import axios from 'axios'
 import { backend, useSettingsStore } from '@/static/store.js'
 import { Setting, RefreshRight } from '@element-plus/icons-vue'
 import { AdminIcon } from "@/icons"
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import RootPanel from '@/root/RootPanel.vue'
 
 const settingsStore = useSettingsStore()
@@ -69,8 +69,7 @@ const rootDialogVisible = ref(false)
 const rescanLoading = ref(false)
 
 const props = defineProps({
-  visible: { type: Boolean, default: false },
-  initialData: { type: Object, default: () => ({ path: '', kemono_path: '' }) }
+  visible: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['update:visible', 'submit', 'rescan-finished'])
@@ -84,15 +83,15 @@ const confForm = reactive({ path: '', kemono_path: '' })
 const treeData = ref([])
 const treeProps = { label: 'label', value: 'value', isLeaf: 'isLeaf', children: 'children' }
 
-watch(() => props.visible, (val) => {
-  if (val) {
-    confForm.path = props.initialData.path || ''
-    confForm.kemono_path = props.initialData.kemono_path || ''
-  }
-})
-
 const onOpen = async () => {
   await settingsStore.fetchLocks()
+  // 获取当前配置
+  try {
+    const confRes = await axios.get(backend + '/comic/conf')
+    confForm.path = confRes.data.path || ''
+    confForm.kemono_path = confRes.data.kemono_path || ''
+  } catch {}
+  // 获取文件系统根目录
   const res = await axios.get(backend + '/comic/filesystem')
   const roots = res.data.roots || []
   treeData.value = roots.map(root => ({
@@ -121,9 +120,18 @@ const loadNode = async (node, resolve) => {
   }
 }
 
-const submitConf = () => {
-  emit('submit', { ...confForm })
-  dialogVisible.value = false
+const submitConf = async () => {
+  const loading = ElLoading.service({ lock: true, text: '配置更改中...' })
+  try {
+    await axios.post(backend + '/comic/conf', { ...confForm })
+    ElMessage.success('配置更改已成功')
+    emit('submit')
+    dialogVisible.value = false
+  } catch (err) {
+    ElMessage.error(err.response?.status === 403 ? '路径配置已被锁定' : '配置更新失败')
+  } finally {
+    loading.close()
+  }
 }
 
 const forceRescan = async () => {

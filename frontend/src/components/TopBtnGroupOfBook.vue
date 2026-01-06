@@ -59,6 +59,7 @@ import ScrollSpeedDialog from '@/components/func/ScrollSpeedDialog.vue';
 import {ref, watch} from "vue";
 import {useSettingsStore} from "@/static/store.js";
 import { useRouter } from 'vue-router';
+import { ElMessage } from 'element-plus';
 
 const router = useRouter();
 const settingsStore = useSettingsStore()
@@ -73,15 +74,24 @@ watch(readingMode, (newValue) => {
 
 watch(showSlider, (newValue) => {
   settingsStore.toggleSlider(newValue)
+  checkAllHidden()
 })
 
 watch(showNavBtn, (newValue) => {
   settingsStore.toggleNavBtn(newValue)
+  checkAllHidden()
 })
 
 watch(showCenterNextPrev, (newValue) => {
   settingsStore.toggleCenterNextPrev(newValue)
+  checkAllHidden()
 })
+
+const checkAllHidden = () => {
+  if (!showSlider.value && !showNavBtn.value && !showCenterNextPrev.value) {
+    ElMessage.warning('按钮全部隐藏时，页数过多将在中途无法快速处理，建议至少保留一项')
+  }
+}
 
 const props = defineProps({
   previousBook:{type: Function, required: true},
