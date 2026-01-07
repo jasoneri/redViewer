@@ -13,7 +13,11 @@
           />
         </div>
         <div class="grid-container">
-          <el-row :gutter="20">
+          <!-- <ProtectedGif
+            src="demo.gif"
+            class="background-gif" alt=""
+          /> -->
+          <el-row :gutter="20" class="content-row">
             <el-col v-for="ep in pagedEps" :key="ep.ep" :span="4" :xs="12" :sm="8" :md="6" :lg="4">
               <el-card :body-style="{ padding: '0px' }" class="book-card">
                 <router-link :to="{ path: '/book', query: { book: bookName, ep: ep.ep }}">
@@ -60,6 +64,7 @@ import { ElNotification } from 'element-plus';
 import bookHandleBtn from '@/components/bookHandleBtn.vue';
 import topBottom from '@/components/topBottom.vue';
 import TopBtnGroupOfEp from '@/components/TopBtnGroupOfEp.vue';
+import ProtectedGif from '@/components/func/ProtectedGif.vue';
 
 const route = useRoute();
 const router = useRouter();

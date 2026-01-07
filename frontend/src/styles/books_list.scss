@@ -13,8 +13,35 @@
     }
 }
 
+.background-gif {
+    position: fixed;
+    right: 1px;
+    bottom: 1px;
+    width: 55vw;
+    height: 45vh;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.6;
+    border-radius: 12px;
+}
+
 .grid-container {
     padding: 3px;
+    position: relative;
+    
+    .content-row {
+        position: relative;
+        z-index: 1;
+    }
+}
+
+.list-container {
+    position: relative;
+    
+    .content-table {
+        position: relative;
+        z-index: 1;
+    }
 }
 
 .book-card {

@@ -1,5 +1,5 @@
 <template>
-    <el-container>
+    <el-container class="books-list-container">
       <el-header height="5vh" :style="`min-height: 40px`">
         <TopBtnGroup :reload="reload" :items="bookList" :filtered-items="filteredBookList"
                      :handle-filter="handleFilter" :keywords_list="keywords_list" v-model="isListMode" @send_sort="sv_sort" @switchEro="handleswitchEro"/>
@@ -16,7 +16,12 @@
             />
           </div>
           <!-- 列表视图 -->
-          <el-table v-if="isListMode" :data="pagedBook">
+          <div v-if="isListMode" class="list-container">
+            <!-- <ProtectedGif
+              src="demo.gif"
+              class="background-gif" alt=""
+            /> -->
+          <el-table :data="pagedBook" class="content-table">
             <el-table-column prop="book" label="Book" >
               <template v-slot="{ row: item }">
                 <el-space wrap :size="'small'">
@@ -39,9 +44,14 @@
               </template>
             </el-table-column>
           </el-table>
+          </div>
           <!-- 网格视图 -->
           <div v-else class="grid-container">
-            <el-row :gutter="20">
+            <!-- <ProtectedGif
+              src="demo.gif"
+              class="background-gif" alt=""
+            /> -->
+            <el-row :gutter="20" class="content-row">
               <el-col v-for="item in pagedBook" :key="item.book" :span="4" :xs="12" :sm="8" :md="6" :lg="4">
                 <el-card :body-style="{ padding: '0px' }" class="book-card">
                   <router-link :to="item.eps ? { path: '/ep_list', query: { book: item.book }} : { path: '/book', query: { book: item.book }}">
@@ -96,6 +106,7 @@
     import TopBtnGroup from '@/components/TopBtnGroup.vue'
     import bookHandleBtn from '@/components/bookHandleBtn.vue'
     import topBottom from '@/components/topBottom.vue'
+    import ProtectedGif from '@/components/func/ProtectedGif.vue'
     import { Filter } from '@element-plus/icons-vue';
     import { EpisodesIcon } from '@/icons';
 
@@ -271,6 +282,10 @@
 <style lang="scss" scoped>
     @use '@/styles/books_list.scss';
     @use '@/styles/empty.scss';
+
+.books-list-container {
+  position: relative;
+}
 
 .eps-badge {
   display: inline-flex;
