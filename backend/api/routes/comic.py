@@ -1,18 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import shutil
 import asyncio
 import platform
-from typing import Optional
 from pathlib import Path
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
-from send2trash import send2trash
+from starlette.responses import Response
 
 from utils import conf, executor
+from utils.file_handlers import execute_handle, cleanup_empty_dir
 from utils.cbz_cache import get_cbz_cache
+from api.schemas import not_found, bad_request, ErrorMessages, get_mime_type, validate_directory, ComicHandleRequest
 from models import QuerySort
 from core import lib_mgr, BooksAggregator
 from api.routes.root import require_lock
@@ -31,7 +30,7 @@ async def get_books(request: Request, sort: str = Query(None)):
     await ensure_library_loaded()
     cache = lib_mgr.active_cache
     if not cache or not cache.books_index:
-        return JSONResponse("no books exists", status_code=404)
+        return not_found(ErrorMessages.NO_BOOKS)
 
     books = list(cache.books_index.values())
     sort = sort or "time_desc"
@@ -63,14 +62,14 @@ async def update_conf(conf_content: ConfContent):
     """接收 JSON 对象更新配置"""
     # 校验 path 必须存在
     path = Path(conf_content.path)
-    if not path.exists() or not path.is_dir():
-        return JSONResponse(f"路径不存在: {conf_content.path}", status_code=400)
+    if error := validate_directory(path):
+        return error
     
     # 校验 kemono_path（如果提供）
     if conf_content.kemono_path:
         kemono_path = Path(conf_content.kemono_path)
-        if not kemono_path.exists() or not kemono_path.is_dir():
-            return JSONResponse(f"路径不存在: {conf_content.kemono_path}", status_code=400)
+        if error := validate_directory(kemono_path):
+            return error
     
     # 使用 **kw 方式更新
     conf.update(path=conf_content.path,
@@ -79,7 +78,7 @@ async def update_conf(conf_content: ConfContent):
     main_loop = asyncio.get_running_loop()
     await lib_mgr.switch_library(conf.comic_path, main_loop)
     if not lib_mgr.active_cache.books_index:
-        return JSONResponse("update success, but no books exists in new path", status_code=404)
+        return not_found("update success, but no books exists in new path")
     return "update conf and switched library successfully"
 
 
@@ -123,7 +122,7 @@ async def force_rescan():
     main_loop = asyncio.get_running_loop()
     result = await lib_mgr.force_rescan(main_loop)
     if "error" in result:
-        return JSONResponse(result, status_code=400)
+        return bad_request(result)
     return result
 
 
@@ -145,41 +144,25 @@ async def switch_ero(enable: bool = True):
 async def get_book(request: Request, book_name: str, ep: str = None, hard_refresh: bool = False):
     pages_obj = await lib_mgr.active_pages_handler.get_pages(book_name, ep, hard_refresh)
     if not pages_obj or not pages_obj.get("pages"):
-        return JSONResponse(status_code=404, content=f"book[{book_name}] not exist")
+        return not_found(ErrorMessages.book_not_exist(book_name))
     return pages_obj.get("pages")
 
 
-class Book(BaseModel):
-    book: str
-    ep: Optional[str] = None
-    handle: str
-
-
 def _handle_and_cleanup(book_path: Path, handle_type: str, dest: Path, series_dir: Path):
-    if handle_type == "del":
-        if book_path.is_file():
-            book_path.unlink()
-        else:
-            shutil.rmtree(book_path)
-    elif handle_type == "remove":
-        send2trash(book_path)
-    else:  # move
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(book_path, dest)
-    if series_dir and series_dir.exists() and not list(series_dir.iterdir()):
-        series_dir.rmdir()
+    execute_handle(handle_type, book_path, dest)
+    cleanup_empty_dir(series_dir)
 
 
 @index_router.post("/handle")
 @require_lock("book_handle")
-async def handle(request: Request, book: Book):
+async def handle(request: Request, book: ComicHandleRequest):
     cache = lib_mgr.active_cache
     book_name, ep_name = book.book, book.ep or ""
     
     book_path = cache.scan_strategy.build_handle_path(cache.scan_path, book_name, ep_name)
     
     if not book_path.exists():
-        return JSONResponse(status_code=404, content=f"book[{book_name}] not exist")
+        return not_found(ErrorMessages.book_not_exist(book_name))
     
     cache.scan_strategy.invalidate_cache(book_path)
     
@@ -206,20 +189,16 @@ async def get_cbz_image(book_name: str, image_path: str):
         cbz_path = scan_path / book_name / image_path.split('/')[0]
     
     if not cbz_path.is_file() or cbz_path.suffix.lower() != '.cbz':
-        return JSONResponse(status_code=404, content="CBZ file not found")
+        return not_found("CBZ file not found")
     
     cbz_cache = get_cbz_cache()
     loop = asyncio.get_event_loop()
     image_data = await loop.run_in_executor(executor, cbz_cache.extract_image, cbz_path, image_path)
     
     if image_data is None:
-        return JSONResponse(status_code=404, content="Image not found in CBZ")
+        return not_found("Image not found in CBZ")
     
     ext = Path(image_path).suffix.lower()
-    mime_types = {
-        '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
-        '.gif': 'image/gif', '.webp': 'image/webp', '.bmp': 'image/bmp'
-    }
-    media_type = mime_types.get(ext, 'application/octet-stream')
+    media_type = get_mime_type(ext)
     
     return Response(content=image_data, media_type=media_type)

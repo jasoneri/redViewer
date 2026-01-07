@@ -37,6 +37,7 @@ class BookData:
 
 
 class BookSort:
+    """书籍章节排序辅助类"""
     section_regex = re.compile(r'_第?(\d+\.?\d*)([话卷])')
     volume_regex = re.compile(r'_第?(\d+\.?\d*)卷')
 
@@ -60,6 +61,7 @@ class BookSort:
 
 
 class QuerySort:
+    """Comic 查询排序类"""
     sort_funcs = {
         'time': lambda x: x.mtime,
         'name': lambda x: x.name

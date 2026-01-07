@@ -6,22 +6,25 @@
     </el-button>
     <el-button style="flex: 4; height: 100%" type="primary" @click="previousBook"><el-icon class="el-icon--left" size="large"><ArrowLeft /></el-icon>上一本</el-button>
     <el-button style="flex: 4; height: 100%" type="primary" @click="nextBook">下一本<el-icon class="el-icon--right" size="large"><ArrowRight /></el-icon></el-button>
-  <el-dropdown trigger="click" style="flex: 1; height: 100%;" placement="bottom-end" size="large">
+  <el-dropdown trigger="click" style="flex: 1; height: 100%;" :placement="btnGroupPosition === 'top' ? 'bottom-end' : 'top-end'" size="large">
     <el-button type="info"  @click="menuVisible = true" style="width: 100%; height: 100%;">
       <el-icon size="large"><Operation /></el-icon>
     </el-button>
     <template #dropdown>
       <el-dropdown-menu>
         <el-dropdown-item>
+          <el-radio-group v-model="btnGroupPosition">
+            <el-radio-button value="top" round><el-icon><ToolBarTop /></el-icon>置顶</el-radio-button>
+            <el-radio-button value="bottom" round><el-icon style="transform: rotate(180deg)"><ToolBarTop /></el-icon>置底</el-radio-button>
+          </el-radio-group>
+        </el-dropdown-item>
+        <el-dropdown-item>
           <el-radio-group v-model="readingMode">
-            <el-radio-button value="scroll"><el-icon ><ArrowsVertical /></el-icon>滚动</el-radio-button>
-            <el-radio-button value="page"><el-icon ><ArrowsHorizontal /></el-icon>翻页</el-radio-button>
+            <el-radio-button value="scroll" round><el-icon ><ArrowsVertical /></el-icon>滚动</el-radio-button>
+            <el-radio-button value="page" round><el-icon ><ArrowsHorizontal /></el-icon>翻页</el-radio-button>
           </el-radio-group>
         </el-dropdown-item>
         <el-dropdown-item :icon="ArrowDownBold" @click="showScrollConfDia">自动下滑设置</el-dropdown-item>
-        <el-dropdown-item>
-          <el-switch v-model="btnGroupPosition" :active-action-icon="Top" :inactive-action-icon="Bottom" active-text="按钮组在顶部" inactive-text="按钮组在底部" active-value="top" inactive-value="bottom"></el-switch>
-        </el-dropdown-item>
         <el-dropdown-item>
           <el-switch v-model="showSlider" :active-action-icon="View" :inactive-action-icon="Hide" active-text="页数滚动条"></el-switch>
         </el-dropdown-item>
@@ -55,9 +58,9 @@
 </template>
 
 <script setup>
-import {ArrowDownBold, ArrowLeft, ArrowRight, Operation, Hide, View, Top, Bottom} from "@element-plus/icons-vue";
+import {ArrowDownBold, ArrowLeft, ArrowRight, Operation, Hide, View} from "@element-plus/icons-vue";
 import { ArrowsHorizontal, ArrowsVertical } from "@/icons"
-import { BackIcon } from '@/icons';
+import { BackIcon, ToolBarTop } from '@/icons';
 import ScrollSpeedDialog from '@/components/func/ScrollSpeedDialog.vue';
 import {ref, watch} from "vue";
 import {useSettingsStore} from "@/static/store.js";

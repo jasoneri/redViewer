@@ -7,6 +7,7 @@ from typing import Optional, List
 from urllib.parse import quote
 
 from utils import executor, md5, conf, Var
+from utils.butils import build_book_path
 from utils.mode_strategy import ModeStrategyFactory
 
 
@@ -29,10 +30,7 @@ class BookPagesHandler:
         self._cache: "OrderedDict[str, CacheEntry]" = OrderedDict()
 
     def _book_path(self, book: str, ep: str = None) -> Path:
-        ext = ".cbz" if conf.cbz_mode else ""
-        if ep:
-            return self.comic_path / f"{book}/{ep}{ext}"
-        return self.comic_path / f"{book}/{book}{ext}" if conf.cbz_mode else self.comic_path / book
+        return build_book_path(self.comic_path, book, ep)
 
     def _format_pages_for_api(self, book: str, ep: str, pages: list) -> dict:
         fs_path = f"{book}/{ep}" if ep else book

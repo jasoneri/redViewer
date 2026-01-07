@@ -102,7 +102,11 @@ def register_cors(app: FastAPI) -> None:
 
 def check_whitelist(value: str, whitelist: list) -> bool:
     """检查值是否匹配白名单中的任一模式（支持 * 和 ? 通配符）"""
-    return any(fnmatch.fnmatch(value, pattern) for pattern in whitelist)
+    normalized_value = value.strip().lower()
+    return any(
+        fnmatch.fnmatch(normalized_value, (pattern or "").strip().lower())
+        for pattern in whitelist
+    )
 
 
 def register_hook(app: FastAPI) -> None:

@@ -122,15 +122,10 @@ import { ElMessage } from 'element-plus'
 import { Lock, Key, Guide, Loading, CopyDocument } from '@element-plus/icons-vue'
 import TabBackend from './TabBackend.vue'
 import TabCgs from './TabCgs.vue'
+import { passThroughEncrypt } from '@/utils/crypto.js'
 
 const emit = defineEmits(['close'])
 const settingsStore = useSettingsStore()
-
-// 加密函数框架，当前直接返回原文，后续实现加密
-const encrypt = (raw) => {
-  // TODO: 实现加密逻辑
-  return raw
-}
 
 const secretInput = ref('')
 const activeTab = ref('locks')
@@ -212,7 +207,7 @@ const authenticate = async (secret, silent = false) => {
   const pwd = typeof secret === 'string' ? secret : secretInput.value
   authLoading.value = true
   try {
-    const encrypted = encrypt(`${pwd}:${Date.now()}`)
+    const encrypted = passThroughEncrypt(`${pwd}:${Date.now()}`)
     const res = await axios.post(backend + '/root/auth', { secret: encrypted })
     isAuthenticated.value = true
     storedSecret.value = pwd
@@ -237,7 +232,7 @@ const updateSingleLock = async (key, val) => {
 
 const updateLocks = async (updates) => {
   try {
-    const encrypted = encrypt(`${storedSecret.value}:${Date.now()}`)
+    const encrypted = passThroughEncrypt(`${storedSecret.value}:${Date.now()}`)
     await axios.post(backend + '/root/locks', updates, {
       headers: { 'X-Secret': encrypted }
     })

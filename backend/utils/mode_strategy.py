@@ -7,10 +7,10 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 from . import extract_parent_and_chapter, conf
+from .butils import IMAGE_EXTENSIONS
+
 expect_dir_regex = re.compile(r"^_")
 accpect_dir = lambda _: not bool(expect_dir_regex.search(_))
-
-IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'}
 
 
 class ModeStrategy(ABC):

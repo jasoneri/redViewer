@@ -64,6 +64,7 @@ import axios from 'axios'
 import { backend } from '@/static/store.js'
 import { ElMessage } from 'element-plus'
 import { Link, Check, RefreshLeft } from '@element-plus/icons-vue'
+import { passThroughEncrypt } from '@/utils/crypto.js'
 
 const props = defineProps({
   storedSecret: { type: String, default: '' }
@@ -114,14 +115,11 @@ const removeWhitelist = (index) => {
   whitelist.value.splice(index, 1)
 }
 
-// 加密函数框架，当前直接返回原文，后续实现加密
-const encrypt = (raw) => raw
-
 const saveWhitelist = async () => {
   whitelistLoading.value = true
   try {
     const secret = props.storedSecret || localStorage.getItem('rootSecret') || ''
-    const encrypted = encrypt(`${secret}:${Date.now()}`)
+    const encrypted = passThroughEncrypt(`${secret}:${Date.now()}`)
     await axios.post(backend + '/root/whitelist', { whitelist: whitelist.value }, {
       headers: { 'X-Secret': encrypted }
     })

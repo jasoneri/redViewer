@@ -18,32 +18,40 @@ def get_secret() -> Optional[str]:
     return secret_file.read_text().strip()
 
 
-def decrypt(encrypted: str) -> str:
-    """解密函数框架，当前直接返回原文，后续实现解密"""
-    # TODO: 实现解密逻辑
+def passThroughDecrypt(encrypted: str) -> str:
+    """透传解密函数 - 当前未实现真正的解密
+    
+    TODO: 实现真正的解密逻辑时，需要同步更新：
+    - 后端: 本函数 passThroughDecrypt -> 真正的 decrypt
+    - 前端: frontend/src/utils/crypto.js 的 passThroughEncrypt -> 真正的 encrypt
+    
+    注意: 当前 secret:timestamp 以明文传输，安全性依赖 HTTPS
+    """
     return encrypted
 
 
 def verify_secret(input_secret: str) -> bool:
     """验证密钥，无 .secret 文件时视为不需要鉴权
-    
+
     前端发送格式: encrypt(secret:timestamp)
     后端解密后验证 secret 匹配且 timestamp 在 5 分钟内
     """
     stored = get_secret()
     if stored is None:
         return True
-    
+
     try:
-        decrypted = decrypt(input_secret)
-        secret, timestamp = decrypted.rsplit(':', 1)
+        decrypted = passThroughDecrypt(input_secret)
+        secret, timestamp = decrypted.rsplit(":", 1)
         if secret != stored:
             return False
         ts = int(timestamp)
         if abs(time.time() * 1000 - ts) > 5 * 60 * 1000:
             return False
         return True
-    except:
+    except (ValueError, TypeError) as exc:
+        # 解密结果格式不符合预期或时间戳无法解析，视为无效密钥
+        print("Invalid secret payload received: %s", exc)
         return False
 
 

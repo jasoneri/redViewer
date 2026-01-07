@@ -9,6 +9,7 @@ from .logging import get_logger
 logger = get_logger()
 
 from utils import conf, Var
+from utils.butils import build_book_path
 from models import BookData
 from utils.mode_strategy import ModeStrategyFactory
 from utils.cbz_cache import close_cbz_cache
@@ -47,10 +48,7 @@ class ComicCacheManager:
             """)
 
     def _build_book_path(self, book: str, ep: str) -> Path:
-        ext = ".cbz" if conf.cbz_mode else ""
-        if ep:
-            return self.scan_path / f"{book}/{ep}{ext}"
-        return self.scan_path / f"{book}/{book}{ext}" if conf.cbz_mode else self.scan_path / book
+        return build_book_path(self.scan_path, book, ep)
 
     def load_from_db(self):
         incomplete_entries = []
