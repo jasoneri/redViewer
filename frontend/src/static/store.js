@@ -2,7 +2,34 @@ import {reactive, ref} from "vue";
 import { defineStore } from 'pinia'
 import axios from 'axios'
 
-export const backend = localStorage.getItem('backendUrl') || import.meta.env.LAN_IP
+let _backendUrl = localStorage.getItem('backendUrl') || import.meta.env.LAN_IP
+
+// 异步初始化后端地址
+export async function initBackend() {
+  // 优先级：localStorage > KV全局配置 > 构建时环境变量
+  const localUrl = localStorage.getItem('backendUrl');
+  if (localUrl) {
+    _backendUrl = localUrl;
+    return _backendUrl;
+  }
+  
+  try {
+    const res = await fetch('/api/config');
+    const { backendUrl } = await res.json();
+    if (backendUrl) {
+      _backendUrl = backendUrl;
+      return _backendUrl;
+    }
+  } catch (e) {
+    console.warn('获取全局配置失败，使用默认值');
+  }
+  
+  _backendUrl = import.meta.env.LAN_IP;
+  return _backendUrl;
+}
+
+// 同步获取后端地址
+export const backend = () => _backendUrl
 export let indexPage = ref(1)
 export const bookList = reactive({arr: []})
 export const filteredBookList = reactive({arr: []})
@@ -108,7 +135,7 @@ export const useSettingsStore = defineStore('settings', {
     },
     async fetchLocks() {
       try {
-        const res = await axios.get(backend + '/root/locks')
+        const res = await axios.get(backend() + '/root/locks')
         this.locks = res.data
       } catch (e) {
         console.error('获取锁状态失败', e)

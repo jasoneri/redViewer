@@ -6,6 +6,30 @@
     <p>加载中...</p>
   </div>
 
+  <!-- 连接失败时显示 -->
+  <el-card v-else-if="connectionFailed" shadow="never">
+    <template #header>
+      <el-icon color="#F56C6C"><WarningFilled /></el-icon>
+      <span style="margin-left: 8px;">无法连接后端</span>
+    </template>
+    
+    <el-alert type="error" :closable="false">
+      <p>当前后端地址: <el-tag size="small">{{ currentBackend }}</el-tag></p>
+      <p style="margin-top: 8px;">请确保后端服务已启动并可访问。</p>
+    </el-alert>
+    
+    <div style="margin-top: 16px;">
+      <el-button type="warning" @click="clearLocalConfig">
+        清除本地配置，使用默认地址
+      </el-button>
+      <p style="margin-top: 8px;">
+        <el-text type="info" size="small">
+          清除后将使用全局配置或默认后端地址
+        </el-text>
+      </p>
+    </div>
+  </el-card>
+
   <!-- 鉴权区域 -->
   <el-card v-else-if="needAuth && !isAuthenticated" shadow="never">
     <template #header>
@@ -38,7 +62,7 @@
   <div v-else>
     <div v-if="!needAuth" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
       <el-alert type="warning" :closable="false" style="flex: 1; margin-bottom: 0;">
-        <span>未配置 .secret 文件，无需鉴权</span>
+        <span>未配置 .secret 文件，请通过指引尽快设置</span>
       </el-alert>
       <el-button type="primary" link @click="startTour" style="margin-left: 10px;">
         <el-icon><Guide /></el-icon>&nbsp;超管指引
@@ -119,7 +143,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { backend, useSettingsStore } from '@/static/store.js'
 import { ElMessage } from 'element-plus'
-import { Lock, Key, Guide, Loading, CopyDocument } from '@element-plus/icons-vue'
+import { Lock, Key, Guide, Loading, CopyDocument, WarningFilled } from '@element-plus/icons-vue'
 import TabBackend from './TabBackend.vue'
 import TabCgs from './TabCgs.vue'
 import { passThroughEncrypt } from '@/utils/crypto.js'
@@ -134,6 +158,8 @@ const storedSecret = ref('')
 const authLoading = ref(false)
 const loading = ref(true)
 const needAuth = ref(true)
+const connectionFailed = ref(false)
+const currentBackend = backend()
 const tourOpen = ref(false)
 const secretPath = ref('')
 const readOnlySwitchRef = ref(null)
@@ -164,8 +190,8 @@ const readOnlyMode = computed({
 onMounted(async () => {
   try {
     const [statusRes, locksRes] = await Promise.all([
-      axios.get(backend + '/root/'),
-      axios.get(backend + '/root/locks')
+      axios.get(backend() + '/root/'),
+      axios.get(backend() + '/root/locks')
     ])
     needAuth.value = statusRes.data.has_secret
     Object.assign(locks, locksRes.data)
@@ -173,14 +199,17 @@ onMounted(async () => {
     
     if (!needAuth.value) {
       isAuthenticated.value = true
-      const pathRes = await axios.get(backend + '/root/secret-file')
+      const pathRes = await axios.get(backend() + '/root/secret-file')
       secretPath.value = pathRes.data.path
+      // 无密钥时自动弹出引导
+      startTour()
     } else {
       const cached = localStorage.getItem('rootSecret')
       if (cached) authenticate(cached, true)
     }
   } catch (e) {
-    console.error('获取状态失败', e)
+    console.error('连接后端失败', e)
+    connectionFailed.value = true
   } finally {
     loading.value = false
   }
@@ -208,7 +237,7 @@ const authenticate = async (secret, silent = false) => {
   authLoading.value = true
   try {
     const encrypted = passThroughEncrypt(`${pwd}:${Date.now()}`)
-    const res = await axios.post(backend + '/root/auth', { secret: encrypted })
+    const res = await axios.post(backend() + '/root/auth', { secret: encrypted })
     isAuthenticated.value = true
     storedSecret.value = pwd
     localStorage.setItem('rootSecret', pwd)
@@ -233,7 +262,7 @@ const updateSingleLock = async (key, val) => {
 const updateLocks = async (updates) => {
   try {
     const encrypted = passThroughEncrypt(`${storedSecret.value}:${Date.now()}`)
-    await axios.post(backend + '/root/locks', updates, {
+    await axios.post(backend() + '/root/locks', updates, {
       headers: { 'X-Secret': encrypted }
     })
     Object.assign(locks, updates)
@@ -241,7 +270,7 @@ const updateLocks = async (updates) => {
     ElMessage.success('更新成功')
   } catch {
     ElMessage.error('更新失败')
-    const res = await axios.get(backend + '/root/locks')
+    const res = await axios.get(backend() + '/root/locks')
     Object.assign(locks, res.data)
     settingsStore.setLocks(res.data)
   }
@@ -259,7 +288,7 @@ const initSecret = async () => {
   }
   initLoading.value = true
   try {
-    await axios.post(backend + '/root/init-secret', { secret: newSecret.value })
+    await axios.post(backend() + '/root/init-secret', { secret: newSecret.value })
     ElMessage.success('密钥设置成功，请继续了解其他功能')
     storedSecret.value = newSecret.value
     localStorage.setItem('rootSecret', newSecret.value)
@@ -276,6 +305,12 @@ const onTourClose = () => {
     needAuth.value = true
     isAuthenticated.value = true
   }
+}
+
+const clearLocalConfig = () => {
+  localStorage.removeItem('backendUrl')
+  ElMessage.success('本地配置已清除，正在刷新...')
+  setTimeout(() => location.reload(), 500)
 }
 </script>
 

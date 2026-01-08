@@ -55,6 +55,8 @@ codecov*
 *_local.yml
 *-lock.yaml
 *.hash
+docs/.vitepress/dist
+docs/.vitepress/cache
 # self/conf
 conf.yml
 # self/bug-report

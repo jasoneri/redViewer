@@ -55,7 +55,7 @@
               <el-col v-for="item in pagedBook" :key="item.book" :span="4" :xs="12" :sm="8" :md="6" :lg="4">
                 <el-card :body-style="{ padding: '0px' }" class="book-card">
                   <router-link :to="item.eps ? { path: '/ep_list', query: { book: item.book }} : { path: '/book', query: { book: item.book }}">
-                    <el-image :src="backend+item.first_img" class="book-image" :title="item.book" fit="cover">
+                    <el-image :src="backend()+item.first_img" class="book-image" :title="item.book" fit="cover">
                       <template #error>
                         <div class="error-container">
                           <img src="/empty.png" :alt="errorText" />
@@ -143,7 +143,7 @@
     // ------------------------后端交互 & 数据处理
     const getBooks = async(callBack) => {
       const params = {sort: sortVal.value};
-      await axios.get(backend + '/comic/', {params})
+      await axios.get(backend() + '/comic/', {params})
         .then(res => {
           apiErr.value = false
           let result = res.data
@@ -193,7 +193,7 @@
 
     onMounted(async () => {
       try {
-        const res = await axios.get(backend + '/comic/switch_ero/')
+        const res = await axios.get(backend() + '/comic/switch_ero/')
         if (res.data !== settingsStore.viewSettings.isEro) {
           settingsStore.viewSettings.isEro = res.data
         }
@@ -242,7 +242,7 @@
         background: 'rgba(0, 0, 0, 0.7)',
       })
       try {
-        await axios.post(backend + '/comic/switch_ero', null, { params: { enable } })
+        await axios.post(backend() + '/comic/switch_ero', null, { params: { enable } })
         settingsStore.toggle18Mode()
         ElMessage({
           message: enable ? '已切换至「同人志」模式' : '已切换至「普通」模式',

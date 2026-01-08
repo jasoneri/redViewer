@@ -76,7 +76,7 @@ async def update_conf(conf_content: ConfContent):
                 **({'kemono_path': conf_content.kemono_path} if conf_content.kemono_path else {}))
     conf.check_cbz()
     main_loop = asyncio.get_running_loop()
-    await lib_mgr.switch_library(conf.comic_path, main_loop)
+    await lib_mgr.switch_library(conf.comic_path, main_loop, ero=lib_mgr.ero)
     if not lib_mgr.active_cache.books_index:
         return not_found("update success, but no books exists in new path")
     return "update conf and switched library successfully"

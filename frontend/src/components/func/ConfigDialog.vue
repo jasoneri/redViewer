@@ -87,12 +87,12 @@ const onOpen = async () => {
   await settingsStore.fetchLocks()
   // 获取当前配置
   try {
-    const confRes = await axios.get(backend + '/comic/conf')
+    const confRes = await axios.get(backend() + '/comic/conf')
     confForm.path = confRes.data.path || ''
     confForm.kemono_path = confRes.data.kemono_path || ''
   } catch {}
   // 获取文件系统根目录
-  const res = await axios.get(backend + '/comic/filesystem')
+  const res = await axios.get(backend() + '/comic/filesystem')
   const roots = res.data.roots || []
   treeData.value = roots.map(root => ({
     value: root,
@@ -107,7 +107,7 @@ const loadNode = async (node, resolve) => {
     return
   }
   try {
-    const res = await axios.get(backend + '/comic/filesystem', { params: { path: node.data.value } })
+    const res = await axios.get(backend() + '/comic/filesystem', { params: { path: node.data.value } })
     const dirs = res.data.directories || []
     const sep = node.data.value.includes('\\') ? '\\' : '/'
     resolve(dirs.map(dir => ({
@@ -123,7 +123,7 @@ const loadNode = async (node, resolve) => {
 const submitConf = async () => {
   const loading = ElLoading.service({ lock: true, text: '配置更改中...' })
   try {
-    await axios.post(backend + '/comic/conf', { ...confForm })
+    await axios.post(backend() + '/comic/conf', { ...confForm })
     ElMessage.success('配置更改已成功')
     emit('submit')
     dialogVisible.value = false
@@ -147,7 +147,7 @@ const forceRescan = async () => {
   
   rescanLoading.value = true
   try {
-    const res = await axios.post(backend + '/comic/force_rescan')
+    const res = await axios.post(backend() + '/comic/force_rescan')
     ElMessage.success(`扫描完成，找到 ${res.data.book_count} 本书籍`)
     emit('rescan-finished')
     dialogVisible.value = false

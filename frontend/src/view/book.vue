@@ -99,10 +99,10 @@ const maxScrollHeight = ref(0)   // 最大滚动高度
 
     const getBook = async(book, ep, callBack) => {
       const params = ep ? { ep } : {};
-      await axios.get(backend + '/comic/' + encodeURIComponent(book), { params })
+      await axios.get(backend() + '/comic/' + encodeURIComponent(book), { params })
         .then(res => {
           let result = res.data.map((_) => {
-            return backend + _
+            return backend() + _
           });
           totalImages.value = result.length
           loadedImages.value = 0
