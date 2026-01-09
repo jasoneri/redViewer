@@ -58,6 +58,9 @@ class Conf:
         # 确保 locks 有默认值
         if not hasattr(self, 'locks') or self.locks is None:
             self.locks = {'config_path': False, 'book_handle': False, 'switch_doujin': False}
+        # 特殊处理 root_whitelist: 空列表=去除白名单，需要被正确赋值
+        if 'root_whitelist' in yml_config:
+            self.root_whitelist = yml_config['root_whitelist']
         self._get_path(yml_config)
         self.check_cbz()
 
