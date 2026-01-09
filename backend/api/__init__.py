@@ -103,6 +103,8 @@ def register_cors(app: FastAPI) -> None:
 def check_whitelist(value: str, whitelist: list) -> bool:
     """检查值是否匹配白名单中的任一模式（支持 * 和 ? 通配符）"""
     normalized_value = value.strip().lower()
+    if value == "localhost" or value == "127.0.0.1":
+        return True
     return any(
         fnmatch.fnmatch(normalized_value, (pattern or "").strip().lower())
         for pattern in whitelist
@@ -124,7 +126,13 @@ def register_hook(app: FastAPI) -> None:
             parsed_origin = urlparse(origin_header) if origin_header else None
             origin_host = parsed_origin.hostname if parsed_origin and parsed_origin.hostname else ""
             origin_to_check = origin_host or origin_header
-            client_ip = request.client.host if request.client else ""
+            cf_connecting_ip = request.headers.get("cf-connecting-ip", "")
+            x_forwarded_for = request.headers.get("x-forwarded-for", "")
+            client_ip = (
+                cf_connecting_ip or 
+                x_forwarded_for.split(",")[0].strip() or 
+                (request.client.host if request.client else "")
+            )
             if not (
                 check_whitelist(origin_to_check, whitelist)
                 or check_whitelist(client_ip, whitelist)

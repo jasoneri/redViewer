@@ -1,4 +1,4 @@
-name: Deploy Docs to Cloudflare Pages
+name: Deploy Frontend to Cloudflare Pages
 
 on:
   pull_request:
@@ -14,19 +14,19 @@ jobs:
     permissions:
       pull-requests: read
     outputs:
-      docs: ${{ steps.filter.outputs.docs }}
+      frontend: ${{ steps.filter.outputs.frontend }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
-            docs:
-              - 'docs/**'
+            frontend:
+              - 'frontend/**'
 
   deploy:
     needs: check-changes
-    if: ${{ needs.check-changes.outputs.docs == 'true' }}
+    if: ${{ needs.check-changes.outputs.frontend == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -39,19 +39,19 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: docs/package.json
+          cache-dependency-path: frontend/package.json
       
       - name: Install dependencies
         run: |
-          cd docs && npm install
+          cd frontend && npm install
       
-      - name: Build VitePress docs
+      - name: Build frontend
         run: |
-          cd docs && npm run docs:build
+          cd frontend && npm run build
       
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy docs/.vitepress/dist --project-name=redviewer-docs --branch=main --commit-dirty=true
+          command: pages deploy frontend/dist --project-name=redviewer --branch=main --commit-dirty=true

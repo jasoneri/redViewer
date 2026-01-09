@@ -27,7 +27,7 @@ hero:
     border-radius: 8px;
     text-decoration: none;
     font-size: 18px;
-    font-weight: 600; width: 85vw;
+    font-weight: 600; width: 88vw;
     box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
     transition: transform 0.2s, box-shadow 0.2s;
   ">

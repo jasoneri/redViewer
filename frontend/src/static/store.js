@@ -3,33 +3,46 @@ import { defineStore } from 'pinia'
 import axios from 'axios'
 
 let _backendUrl = localStorage.getItem('backendUrl') || import.meta.env.LAN_IP
+let _listBg = localStorage.getItem('list_bg') || null
 
-// 异步初始化后端地址
+// 异步初始化后端地址和背景 GIF
 export async function initBackend() {
   // 优先级：localStorage > KV全局配置 > 构建时环境变量
   const localUrl = localStorage.getItem('backendUrl');
+  const localBg = localStorage.getItem('list_bg');
+  
   if (localUrl) {
     _backendUrl = localUrl;
+  }
+  
+  if (localBg) {
+    _listBg = localBg;
     return _backendUrl;
   }
   
   try {
     const res = await fetch('/api/config');
-    const { backendUrl } = await res.json();
+    const { backendUrl, bgGif } = await res.json();
     if (backendUrl) {
       _backendUrl = backendUrl;
-      return _backendUrl;
+    }
+    if (bgGif) {
+      _listBg = bgGif;
     }
   } catch (e) {
     console.warn('获取全局配置失败，使用默认值');
   }
   
-  _backendUrl = import.meta.env.LAN_IP;
+  if (!localUrl) {
+    _backendUrl = import.meta.env.LAN_IP;
+  }
+  
   return _backendUrl;
 }
 
-// 同步获取后端地址
+// 同步获取后端地址和背景 GIF
 export const backend = () => _backendUrl
+export const listBg = () => _listBg
 export let indexPage = ref(1)
 export const bookList = reactive({arr: []})
 export const filteredBookList = reactive({arr: []})

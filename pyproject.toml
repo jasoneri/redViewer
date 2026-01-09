@@ -4,6 +4,7 @@ version = "1.5.0"
 description = "Add your description here"
 requires-python = ">=3.12"
 dependencies = [
+    "cryptography>=44.0.0",
     "fastapi",
     "httpx",
     "loguru>=0.7.3",

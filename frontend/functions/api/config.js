@@ -2,9 +2,10 @@ export async function onRequestGet(context) {
   const { env } = context;
   try {
     const backendUrl = await env.RV_KV.get('backendUrl');
-    return Response.json({ backendUrl: backendUrl || null });
+    const bgGif = env.BG_GIF || null;
+    return Response.json({ backendUrl: backendUrl || null, bgGif });
   } catch {
-    return Response.json({ backendUrl: null });
+    return Response.json({ backendUrl: null, bgGif: null });
   }
 }
 

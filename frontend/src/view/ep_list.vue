@@ -13,10 +13,9 @@
           />
         </div>
         <div class="grid-container">
-          <!-- <ProtectedGif
-            src="demo.gif"
-            class="background-gif" alt=""
-          /> -->
+          <ProtectedGif
+            v-if="list_bg" :src="list_bg" class="background-gif" alt=""
+          />
           <el-row :gutter="20" class="content-row">
             <el-col v-for="ep in pagedEps" :key="ep.ep" :span="4" :xs="12" :sm="8" :md="6" :lg="4">
               <el-card :body-style="{ padding: '0px' }" class="book-card">
@@ -59,7 +58,7 @@
 <script setup>
 import { ref, computed, h } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { backend, filteredBookList, pageSize } from '@/static/store.js';
+import { backend, filteredBookList, pageSize, listBg } from '@/static/store.js';
 import { ElNotification } from 'element-plus';
 import bookHandleBtn from '@/components/bookHandleBtn.vue';
 import topBottom from '@/components/topBottom.vue';
@@ -70,6 +69,7 @@ const route = useRoute();
 const router = useRouter();
 const scrollbarRef = ref(null);
 const epPage = ref(1);
+const list_bg = listBg();
 
 const bookName = computed(() => route.query.book);
 

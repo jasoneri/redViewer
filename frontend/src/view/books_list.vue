@@ -17,10 +17,9 @@
           </div>
           <!-- 列表视图 -->
           <div v-if="isListMode" class="list-container">
-            <!-- <ProtectedGif
-              src="demo.gif"
-              class="background-gif" alt=""
-            /> -->
+            <ProtectedGif
+              v-if="list_bg" :src="list_bg" class="background-gif" alt=""
+            />
           <el-table :data="pagedBook" class="content-table">
             <el-table-column prop="book" label="Book" >
               <template v-slot="{ row: item }">
@@ -47,10 +46,9 @@
           </div>
           <!-- 网格视图 -->
           <div v-else class="grid-container">
-            <!-- <ProtectedGif
-              src="demo.gif"
-              class="background-gif" alt=""
-            /> -->
+            <ProtectedGif
+              v-if="list_bg" :src="list_bg" class="background-gif" alt=""
+            />
             <el-row :gutter="20" class="content-row">
               <el-col v-for="item in pagedBook" :key="item.book" :span="4" :xs="12" :sm="8" :md="6" :lg="4">
                 <el-card :body-style="{ padding: '0px' }" class="book-card">
@@ -101,7 +99,7 @@
 <script setup>
     import {computed, h, ref, onMounted} from 'vue';
     import axios from "axios";
-    import {backend,indexPage,bookList,filteredBookList,sortVal,pageSize, useSettingsStore} from "@/static/store.js";
+    import {backend,indexPage,bookList,filteredBookList,sortVal,pageSize, useSettingsStore, listBg} from "@/static/store.js";
     import {ElNotification,ElMessage,ElLoading} from "element-plus";
     import TopBtnGroup from '@/components/TopBtnGroup.vue'
     import bookHandleBtn from '@/components/bookHandleBtn.vue'
@@ -117,6 +115,7 @@
     const filterKeyword = ref('');
     const keywords_list = ref([]);
     const scrollbarRef = ref(null)
+    const list_bg = listBg();
     const errorText = computed(() => '这目录..<br>没有图片...')
     const backendErrText = computed(() => '后端异常...')
     const emptyListText = computed(() => '没找到书籍列表，点击右上配置修改 path 看看吧...')
