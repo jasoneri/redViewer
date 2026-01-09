@@ -41,7 +41,7 @@
     const handleBook = async(handle, book, callBack) => {
       let body = {handle: handle, book: book, ep: props.epName};
       body = {...body, ...props.handleApiBodyExtra}
-      axios.post(backend + props.bookHandlePath, body)
+      axios.post(backend() + props.bookHandlePath, body)
         .then(res => {
           callBack(res.data.handled, res.data.path, props.epName)
         })

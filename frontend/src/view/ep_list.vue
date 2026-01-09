@@ -21,7 +21,7 @@
             <el-col v-for="ep in pagedEps" :key="ep.ep" :span="4" :xs="12" :sm="8" :md="6" :lg="4">
               <el-card :body-style="{ padding: '0px' }" class="book-card">
                 <router-link :to="{ path: '/book', query: { book: bookName, ep: ep.ep }}">
-                  <el-image :src="backend + ep.first_img" class="book-image" :title="ep.ep" fit="cover">
+                  <el-image :src="backend() + ep.first_img" class="book-image" :title="ep.ep" fit="cover">
                     <template #error>
                       <div class="error-container">
                         <img src="/empty.png" alt="error" />
