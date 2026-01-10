@@ -1,3 +1,4 @@
+import os
 import time
 from functools import wraps
 from fastapi import APIRouter, HTTPException, Header
@@ -12,9 +13,16 @@ root_router = APIRouter(prefix='/root')
 
 # ===== 鉴权相关 =====
 def get_secret() -> Optional[str]:
-    """读取 .secret 文件内容"""
+    """读取密钥：环境变量优先，其次文件（适配云平台部署）"""
+    if env_secret := os.getenv('RV_SECRET'):
+        return env_secret.strip()
     secret_file = conf_dir.joinpath('.secret')
     return secret_file.read_text().strip() if secret_file.exists() else None
+
+
+def is_env_secret_mode() -> bool:
+    """检查是否使用环境变量密钥模式"""
+    return bool(os.getenv('RV_SECRET'))
 
 
 def verify_secret(input_secret: str) -> bool:
@@ -115,6 +123,8 @@ async def update_locks(req: LocksUpdate, x_secret: Optional[str] = Header(None))
 
 @root_router.get("/secret-file")
 async def get_secret_path():
+    if is_env_secret_mode():
+        raise HTTPException(403, "当前使用环境变量 RV_SECRET 模式，无需文件")
     if is_auth_required():
         raise HTTPException(403, ".secret 已存在")
     return {"path": str(conf_dir.joinpath('.secret').absolute())}
@@ -122,7 +132,9 @@ async def get_secret_path():
 
 @root_router.post("/init-secret")
 async def init_secret(req: InitSecretRequest):
-    """初始化 .secret 文件（仅当不存在时）"""
+    """初始化 .secret 文件（仅当不存在时，环境变量模式下禁用）"""
+    if is_env_secret_mode():
+        raise HTTPException(403, "当前使用环境变量 RV_SECRET 模式，无法通过 API 设置")
     secret_file = conf_dir.joinpath('.secret')
     if secret_file.exists():
         raise HTTPException(403, ".secret 已存在，禁止覆盖")

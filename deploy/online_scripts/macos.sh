@@ -239,6 +239,15 @@ else
     test_update
 fi
 
+# --backend-only 模式：跳过菜单，直接启动后端
+if [ -n "$BACKEND_ONLY" ]; then
+    [ ! -d "$realProjPath" ] && echo "❌ 项目目录不存在" && exit 1
+    cd "$realProjPath" || exit
+    echo "📡 [--backend-only] 启动后端..."
+    uv run backend/app.py
+    exit 0
+fi
+
 # 用户选择菜单
 while true; do
     printf "\n\033[36m╔══════════════════════════════════╗\033[0m\n"

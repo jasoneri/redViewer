@@ -312,6 +312,18 @@ if (-not (Test-Path $realProjPath))  {
     Test-Update
 }
 
+# --backend-only 模式：跳过菜单，直接启动后端
+if ($script:backendOnly) {
+    if (-not (Test-Path $realProjPath)) {
+        Write-Host "❌ 项目目录不存在" -ForegroundColor Red
+        exit 1
+    }
+    Set-Location $realProjPath
+    Write-Host "📡 [--backend-only] 启动后端..." -ForegroundColor Cyan
+    uv run backend/app.py
+    exit 0
+}
+
 # 用户选择菜单
 while ($true) {
 
