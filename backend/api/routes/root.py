@@ -14,9 +14,7 @@ root_router = APIRouter(prefix='/root')
 def get_secret() -> Optional[str]:
     """读取 .secret 文件内容"""
     secret_file = conf_dir.joinpath('.secret')
-    if not secret_file.exists():
-        return None
-    return secret_file.read_text().strip()
+    return secret_file.read_text().strip() if secret_file.exists() else None
 
 
 def verify_secret(input_secret: str) -> bool:
@@ -26,8 +24,11 @@ def verify_secret(input_secret: str) -> bool:
     try:
         decrypted = decrypt(input_secret, stored)
         secret, timestamp = decrypted.rsplit(":", 1)
-        return (secret == stored and
-                abs(time.time() * 1000 - int(timestamp)) <= 5 * 60 * 1000)
+        # 时间戳使用毫秒格式 (JavaScript Date.now() 返回毫秒)
+        timestamp_ms = int(timestamp)
+        current_ms = int(time.time() * 1000)
+        time_window_ms = 5 * 60 * 1000  # 5分钟有效期
+        return secret == stored and abs(current_ms - timestamp_ms) <= time_window_ms
     except (ValueError, TypeError):
         return False
 

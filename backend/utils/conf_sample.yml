@@ -1,2 +1,13 @@
+# redViewer 配置文件
+#
+# 环境变量优先级高于此文件
+# 生产环境（如 Render）使用环境变量：
+#   RV_STORAGE_BACKEND=r2
+#   RV_COMIC_PATH=/tmp/comic
+#   RV_R2_PUBLIC_URL=https://your-r2-domain.com
+
 path: D:\Comic
 kemono_path: D:\pic\kemono
+
+# Storage backend: local | r2
+storage_backend: local

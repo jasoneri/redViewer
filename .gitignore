@@ -66,6 +66,7 @@ _bug_log
 /plans
 .kilocode/*
 .kilocodemodes
+.claude
 # uv
 .python-version
 uv.lock

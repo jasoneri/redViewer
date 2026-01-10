@@ -159,12 +159,12 @@ async def handle(request: Request, book: ComicHandleRequest):
     cache = lib_mgr.active_cache
     book_name, ep_name = book.book, book.ep or ""
     
-    book_path = cache.scan_strategy.build_handle_path(cache.scan_path, book_name, ep_name)
+    book_path = cache.backend.build_handle_path(cache.scan_path, book_name, ep_name)
     
     if not book_path.exists():
         return not_found(ErrorMessages.book_not_exist(book_name))
     
-    cache.scan_strategy.invalidate_cache(book_path)
+    cache.backend.invalidate_book_cache(book_path)
     
     series_dir = book_path.parent if ep_name else None
     dest = conf.to_sv_path / book_name / book_path.name if ep_name else conf.to_sv_path / book_path.name

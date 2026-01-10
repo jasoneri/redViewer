@@ -14,7 +14,8 @@ def decrypt(encrypted: str, stored_secret: str) -> str:
         key = hashlib.sha256(stored_secret.encode()).digest()
         
         cipher = Cipher(algorithms.AES(key), modes.CBC(iv), default_backend())
-        padded = cipher.decryptor().update(ciphertext) + cipher.decryptor().finalize()
+        decryptor = cipher.decryptor()
+        padded = decryptor.update(ciphertext) + decryptor.finalize()
         unpadder = padding.PKCS7(128).unpadder()
         return (unpadder.update(padded) + unpadder.finalize()).decode()
     except Exception as e:
@@ -28,5 +29,6 @@ def encrypt_for_test(raw: str, secret: str) -> str:
     cipher = Cipher(algorithms.AES(key), modes.CBC(iv), default_backend())
     padder = padding.PKCS7(128).padder()
     padded = padder.update(raw.encode()) + padder.finalize()
-    ciphertext = cipher.encryptor().update(padded) + cipher.encryptor().finalize()
+    encryptor = cipher.encryptor()
+    ciphertext = encryptor.update(padded) + encryptor.finalize()
     return base64.b64encode(iv + ciphertext).decode()

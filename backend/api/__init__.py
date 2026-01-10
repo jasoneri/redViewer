@@ -8,13 +8,14 @@ from starlette.staticfiles import StaticFiles
 
 from utils import conf
 from core import lib_mgr
+from storage import StorageBackendFactory
 from api.routes.comic import index_router
 from api.routes.kemono import index_router as kemono_index_router
 from api.routes.root import root_router
 from utils.cbz_cache import close_cbz_cache
 
 global_whitelist = ['']
-staticFiles = StaticFiles(directory=str(conf.comic_path))
+staticFiles = None  # 延迟初始化
 
 
 @asynccontextmanager
@@ -65,12 +66,18 @@ def create_app() -> FastAPI:
 
 def register_static_file(app: FastAPI) -> None:
     """
-    静态文件交互开发模式使用
-    生产使用 nginx 静态资源服务
-    这里是开发是方便本地
+    根据存储后端类型决定是否挂载 StaticFiles：
+    - local: 挂载本地静态文件服务
+    - r2: 不挂载，前端直接访问 CDN URL
     """
-    app.mount("/static", staticFiles, name="static")
-    app.mount("/static_kemono", StaticFiles(directory=str(conf.kemono_path)), name="static_kemono")
+    global staticFiles
+    backend = StorageBackendFactory.create(conf.comic_path)
+    if backend.supports_static_mount():
+        staticFiles = StaticFiles(directory=str(conf.comic_path))
+        app.mount("/static", staticFiles, name="static")
+    # kemono 路径始终挂载（如果配置了）
+    if conf.kemono_path:
+        app.mount("/static_kemono", StaticFiles(directory=str(conf.kemono_path)), name="static_kemono")
 
 
 def register_router(app: FastAPI) -> None:
@@ -125,7 +132,8 @@ def register_hook(app: FastAPI) -> None:
             origin_header = request.headers.get("origin", "") or ""
             parsed_origin = urlparse(origin_header) if origin_header else None
             origin_host = parsed_origin.hostname if parsed_origin and parsed_origin.hostname else ""
-            origin_to_check = origin_host or origin_header
+            # 始终使用 host-only 值进行主机白名单检查，避免 scheme/port 不一致问题
+            origin_to_check = origin_host
             cf_connecting_ip = request.headers.get("cf-connecting-ip", "")
             x_forwarded_for = request.headers.get("x-forwarded-for", "")
             client_ip = (
@@ -140,7 +148,8 @@ def register_hook(app: FastAPI) -> None:
                 return Response(status_code=403, content="Access denied")
         
         response = await call_next(request)
-        if request.url.path.startswith("/comic/conf") and request.method == "POST" and response.status_code == 200:
-            staticFiles.directory = str(conf.comic_path)
-            staticFiles.all_directories = staticFiles.get_directories(staticFiles.directory, None)
+        if staticFiles is not None and request.url.path.startswith("/comic/conf") \
+            and request.method == "POST" and response.status_code == 200:  # 只有在 local 模式下才更新 staticFiles
+                staticFiles.directory = str(conf.comic_path)
+                staticFiles.all_directories = staticFiles.get_directories(staticFiles.directory, None)
         return response
