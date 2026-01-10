@@ -81,10 +81,8 @@ async def get_book(u_s, book):
     return book.get()
 
 
-black_list_file = conf.kemono_path.joinpath("blacklist.json")
-
-
 async def black_list_handle(book):
+    black_list_file = conf.kemono_path.joinpath("blacklist.json")
     with open(black_list_file, 'r+', encoding='utf-8') as fp:
         black_list = json.load(fp)
         if f"{book.u_s}/{book.name}" not in black_list:

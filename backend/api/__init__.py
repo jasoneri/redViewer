@@ -10,7 +10,6 @@ from utils import conf
 from core import lib_mgr
 from storage import StorageBackendFactory
 from api.routes.comic import index_router
-from api.routes.kemono import index_router as kemono_index_router
 from api.routes.root import root_router
 from utils.cbz_cache import close_cbz_cache
 
@@ -75,8 +74,8 @@ def register_static_file(app: FastAPI) -> None:
     if backend.supports_static_mount():
         staticFiles = StaticFiles(directory=str(conf.comic_path))
         app.mount("/static", staticFiles, name="static")
-    # kemono 路径始终挂载（如果配置了）
-    if conf.kemono_path:
+    # kemono 路径挂载（如果配置了且目录存在）
+    if conf.kemono_path and conf.kemono_path.exists():
         app.mount("/static_kemono", StaticFiles(directory=str(conf.kemono_path)), name="static_kemono")
 
 
@@ -88,7 +87,10 @@ def register_router(app: FastAPI) -> None:
     """
     # 项目API
     app.include_router(index_router, prefix="", tags=['comic'])
-    app.include_router(kemono_index_router, prefix="", tags=['kemono'])
+    # kemono 路由仅在配置了路径且目录存在时注册
+    if conf.kemono_path and conf.kemono_path.exists():
+        from api.routes.kemono import index_router as kemono_index_router
+        app.include_router(kemono_index_router, prefix="", tags=['kemono'])
     app.include_router(root_router, prefix="", tags=['root'])
 
 
