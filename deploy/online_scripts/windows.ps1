@@ -29,6 +29,7 @@ $script:updateInfo = @{
     UpdateAvailable = $false
     LatestTag = $null
 }
+$script:backendOnly = $args -contains "--backend-only"
 # 创建脚本
 if (-not (Test-Path $ps1Script)) { 
     $scriptContent = Invoke-RestMethod -Uri "https://gitee.com/json_eri/redViewer/raw/master/deploy/online_scripts/windows.ps1"
@@ -45,16 +46,14 @@ function Test-Environment {
     # 检查uv
     try {
         $uvVersion = uv --version 2>&1
-        if (-not $uvVersion -or $LASTEXITCODE -ne 0) {
-            throw
-        }
-    } 
+        if (-not $uvVersion -or $LASTEXITCODE -ne 0) { throw }
+    }
     catch {
         Write-Output "[Test-Environment]❌ uv未安装"
         $envMissing = $true
     }
-    # 检查Node.js
-    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+    # 检查Node.js (--backend-only 模式跳过)
+    if (-not $script:backendOnly -and -not (Get-Command npm -ErrorAction SilentlyContinue)) {
         Write-Output "[Test-Environment]❌ Node.js未安装"
         $envMissing = $true
     }
@@ -116,8 +115,8 @@ function Install-Environment {
         uv python install 3.12 --mirror $mirrorUrl --no-cache
     }
     
-    # 安装Node.js
-    if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
+    # 安装Node.js (--backend-only 模式跳过)
+    if (-not $script:backendOnly -and -not (Get-Command npm -ErrorAction SilentlyContinue)) {
         Write-Output "[Install-Environment]下载 Node.js 中..."
         $nodeInstaller = "node-v22.16.0-x64.msi"
         $nodeUrl = "https://npmmirror.com/mirrors/node/v22.16.0/$nodeInstaller"
@@ -128,7 +127,7 @@ function Install-Environment {
         Start-Process -FilePath "msiexec.exe" -ArgumentList "/i", $installerPath -Wait
         Remove-Item $installerPath
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-        npm config set registry https://mirrors.huaweicloud.com/repository/npm/ 
+        npm config set registry https://mirrors.huaweicloud.com/repository/npm/
     }
     # 刷新环境变量
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
@@ -190,15 +189,16 @@ function Test-Update {
 
 # ===== 2. 更新函数 =====
 function Install-Dependencies {
-    # 2.4 使用uv安装后端依赖
     Write-Output "[Install-Dependencies]正在安装后端依赖..."
     Set-Location $realProjPath
     uv sync --index-url https://repo.huaweicloud.com/repository/pypi/simple
     
-    # 2.5 安装前端依赖
-    Write-Output "[Install-Dependencies]正在安装前端依赖..."
-    Set-Location frontend
-    npm i
+    # 安装前端依赖 (--backend-only 模式跳过)
+    if (-not $script:backendOnly) {
+        Write-Output "[Install-Dependencies]正在安装前端依赖..."
+        Set-Location frontend
+        npm i
+    }
 }
 
 function Invoke-Update {
