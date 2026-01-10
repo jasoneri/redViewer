@@ -43,6 +43,12 @@ export async function initBackend() {
 // 同步获取后端地址和背景 GIF
 export const backend = () => _backendUrl
 export const listBg = () => _listBg
+
+// 智能构建 URL：如果已是完整 URL 则直接返回，否则拼接后端地址
+export const buildUrl = (path) => {
+  if (!path) return ''
+  return path.startsWith('http://') || path.startsWith('https://') ? path : _backendUrl + path
+}
 export let indexPage = ref(1)
 export const bookList = reactive({arr: []})
 export const filteredBookList = reactive({arr: []})

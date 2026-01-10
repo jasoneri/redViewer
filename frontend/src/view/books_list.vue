@@ -53,7 +53,7 @@
               <el-col v-for="item in pagedBook" :key="item.book" :span="4" :xs="12" :sm="8" :md="6" :lg="4">
                 <el-card :body-style="{ padding: '0px' }" class="book-card">
                   <router-link :to="item.eps ? { path: '/ep_list', query: { book: item.book }} : { path: '/book', query: { book: item.book }}">
-                    <el-image :src="backend()+item.first_img" class="book-image" :title="item.book" fit="cover">
+                    <el-image :src="buildUrl(item.first_img)" class="book-image" :title="item.book" fit="cover">
                       <template #error>
                         <div class="error-container">
                           <img src="/empty.png" :alt="errorText" />
@@ -99,7 +99,7 @@
 <script setup>
     import {computed, h, ref, onMounted} from 'vue';
     import axios from "axios";
-    import {backend,indexPage,bookList,filteredBookList,sortVal,pageSize, useSettingsStore, listBg} from "@/static/store.js";
+    import {backend,indexPage,bookList,filteredBookList,sortVal,pageSize, useSettingsStore, listBg, buildUrl} from "@/static/store.js";
     import {ElNotification,ElMessage,ElLoading} from "element-plus";
     import TopBtnGroup from '@/components/TopBtnGroup.vue'
     import bookHandleBtn from '@/components/bookHandleBtn.vue'

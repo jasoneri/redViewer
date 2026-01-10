@@ -62,7 +62,7 @@
 </template>
 
 <script setup>
-    import {backend,bookList,filteredBookList} from '@/static/store.js'
+    import {backend,bookList,filteredBookList,buildUrl} from '@/static/store.js'
     import axios from 'axios'
     import {useRoute,useRouter} from 'vue-router'
     import {reactive,markRaw,computed,ref,h} from "vue"
@@ -101,9 +101,7 @@ const maxScrollHeight = ref(0)   // 最大滚动高度
       const params = ep ? { ep } : {};
       await axios.get(backend() + '/comic/' + encodeURIComponent(book), { params })
         .then(res => {
-          let result = res.data.map((_) => {
-            return backend() + _
-          });
+          let result = res.data.map((_) => buildUrl(_));
           totalImages.value = result.length
           loadedImages.value = 0
           callBack(result)
