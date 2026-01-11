@@ -14,7 +14,7 @@ hero:
       link: /deploy/
     - theme: alt
       text: 🎸功能预览
-      link: /guide
+      link: /guide/
 
 ---
 
