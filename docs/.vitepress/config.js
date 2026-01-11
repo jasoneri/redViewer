@@ -42,6 +42,12 @@ export default defineConfig({
         items: [
           { text: '📝更新历史', link: '/changelog/' }
         ]
+      },
+      {
+        text: '其他',
+        items: [
+          { text: '🍼贡献/投喂', link: '/contribute/feed/' }
+        ]
       }
     ],
 

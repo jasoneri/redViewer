@@ -4,7 +4,12 @@
 请提交 [issue](https://github.com/jasoneri/redViewer/issues) 或进 [QQ群](https://qm.qq.com/q/T2SONVQmiW) 提问（进群的话为了区别，记得说明问的是 rV）
 :::
 
-## 1. npm 相关问题
+## 1. 部署相关
+
+### win 部署的一些修正可能
+
+- 激活 win 系统
+- 控制面板 > 时钟与区域 > 区域 > 更改系统区域设置 > 勾选beta版 unicode UTF-8 > 重启
 
 ### `npm i` / `安装前端依赖` 一直转圈无法启动
 
