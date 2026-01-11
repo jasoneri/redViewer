@@ -12,10 +12,11 @@ from pathlib import Path
 from typing import List, Optional, Dict, Tuple
 from urllib.parse import quote
 
-from utils import Var, conf
+from utils import Var
 from utils.mode_strategy import ModeStrategyFactory
 from models import BookData
 from watchdog.observers import Observer
+from infra import backend
 from .base import StorageBackend
 
 
@@ -35,7 +36,6 @@ class LocalStorageBackend(StorageBackend):
         self.scan_path = self.comic_path / f"_{Var.doujinshi}" if ero else self.comic_path
         self.db_path = self.comic_path / "rV.db"
         self.mode_strategy = ModeStrategyFactory.create(self.scan_path)
-        self._conf = conf
         self._var = Var
         self._create_table()
 
@@ -156,7 +156,7 @@ class LocalStorageBackend(StorageBackend):
         fs_path = f"{book}/{ep}" if ep else book
         prefix = self.get_static_prefix()
 
-        if self._conf.cbz_mode:
+        if backend.config.cbz_mode:
             return f"/comic/cbz_image/{quote(fs_path)}.cbz/{quote(image_name)}"
         else:
             return f"{prefix}/{quote(fs_path)}/{image_name}"
@@ -169,7 +169,7 @@ class LocalStorageBackend(StorageBackend):
         safe_path = quote(fs_path)
         prefix = self.get_static_prefix()
 
-        if self._conf.cbz_mode:
+        if backend.config.cbz_mode:
             formatted = [f"/comic/cbz_image/{safe_path}.cbz/{quote(page)}" for page in pages]
         else:
             formatted = [f"{prefix}/{safe_path}/{page}" for page in pages]
@@ -192,10 +192,10 @@ class LocalStorageBackend(StorageBackend):
 
     def build_book_path(self, book: str, ep: str = None) -> Path:
         """构建书籍路径的统一方法"""
-        ext = ".cbz" if self._conf.cbz_mode else ""
+        ext = ".cbz" if backend.config.cbz_mode else ""
         if ep:
             return self.scan_path / f"{book}/{ep}{ext}"
-        return self.scan_path / f"{book}/{book}{ext}" if self._conf.cbz_mode else self.scan_path / book
+        return self.scan_path / f"{book}/{book}{ext}" if backend.config.cbz_mode else self.scan_path / book
 
     def invalidate_book_cache(self, book_path: Path):
         self.mode_strategy.invalidate_cache(book_path)

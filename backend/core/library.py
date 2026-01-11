@@ -7,7 +7,7 @@ from .logging import get_logger
 from .pages import BookPagesHandler
 from .watcher import ComicChangeHandler
 
-from utils import conf, Var
+from utils import Var
 from utils.cbz_cache import close_cbz_cache
 from models import BookData
 from storage import StorageBackendFactory

@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from urllib.parse import quote
 
-from . import conf
+from infra import backend
 
 # 支持的图片扩展名
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'}
@@ -44,7 +44,8 @@ class KemonoBookCursor(BookCursor):
 
 def build_book_path(base_path: Path, book: str, ep: str = None) -> Path:
     """构建书籍路径的统一方法"""
-    ext = ".cbz" if conf.cbz_mode else ""
+    cbz_mode = backend.config.cbz_mode
+    ext = ".cbz" if cbz_mode else ""
     if ep:
         return base_path / f"{book}/{ep}{ext}"
-    return base_path / f"{book}/{book}{ext}" if conf.cbz_mode else base_path / book
+    return base_path / f"{book}/{book}{ext}" if cbz_mode else base_path / book

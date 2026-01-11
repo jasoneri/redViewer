@@ -8,7 +8,7 @@ Factory class for creating storage backend instances based on configuration.
 from pathlib import Path
 from typing import Optional
 
-from utils import conf
+from infra import backend
 from .base import StorageBackend
 
 
@@ -36,7 +36,7 @@ class StorageBackendFactory:
         """
 
         if backend_type is None:
-            backend_type = getattr(conf, 'storage_backend', 'local')
+            backend_type = backend.config.storage_backend
 
         cache_key = f"{comic_path}|ero={ero}|type={backend_type}"
 
@@ -63,7 +63,7 @@ class StorageBackendFactory:
     @classmethod
     def get_instance(cls, comic_path: Path, ero: int = 0) -> Optional[StorageBackend]:
         """获取已缓存的实例（如果存在）"""
-        backend_type = getattr(conf, 'storage_backend', 'local')
+        backend_type = backend.config.storage_backend
         cache_key = f"{comic_path}|ero={ero}|type={backend_type}"
         return cls._instances.get(cache_key)
 

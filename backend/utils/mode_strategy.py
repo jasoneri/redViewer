@@ -6,8 +6,9 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List, Optional, Tuple
 
-from . import extract_parent_and_chapter, conf
+from . import extract_parent_and_chapter
 from .butils import IMAGE_EXTENSIONS
+from infra import backend
 
 expect_dir_regex = re.compile(r"^_")
 accpect_dir = lambda _: not bool(expect_dir_regex.search(_))
@@ -135,6 +136,6 @@ class CBZModeStrategy(ModeStrategy):
 class ModeStrategyFactory:
     @staticmethod
     def create(comic_path: Path) -> ModeStrategy:
-        if conf.cbz_mode:
+        if backend.config.cbz_mode:
             return CBZModeStrategy()
         return DirectoryModeStrategy()
