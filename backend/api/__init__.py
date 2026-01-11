@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="rV", description="https://github.com/jasoneri/redViewer", version="1.5.0",
+        title="rV", description="https://github.com/jasoneri/redViewer", version="1.5.1",
         docs_url="/api/docs", openapi_url="/api/openapi.json", redoc_url=None, lifespan=lifespan
     )
     register_cors(app)
