@@ -9,9 +9,13 @@ import App from './App.vue'
 import { createPinia } from 'pinia'
 // 引入vue-router
 import router from './router'
+import { initBackend } from './static/store'
 
-createApp(App)
-  .use(router)
-  .use(ElementPlus)
-  .use(createPinia())
-  .mount('#app')
+// 初始化后端配置后再挂载应用
+initBackend().then(() => {
+  createApp(App)
+    .use(router)
+    .use(ElementPlus)
+    .use(createPinia())
+    .mount('#app')
+})

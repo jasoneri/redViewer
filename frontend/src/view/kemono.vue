@@ -31,7 +31,7 @@
 
     // ------------------------后端交互 & 数据处理
     const getArtists = async(callBack) => {
-      await axios.get(backend + '/kemono/')
+      await axios.get(backend() + '/kemono/')
         .then(res => {
           let result = res.data.map((_) => {
             return { artists: _}

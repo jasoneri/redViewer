@@ -55,6 +55,8 @@ codecov*
 *_local.yml
 *-lock.yaml
 *.hash
+docs/.vitepress/dist
+docs/.vitepress/cache
 # self/conf
 conf.yml
 # self/bug-report
@@ -63,6 +65,8 @@ _bug_log
 .cursor
 /plans
 .kilocode/*
+.kilocodemodes
+.claude
 # uv
 .python-version
 uv.lock

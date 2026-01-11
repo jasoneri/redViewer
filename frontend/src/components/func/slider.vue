@@ -57,7 +57,7 @@ const initObserver = () => {
   // 确保有图片元素
   const imgs = document.querySelector('.demo-image__lazy')?.querySelectorAll('.el-image')
   if (!imgs || imgs.length === 0) {
-    console.log('没有找到图片元素，延迟初始化 observer') // TODO[1] 此处放有马加奈动图加载
+    console.log('没有找到图片元素，延迟初始化 observer')
     setTimeout(initObserver, 300)
     return
   }

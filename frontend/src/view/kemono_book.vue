@@ -33,10 +33,10 @@
     const getBook = async(book, callBack) => {
       const params = {u_s: u_s, book: book};
       debugger;
-      await axios.get(backend + '/kemono/book/', {params})
+      await axios.get(backend() + '/kemono/book/', {params})
         .then(res => {
           let result = res.data.map((_) => {
-            return backend + _
+            return backend() + _
           });
           callBack(result)
         })

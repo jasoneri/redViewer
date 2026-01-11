@@ -30,6 +30,8 @@ releasesApiUrl="https://api.github.com/repos/$owner/$repo/releases"
 updateInfo=("false" "")
 SPEED_ASKED=""
 SPEED_PREFIX=""
+BACKEND_ONLY=""
+[[ "$*" == *"--backend-only"* ]] && BACKEND_ONLY="true"
 
 source $HOME/.zshrc
 
@@ -46,8 +48,8 @@ test_environment() {
         echo "❌ uv未安装"
         envMissing=true
     fi
-    
-    if ! command -v npm &> /dev/null; then
+    # --backend-only 模式跳过 Node.js 检查
+    if [ -z "$BACKEND_ONLY" ] && ! command -v npm &> /dev/null; then
         echo "❌ Node.js未安装"
         envMissing=true
     fi
@@ -103,12 +105,12 @@ install_environment() {
         source $HOME/.zshrc
     fi
     
-    # 安装Node.js
-    if ! command -v npm &> /dev/null; then
+    # 安装Node.js (--backend-only 模式跳过)
+    if [ -z "$BACKEND_ONLY" ] && ! command -v npm &> /dev/null; then
         echo "安装 Node.js 中..."
         brew install node
         source $HOME/.zshrc
-        npm config set registry https://mirrors.huaweicloud.com/repository/npm/ 
+        npm config set registry https://mirrors.huaweicloud.com/repository/npm/
     fi
     echo "✅ 环境安装完成"
 }
@@ -179,9 +181,12 @@ invoke_update() {
     cd "$realProjPath" || exit
     echo "正在安装后端依赖..."
     uv sync --index-url https://repo.huaweicloud.com/repository/pypi/simple
-    echo "正在安装前端依赖..."
-    cd frontend || exit
-    npm i
+    # --backend-only 模式跳过前端依赖
+    if [ -z "$BACKEND_ONLY" ]; then
+        echo "正在安装前端依赖..."
+        cd frontend || exit
+        npm i
+    fi
 
     cd "$originalWorkingDir" || exit
     echo $latestTag > $localVerFile
@@ -223,6 +228,15 @@ if [ ! -d "$realProjPath" ]; then
     invoke_update
 else
     test_update
+fi
+
+# --backend-only 模式：跳过菜单，直接启动后端
+if [ -n "$BACKEND_ONLY" ]; then
+    [ ! -d "$realProjPath" ] && echo "❌ 项目目录不存在" && exit 1
+    cd "$realProjPath" || exit
+    echo "📡 [--backend-only] 启动后端..."
+    uv run backend/app.py
+    exit 0
 fi
 
 # 用户选择菜单

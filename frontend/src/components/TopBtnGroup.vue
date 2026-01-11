@@ -51,7 +51,6 @@
 
   <ConfigDialog
     :visible="dialogVisible"
-    :initial-data="confForm"
     @update:visible="dialogVisible = $event"
     @submit="onConfSubmit"
     @rescan-finished="props.reload()"
@@ -68,7 +67,7 @@
 </template>
 
 <script setup>
-import {ref, onMounted, computed, reactive} from 'vue'
+import {ref, onMounted, computed} from 'vue'
 import {Filter, RefreshRight, Menu, Sort, Operation, Switch, Grid} from "@element-plus/icons-vue";
 import {ElMessage} from 'element-plus'
 import { useSettingsStore } from "@/static/store.js"
@@ -79,7 +78,6 @@ import FilterDialog from '@/components/func/FilterDialog.vue'
 const props = defineProps({
   modelValue: {type: Boolean, required: true},
   reload:{type: Function, required: true},
-  handleConf:{type: Function, required: false},
   items: {type: Object, required: false},
   filteredItems: {type: Object, required: false},
   handleFilter: {type: Function, required: false},
@@ -149,9 +147,6 @@ const dialogVisible = ref(false);
 const isAdding = ref(false)
 const optionName = ref('')
 
-// 配置表单相关
-const confForm = reactive({ path: '', kemono_path: '' })
-
 const filterDialogVisible = ref(false)
 
 const open_filter = () => {
@@ -167,19 +162,12 @@ const handleFilter = (keyword) => {
 }
 
 const showConfDialog = () => {
-  if (props.handleConf) {
-    props.handleConf((data) => {
-      confForm.path = data.path || ''
-      confForm.kemono_path = data.kemono_path || ''
-      dialogVisible.value = true
-    })
-  }
+  dialogVisible.value = true
 }
 
-const onConfSubmit = (data) => {
-  if (props.handleConf) {
-    props.handleConf(data)
-  }
+const onConfSubmit = () => {
+  if (props.handleFilter) props.handleFilter('')
+  props.reload()
 }
 const onAddOption = () => {
   isAdding.value = true

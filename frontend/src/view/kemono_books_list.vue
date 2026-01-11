@@ -95,7 +95,7 @@
     // ------------------------后端交互 & 数据处理
     const getBooks = async(callBack) => {
       const params = {u_s: u_s, sort: sortVal.value};
-      await axios.get(backend + '/kemono/book/', {params})
+      await axios.get(backend() + '/kemono/book/', {params})
         .then(res => {
           let result = res.data.map((_) => {
             return { book: _}

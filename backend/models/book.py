@@ -1,42 +1,38 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import re
-from urllib.parse import quote
+from typing import TYPE_CHECKING
 
-from utils import conf, Var
+if TYPE_CHECKING:
+    from storage.base import StorageBackend
 
 
 class BookData:
-    def __init__(self, book: str, ep: str, mtime: float, first_img: str = None, ero=0):
+    def __init__(self, book: str, ep: str, mtime: float, first_img: str = None, ero=0, backend: 'StorageBackend' = None):
         self.book = book
         self.ep = ep
         self.mtime = mtime
         self.first_img = first_img
         self.ero = ero
-    
+        self.backend = backend
+
     @property
     def name(self) -> str:
         """display_name: 用于排序和显示"""
         return f"{self.book}_{self.ep}" if self.ep else self.book
-    
+
     @property
     def fs_path(self) -> str:
         """相对于 scan_path 的文件系统路径"""
         return f"{self.book}/{self.ep}" if self.ep else self.book
-    
+
     def to_api(self):
-        if self.first_img:
-            prefix = f"/static/_{Var.doujinshi}" if self.ero else "/static"
-            if conf.cbz_mode:
-                first_img = f"/comic/cbz_image/{quote(self.fs_path)}.cbz/{quote(self.first_img)}"
-            else:
-                first_img = f"{prefix}/{quote(self.fs_path)}/{self.first_img}"
-        else:
-            first_img = None
+        first_img = self.backend.get_image_url(self.book, self.ep, self.first_img) if self.first_img and self.backend else None
         return {"book": self.book, "ep": self.ep, "first_img": first_img}
 
 
 class BookSort:
+    """书籍章节排序辅助类"""
     section_regex = re.compile(r'_第?(\d+\.?\d*)([话卷])')
     volume_regex = re.compile(r'_第?(\d+\.?\d*)卷')
 
@@ -60,6 +56,7 @@ class BookSort:
 
 
 class QuerySort:
+    """Comic 查询排序类"""
     sort_funcs = {
         'time': lambda x: x.mtime,
         'name': lambda x: x.name

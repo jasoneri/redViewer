@@ -1,7 +1,7 @@
 <template>
-    <el-container>
+    <el-container class="books-list-container">
       <el-header height="5vh" :style="`min-height: 40px`">
-        <TopBtnGroup :reload="reload" :items="bookList" :filtered-items="filteredBookList" :handle-conf="handleConf"
+        <TopBtnGroup :reload="reload" :items="bookList" :filtered-items="filteredBookList"
                      :handle-filter="handleFilter" :keywords_list="keywords_list" v-model="isListMode" @send_sort="sv_sort" @switchEro="handleswitchEro"/>
       </el-header>
       <el-main>
@@ -16,7 +16,11 @@
             />
           </div>
           <!-- 列表视图 -->
-          <el-table v-if="isListMode" :data="pagedBook">
+          <div v-if="isListMode" class="list-container">
+            <ProtectedGif
+              v-if="list_bg" :src="list_bg" class="background-gif" alt=""
+            />
+          <el-table :data="pagedBook" class="content-table">
             <el-table-column prop="book" label="Book" >
               <template v-slot="{ row: item }">
                 <el-space wrap :size="'small'">
@@ -39,13 +43,17 @@
               </template>
             </el-table-column>
           </el-table>
+          </div>
           <!-- 网格视图 -->
           <div v-else class="grid-container">
-            <el-row :gutter="20">
+            <ProtectedGif
+              v-if="list_bg" :src="list_bg" class="background-gif" alt=""
+            />
+            <el-row :gutter="20" class="content-row">
               <el-col v-for="item in pagedBook" :key="item.book" :span="4" :xs="12" :sm="8" :md="6" :lg="4">
                 <el-card :body-style="{ padding: '0px' }" class="book-card">
                   <router-link :to="item.eps ? { path: '/ep_list', query: { book: item.book }} : { path: '/book', query: { book: item.book }}">
-                    <el-image :src="backend+item.first_img" class="book-image" :title="item.book" fit="cover">
+                    <el-image :src="buildUrl(item.first_img)" class="book-image" :title="item.book" fit="cover">
                       <template #error>
                         <div class="error-container">
                           <img src="/empty.png" :alt="errorText" />
@@ -91,11 +99,12 @@
 <script setup>
     import {computed, h, ref, onMounted} from 'vue';
     import axios from "axios";
-    import {backend,indexPage,bookList,filteredBookList,sortVal,pageSize, useSettingsStore} from "@/static/store.js";
+    import {backend,indexPage,bookList,filteredBookList,sortVal,pageSize, useSettingsStore, listBg, buildUrl} from "@/static/store.js";
     import {ElNotification,ElMessage,ElLoading} from "element-plus";
     import TopBtnGroup from '@/components/TopBtnGroup.vue'
     import bookHandleBtn from '@/components/bookHandleBtn.vue'
     import topBottom from '@/components/topBottom.vue'
+    import ProtectedGif from '@/components/func/ProtectedGif.vue'
     import { Filter } from '@element-plus/icons-vue';
     import { EpisodesIcon } from '@/icons';
 
@@ -106,6 +115,7 @@
     const filterKeyword = ref('');
     const keywords_list = ref([]);
     const scrollbarRef = ref(null)
+    const list_bg = listBg();
     const errorText = computed(() => '这目录..<br>没有图片...')
     const backendErrText = computed(() => '后端异常...')
     const emptyListText = computed(() => '没找到书籍列表，点击右上配置修改 path 看看吧...')
@@ -132,7 +142,7 @@
     // ------------------------后端交互 & 数据处理
     const getBooks = async(callBack) => {
       const params = {sort: sortVal.value};
-      await axios.get(backend + '/comic/', {params})
+      await axios.get(backend() + '/comic/', {params})
         .then(res => {
           apiErr.value = false
           let result = res.data
@@ -150,40 +160,6 @@
       const end = start + pageSize;
       return filteredBookList.arr.slice(start, end);
     });
-    const handleConf = async(param) => {
-      if (typeof param === "function") {
-        // GET 配置，返回 JSON 对象
-        await axios.get(backend + '/comic/conf')
-          .then(res => {param(res.data);})
-          .catch(function (error) {console.log(error);})
-      } else if (typeof param === "object") {
-        // POST 配置，发送 JSON 对象
-        await axios.post(backend + '/comic/conf', param)
-          .then(res => {
-            reload();
-            ElNotification.success({
-              title: '配置更改已成功',
-              message: h('i', { style: 'white-space: pre-wrap; word-wrap: break-word;' }, `配置后端的静态资源锚点已更新`),
-              offset: 150,
-              duration: 1300
-            })
-            handleFilter('')  // 换配置时清除筛选值
-          })
-          .catch(function (error) {
-            if (error.response?.status === 403) {
-              ElMessage.error('路径配置已被锁定')
-            } else {
-              ElNotification.error({
-                title: 'Error',
-                message: '处理配置发生错误，自行去终端窗口查看报错堆栈',
-                offset: 100,
-              })
-            }
-          })
-      } else {
-         console.log("handleConf-param type = " + typeof param);
-      }
-    }
     // ------------------------渲染相关
     const init = () => {
       // 从 localStorage 读取排序值
@@ -216,7 +192,7 @@
 
     onMounted(async () => {
       try {
-        const res = await axios.get(backend + '/comic/switch_ero/')
+        const res = await axios.get(backend() + '/comic/switch_ero/')
         if (res.data !== settingsStore.viewSettings.isEro) {
           settingsStore.viewSettings.isEro = res.data
         }
@@ -265,7 +241,7 @@
         background: 'rgba(0, 0, 0, 0.7)',
       })
       try {
-        await axios.post(backend + '/comic/switch_ero', null, { params: { enable } })
+        await axios.post(backend() + '/comic/switch_ero', null, { params: { enable } })
         settingsStore.toggle18Mode()
         ElMessage({
           message: enable ? '已切换至「同人志」模式' : '已切换至「普通」模式',
@@ -305,6 +281,10 @@
 <style lang="scss" scoped>
     @use '@/styles/books_list.scss';
     @use '@/styles/empty.scss';
+
+.books-list-container {
+  position: relative;
+}
 
 .eps-badge {
   display: inline-flex;

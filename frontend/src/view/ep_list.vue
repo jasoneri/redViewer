@@ -13,11 +13,14 @@
           />
         </div>
         <div class="grid-container">
-          <el-row :gutter="20">
+          <ProtectedGif
+            v-if="list_bg" :src="list_bg" class="background-gif" alt=""
+          />
+          <el-row :gutter="20" class="content-row">
             <el-col v-for="ep in pagedEps" :key="ep.ep" :span="4" :xs="12" :sm="8" :md="6" :lg="4">
               <el-card :body-style="{ padding: '0px' }" class="book-card">
                 <router-link :to="{ path: '/book', query: { book: bookName, ep: ep.ep }}">
-                  <el-image :src="backend + ep.first_img" class="book-image" :title="ep.ep" fit="cover">
+                  <el-image :src="buildUrl(ep.first_img)" class="book-image" :title="ep.ep" fit="cover">
                     <template #error>
                       <div class="error-container">
                         <img src="/empty.png" alt="error" />
@@ -55,16 +58,18 @@
 <script setup>
 import { ref, computed, h } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { backend, filteredBookList, pageSize } from '@/static/store.js';
+import { backend, filteredBookList, pageSize, listBg, buildUrl } from '@/static/store.js';
 import { ElNotification } from 'element-plus';
 import bookHandleBtn from '@/components/bookHandleBtn.vue';
 import topBottom from '@/components/topBottom.vue';
 import TopBtnGroupOfEp from '@/components/TopBtnGroupOfEp.vue';
+import ProtectedGif from '@/components/func/ProtectedGif.vue';
 
 const route = useRoute();
 const router = useRouter();
 const scrollbarRef = ref(null);
 const epPage = ref(1);
+const list_bg = listBg();
 
 const bookName = computed(() => route.query.book);
 

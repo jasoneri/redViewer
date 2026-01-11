@@ -2,7 +2,53 @@ import {reactive, ref} from "vue";
 import { defineStore } from 'pinia'
 import axios from 'axios'
 
-export const backend = localStorage.getItem('backendUrl') || import.meta.env.LAN_IP
+let _backendUrl = localStorage.getItem('backendUrl') || import.meta.env.LAN_IP
+let _listBg = localStorage.getItem('list_bg') || null
+
+// 异步初始化后端地址和背景 GIF
+export async function initBackend() {
+  // 优先级：localStorage > KV全局配置 > 构建时环境变量
+  const localUrl = localStorage.getItem('backendUrl');
+  const localBg = localStorage.getItem('list_bg');
+  
+  if (localUrl) {
+    _backendUrl = localUrl;
+  }
+  
+  if (localBg) {
+    _listBg = localBg;
+    return _backendUrl;
+  }
+  
+  try {
+    const res = await fetch('/api/config');
+    const { backendUrl, bgGif } = await res.json();
+    if (backendUrl) {
+      _backendUrl = backendUrl;
+    }
+    if (bgGif) {
+      _listBg = bgGif;
+    }
+  } catch (e) {
+    console.warn('获取全局配置失败，使用默认值');
+  }
+  
+  if (!localUrl) {
+    _backendUrl = import.meta.env.LAN_IP;
+  }
+  
+  return _backendUrl;
+}
+
+// 同步获取后端地址和背景 GIF
+export const backend = () => _backendUrl
+export const listBg = () => _listBg
+
+// 智能构建 URL：如果已是完整 URL 则直接返回，否则拼接后端地址
+export const buildUrl = (path) => {
+  if (!path) return ''
+  return path.startsWith('http://') || path.startsWith('https://') ? path : _backendUrl + path
+}
 export let indexPage = ref(1)
 export const bookList = reactive({arr: []})
 export const filteredBookList = reactive({arr: []})
@@ -26,7 +72,8 @@ export const useSettingsStore = defineStore('settings', {
       showSlider: false,
       showNavBtn: true,
       showCenterNextPrev: true,
-      readingMode: 'scroll'  // 'scroll' | 'page'
+      readingMode: 'scroll',  // 'scroll' | 'page'
+      btnGroupPosition: 'top'  // 'top' | 'bottom'
     })),
     pageRecords: JSON.parse(localStorage.getItem('pageRecords') || '{}'),
     scrollConf: JSON.parse(localStorage.getItem('scrollConf') || JSON.stringify({
@@ -61,6 +108,10 @@ export const useSettingsStore = defineStore('settings', {
     },
     setReadingMode(mode) {
       this.displaySettings.readingMode = mode
+      localStorage.setItem('displaySettings', JSON.stringify(this.displaySettings))
+    },
+    setBtnGroupPosition(position) {
+      this.displaySettings.btnGroupPosition = position
       localStorage.setItem('displaySettings', JSON.stringify(this.displaySettings))
     },
     savePageRecord(bookName, page) {
@@ -103,7 +154,7 @@ export const useSettingsStore = defineStore('settings', {
     },
     async fetchLocks() {
       try {
-        const res = await axios.get(backend + '/root/locks')
+        const res = await axios.get(backend() + '/root/locks')
         this.locks = res.data
       } catch (e) {
         console.error('获取锁状态失败', e)

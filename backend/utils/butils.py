@@ -1,7 +1,13 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import re
+from pathlib import Path
 from urllib.parse import quote
+
+from infra import backend
+
+# 支持的图片扩展名
+IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'}
 
 
 class BookCursor:
@@ -34,3 +40,12 @@ class KemonoBookCursor(BookCursor):
         self.u_s = u_s
         super(KemonoBookCursor, self).__init__(book_name, pages, sort_func)
         self.static = f"/static_kemono/{u_s}/"
+
+
+def build_book_path(base_path: Path, book: str, ep: str = None) -> Path:
+    """构建书籍路径的统一方法"""
+    cbz_mode = backend.config.cbz_mode
+    ext = ".cbz" if cbz_mode else ""
+    if ep:
+        return base_path / f"{book}/{ep}{ext}"
+    return base_path / f"{book}/{book}{ext}" if cbz_mode else base_path / book
