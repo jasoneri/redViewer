@@ -105,14 +105,14 @@ class ComicCacheManager:
         with self._index_lock:
             if (book, ep) in self.books_index:
                 del self.books_index[(book, ep)]
-        logger.debug(f"Removed from cache: {book}/{ep}")
+                logger.debug(f"Removed from cache: {book}/{ep}")  # must be set only after del, to reduce debug-log!
 
     def set_handle(self, book: str, ep: str, handle: str):
         self.backend.set_book_handle(book, ep, handle)
         with self._index_lock:
             if (book, ep) in self.books_index:
                 del self.books_index[(book, ep)]
-        logger.debug(f"Set handle '{handle}' for: {book}/{ep}")
+                logger.debug(f"Set handle '{handle}' for: {book}/{ep}")  # must be set only after del, to reduce debug-log!
 
     def reset_exist_flags(self):
         """重置 exist 字段并清空内存缓存"""
