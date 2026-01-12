@@ -143,7 +143,7 @@ async def handle(request: Request, book: ComicHandleRequest):
         return not_found(ErrorMessages.book_not_exist(book_name))
     cache.backend.invalidate_book_cache(book_path)
     series_dir = book_path.parent if ep_name else None
-    dest = backend.config.to_sv_path / book_name / book_path.name if ep_name else backend.config.to_sv_path / book_path.name
+    dest = cache.backend.build_save_path(book_name, book_path.name if ep_name else "")
     lp = asyncio.get_event_loop()
     lp.run_in_executor(executor, _handle_and_cleanup, book_path, book.handle, dest, series_dir)
     cache.set_handle(book_name, ep_name, book.handle)

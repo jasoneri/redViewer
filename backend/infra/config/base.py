@@ -19,32 +19,26 @@ class ConfigBackend(ABC):
     @abstractmethod
     def get(self, key: str, default: Any = None) -> Any:
         """获取配置值"""
-        pass
     
     @abstractmethod
     def set(self, key: str, value: Any) -> bool:
         """设置配置值，返回是否成功"""
-        pass
     
     @abstractmethod
     def update(self, **kwargs) -> bool:
         """批量更新配置"""
-        pass
     
     @abstractmethod
     def is_writable(self) -> bool:
         """是否支持持久化写入"""
-        pass
     
     @abstractmethod
     def reload(self):
         """重新加载配置"""
-        pass
     
     @abstractmethod
     def get_content(self) -> str:
         """获取原始配置内容（用于显示）"""
-        pass
     
     # ========== 便捷属性 ==========
     

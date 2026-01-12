@@ -260,6 +260,10 @@ class LocalStorageBackend(StorageBackend):
             return self.scan_path / f"{book}/{ep}{ext}"
         return self.scan_path / f"{book}/{book}{ext}" if backend.config.cbz_mode else self.scan_path / book
 
+    def build_save_path(self, book: str, ep: str) -> Path:
+        sv_base = self.comic_path / '_save' / self._var.doujinshi if self.ero else self.comic_path / '_save'
+        return self.mode_strategy.build_save_path(sv_base, book, ep)
+
     def invalidate_book_cache(self, book_path: Path):
         self.mode_strategy.invalidate_cache(book_path)
 

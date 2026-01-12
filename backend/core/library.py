@@ -1,5 +1,6 @@
 import asyncio
 import threading
+import contextlib
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
@@ -155,10 +156,8 @@ class ComicLibraryManager:
         # 取消正在进行的后台同步任务
         if self._background_sync_task and not self._background_sync_task.done():
             self._background_sync_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._background_sync_task
-            except asyncio.CancelledError:
-                pass
 
         self.active_path = new_comic_path
 

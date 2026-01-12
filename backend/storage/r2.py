@@ -125,19 +125,15 @@ class R2StorageBackend(StorageBackend):
 
     def save_book_to_cache(self, book: str, ep: str, mtime: float, first_img: str):
         """静态索引模式不支持写入"""
-        pass  # 静态模式下忽略写入操作
 
     def save_books_batch(self, books_data: List[Tuple]):
         """静态索引模式不支持写入"""
-        pass
 
     def remove_book_from_cache(self, book: str, ep: str):
         """静态索引模式不支持删除"""
-        pass
 
     def set_book_handle(self, book: str, ep: str, handle: str):
         """静态索引模式不支持 handle 操作"""
-        pass
 
     def reset_cache(self):
         """重置索引缓存，下次访问时重新加载"""
@@ -165,8 +161,10 @@ class R2StorageBackend(StorageBackend):
     # ========== Handle 操作路径 ==========
 
     def build_handle_path(self, scan_path: Path, book: str, ep: str) -> Path:
-        # R2 模式下不支持本地 handle 操作
         raise NotImplementedError("R2 backend does not support local handle operations")
+
+    def build_save_path(self, book: str, ep: str) -> Path:
+        raise NotImplementedError("R2 backend does not support local save operations")
 
     def build_book_path(self, book: str, ep: str = None) -> Path:
         """构建虚拟书籍路径（用于兼容 ComicCacheManager）"""

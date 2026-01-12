@@ -28,10 +28,13 @@ class ModeStrategy(ABC):
     @abstractmethod
     def build_handle_path(self, scan_path: Path, book_name: str, ep_name: str) -> Path:
         """构建 handle 操作的目标路径"""
+
+    @abstractmethod
+    def build_save_path(self, sv_base: Path, book_name: str, ep_name: str) -> Path:
+        """构建 save 操作的目标路径"""
     
     def invalidate_cache(self, book_path: Path):
         """删除前释放缓存（默认无操作）"""
-        pass
     
     @property
     @abstractmethod
@@ -45,9 +48,10 @@ class DirectoryModeStrategy(ModeStrategy):
         return "Normal (Directory)"
     
     def build_handle_path(self, scan_path: Path, book_name: str, ep_name: str) -> Path:
-        if ep_name:
-            return scan_path / book_name / ep_name
-        return scan_path / book_name
+        return scan_path / book_name / ep_name if ep_name else scan_path / book_name
+
+    def build_save_path(self, sv_base: Path, book_name: str, ep_name: str) -> Path:
+        return sv_base / book_name / ep_name if ep_name else sv_base / book_name
     
     def collect_book_paths(self, comic_path: Path) -> List[Path]:
         all_paths = []
@@ -93,9 +97,10 @@ class CBZModeStrategy(ModeStrategy):
         return "CBZ (.cbz files)"
     
     def build_handle_path(self, scan_path: Path, book_name: str, ep_name: str) -> Path:
-        if ep_name:
-            return scan_path / book_name / f"{ep_name}.cbz"
-        return scan_path / book_name
+        return scan_path / book_name / f"{ep_name}.cbz" if ep_name else scan_path / book_name
+
+    def build_save_path(self, sv_base: Path, book_name: str, ep_name: str) -> Path:
+        return sv_base / book_name / f"{ep_name}.cbz" if ep_name else sv_base / book_name
     
     def invalidate_cache(self, book_path: Path):
         from utils.cbz_cache import get_cbz_cache

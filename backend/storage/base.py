@@ -38,7 +38,6 @@ class StorageBackend(ABC):
 
         返回：书籍路径列表（本地模式为 Path，R2 模式可能为虚拟路径）
         """
-        pass
 
     @abstractmethod
     def scan_book(self, book_path: Path, scan_path: Path, return_all: bool = False) -> Optional[Tuple]:
@@ -46,24 +45,20 @@ class StorageBackend(ABC):
 
         返回：(display_name, parent_name, chapter_name, mtime, first_img_or_pages)
         """
-        pass
 
     @abstractmethod
     def get_book_mtime(self, book_path: Path) -> Optional[float]:
         """获取书籍修改时间"""
-        pass
 
     @abstractmethod
     def book_exists(self, book_path: Path) -> bool:
         """检查书籍是否存在"""
-        pass
 
     # ========== 缓存/数据库操作 ==========
 
     @abstractmethod
     def is_cache_available(self) -> bool:
         """检查缓存是否已初始化（是否需要全量扫描）"""
-        pass
 
     @abstractmethod
     def load_books_from_cache(self) -> Dict[Tuple[str, str], 'BookData']:
@@ -71,12 +66,10 @@ class StorageBackend(ABC):
 
         返回：{(book, ep): BookData} 字典
         """
-        pass
 
     @abstractmethod
     def save_book_to_cache(self, book: str, ep: str, mtime: float, first_img: str):
         """保存单本书籍到缓存"""
-        pass
 
     @abstractmethod
     def save_books_batch(self, books_data: List[Tuple]):
@@ -84,22 +77,18 @@ class StorageBackend(ABC):
 
         参数：[(book, ep, mtime, first_img, ero), ...]
         """
-        pass
 
     @abstractmethod
     def remove_book_from_cache(self, book: str, ep: str):
         """从缓存移除书籍"""
-        pass
 
     @abstractmethod
     def set_book_handle(self, book: str, ep: str, handle: str):
         """设置书籍的 handle 标记"""
-        pass
 
     @abstractmethod
     def reset_cache(self):
         """重置缓存（用于强制重新扫描）"""
-        pass
 
     # ========== 目录 mtime 缓存操作（增量同步优化）==========
 
@@ -109,11 +98,9 @@ class StorageBackend(ABC):
 
     def update_dir_mtime_cache(self, dir_name: str, mtime: float):
         """更新目录 mtime 缓存"""
-        pass
 
     def update_dir_mtime_cache_batch(self, entries: List[Tuple[str, float]]):
         """批量更新目录 mtime 缓存"""
-        pass
 
     def load_all_dir_mtimes(self) -> Dict[str, float]:
         """加载所有目录 mtime 缓存"""
@@ -128,7 +115,6 @@ class StorageBackend(ABC):
     @abstractmethod
     def get_image_url(self, book: str, ep: str, image_name: str) -> str:
         """生成单张图片的访问 URL"""
-        pass
 
     @abstractmethod
     def get_static_prefix(self) -> str:
@@ -137,7 +123,6 @@ class StorageBackend(ABC):
         本地模式：/static 或 /static/_本子
         R2 模式：https://cdn.example.com 或 https://cdn.example.com/_本子
         """
-        pass
 
     @abstractmethod
     def format_pages_for_api(self, book: str, ep: str, pages: List[str]) -> dict:
@@ -145,7 +130,6 @@ class StorageBackend(ABC):
 
         返回：{"pages": [...], "page_count": n}
         """
-        pass
 
     # ========== 文件监控（可选）==========
 
@@ -165,11 +149,13 @@ class StorageBackend(ABC):
     @abstractmethod
     def build_handle_path(self, scan_path: Path, book: str, ep: str) -> Path:
         """构建 handle 操作的目标路径"""
-        pass
+
+    @abstractmethod
+    def build_save_path(self, book: str, ep: str) -> Path:
+        """构建 save 操作的目标路径"""
 
     def invalidate_book_cache(self, book_path: Path):
         """删除前释放缓存（如 CBZ 模式的 ZipFile）"""
-        pass
 
     # ========== 静态文件服务 ==========
 
