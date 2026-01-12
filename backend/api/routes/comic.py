@@ -17,6 +17,7 @@ from utils.cbz_cache import get_cbz_cache
 from api.schemas import not_found, no_content, bad_request, ErrorMessages, get_mime_type, validate_directory, ComicHandleRequest
 from models import QuerySort
 from core import lib_mgr, BooksAggregator
+from storage import StorageBackendFactory
 from api.routes.root import require_lock
 
 
@@ -65,15 +66,26 @@ async def update_conf(conf_content: ConfContent):
     if conf_content.kemono_path:
         if error := validate_directory(Path(conf_content.kemono_path)):
             return error
+    
+    books_status = StorageBackendFactory.check_path_books(path)
+    if not books_status["ero0"] and not books_status["ero1"]:
+        return bad_request("路径下没有找到任何书籍，请检查路径是否正确")
+    
     backend.config.update(path=conf_content.path, **(
         {'kemono_path': conf_content.kemono_path} if conf_content.kemono_path else {}))
     if hasattr(backend.config, 'check_cbz_mode'):
         backend.config.check_cbz_mode()
     main_loop = asyncio.get_running_loop()
     await lib_mgr.switch_library(backend.config.comic_path, main_loop, ero=lib_mgr.ero)
-    if not lib_mgr.active_cache.books_index:
-        return no_content("update success, but no books exists in new path")
-    return "update conf and switched library successfully"
+    
+    current_has = books_status["ero1"] if lib_mgr.ero else books_status["ero0"]
+    other_has = books_status["ero0"] if lib_mgr.ero else books_status["ero1"]
+    if current_has:
+        return "update conf and switched library successfully"
+    if other_has:
+        mode_hint = "非ero" if lib_mgr.ero else "ero"
+        return {"message": f"路径已更新，当前模式无书籍，请切换到{mode_hint}模式", "switch_ero": not lib_mgr.ero}
+    return no_content("update success, but no books exists in new path")
 
 
 SYSTEM_DIRS = {'$Recycle.Bin', 'System Volume Information', '$RECYCLE.BIN', 'Recovery', 'ProgramData', 'Windows', 'Config.Msi'}

@@ -184,11 +184,15 @@ class ComicLibraryManager:
             self.active_pages_handler = pages_handler
 
         if main_loop and self.active_cache.backend.supports_file_watching():
-            event_handler = ComicChangeHandler(self.active_cache, self.active_pages_handler, main_loop)
-            self.observer = Observer()
-            self.observer.schedule(event_handler, str(self.active_cache.scan_path), recursive=True)
-            self.observer.start()
-            logger.debug(f"Now monitoring: {self.active_cache.scan_path} (ero={self.ero})")
+            scan_path = self.active_cache.scan_path
+            if scan_path.exists():
+                event_handler = ComicChangeHandler(self.active_cache, self.active_pages_handler, main_loop)
+                self.observer = Observer()
+                self.observer.schedule(event_handler, str(scan_path), recursive=True)
+                self.observer.start()
+                logger.debug(f"Now monitoring: {scan_path} (ero={self.ero})")
+            else:
+                logger.debug(f"Skip monitoring: {scan_path} does not exist (ero={self.ero})")
 
     async def _background_sync(self, cache_manager: ComicCacheManager):
         """后台增量同步，不阻塞用户操作"""
