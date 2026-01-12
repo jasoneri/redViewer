@@ -28,6 +28,7 @@ class StorageBackend(ABC):
     def __init__(self, comic_path: Path, ero: int = 0):
         self.comic_path = Path(comic_path)
         self.ero = ero
+        self.scan_path: Path = None  # 子类需要设置
 
     # ========== 文件系统操作 ==========
 
@@ -99,6 +100,28 @@ class StorageBackend(ABC):
     def reset_cache(self):
         """重置缓存（用于强制重新扫描）"""
         pass
+
+    # ========== 目录 mtime 缓存操作（增量同步优化）==========
+
+    def get_cached_dir_mtime(self, dir_name: str) -> Optional[float]:
+        """获取缓存的目录 mtime"""
+        return None
+
+    def update_dir_mtime_cache(self, dir_name: str, mtime: float):
+        """更新目录 mtime 缓存"""
+        pass
+
+    def update_dir_mtime_cache_batch(self, entries: List[Tuple[str, float]]):
+        """批量更新目录 mtime 缓存"""
+        pass
+
+    def load_all_dir_mtimes(self) -> Dict[str, float]:
+        """加载所有目录 mtime 缓存"""
+        return {}
+
+    def load_entries_for_dir(self, dir_name: str) -> set:
+        """从数据库加载指定目录下的所有条目"""
+        return set()
 
     # ========== URL 生成 ==========
 

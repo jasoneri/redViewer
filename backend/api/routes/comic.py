@@ -14,7 +14,7 @@ from infra import backend
 from utils import executor
 from utils.file_handlers import execute_handle, cleanup_empty_dir
 from utils.cbz_cache import get_cbz_cache
-from api.schemas import not_found, bad_request, ErrorMessages, get_mime_type, validate_directory, ComicHandleRequest
+from api.schemas import not_found, no_content, bad_request, ErrorMessages, get_mime_type, validate_directory, ComicHandleRequest
 from models import QuerySort
 from core import lib_mgr, BooksAggregator
 from api.routes.root import require_lock
@@ -33,7 +33,7 @@ async def get_books(request: Request, sort: str = Query(None)):
     await ensure_library_loaded()
     cache = lib_mgr.active_cache
     if not cache or not cache.books_index:
-        return not_found(ErrorMessages.NO_BOOKS)
+        return no_content(ErrorMessages.NO_BOOKS)
     books = list(cache.books_index.values())
     qs = QuerySort(sort or "time_desc")
     if qs.func == 'name':
@@ -72,7 +72,7 @@ async def update_conf(conf_content: ConfContent):
     main_loop = asyncio.get_running_loop()
     await lib_mgr.switch_library(backend.config.comic_path, main_loop, ero=lib_mgr.ero)
     if not lib_mgr.active_cache.books_index:
-        return not_found("update success, but no books exists in new path")
+        return no_content("update success, but no books exists in new path")
     return "update conf and switched library successfully"
 
 

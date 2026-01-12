@@ -88,7 +88,7 @@ def register_hook(app: FastAPI) -> None:
             if not (check_whitelist(origin_host, whitelist) or check_whitelist(client_ip, whitelist)):
                 return Response(status_code=403, content="Access denied")
         response = await call_next(request)
-        if staticFiles and request.url.path.startswith("/comic/conf") and request.method == "POST" and response.status_code == 200:
+        if staticFiles and request.url.path.startswith("/comic/conf") and request.method == "POST" and response.status_code in (200, 204):
             staticFiles.directory = str(backend.config.comic_path)
             staticFiles.all_directories = staticFiles.get_directories(staticFiles.directory, None)
         return response

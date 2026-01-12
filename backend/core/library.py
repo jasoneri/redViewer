@@ -1,4 +1,5 @@
 import asyncio
+import threading
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 
@@ -19,7 +20,7 @@ class ComicCacheManager:
     def __init__(self, _path: Path, ero: int = 0):
         self.comic_path = Path(_path)
         self.ero = ero
-        self.executor = ThreadPoolExecutor(max_workers=10)
+        self.executor = ThreadPoolExecutor(max_workers=32)
 
         # 使用 StorageBackend 替代直接的 SQLite 和 ModeStrategy
         # 扫描能力统一通过 backend 访问，不再暴露 scan_strategy
@@ -27,9 +28,11 @@ class ComicCacheManager:
         self.scan_path = self.backend.scan_path
 
         self.books_index = {}  # {(book, ep): BookData}
+        self._index_lock = threading.RLock()  # 保护 books_index 的线程安全
 
     def load_from_db(self):
-        self.books_index = self.backend.load_books_from_cache()
+        with self._index_lock:
+            self.books_index = self.backend.load_books_from_cache()
         logger.debug(f"Loaded {len(self.books_index)} books from cache (ero={self.ero})")
 
     def is_scanned(self) -> bool:
@@ -54,14 +57,17 @@ class ComicCacheManager:
                 book = parent_name
                 ep = "" if chapter_name == parent_name else chapter_name
                 books_data_for_db.append((book, ep, mtime, first_img, self.ero))
-                self.books_index[(book, ep)] = BookData(book, ep, mtime, first_img, self.ero, self.backend)
+                with self._index_lock:
+                    self.books_index[(book, ep)] = BookData(book, ep, mtime, first_img, self.ero, self.backend)
 
         if books_data_for_db:
             self.backend.save_books_batch(books_data_for_db)
             logger.debug(f"Batch inserted {len(books_data_for_db)} books into cache")
+
         logger.debug("Initial scan complete.")
 
     def _scan_fs_entries(self) -> set:
+        """扫描文件系统条目"""
         entries = set()
         all_book_paths = self.backend.collect_book_paths(self.scan_path)
         for path in all_book_paths:
@@ -85,7 +91,8 @@ class ComicCacheManager:
 
         _, _, _, mtime, first_img = scan_result
         self.backend.save_book_to_cache(book, ep, mtime, first_img)
-        self.books_index[(book, ep)] = BookData(book, ep, mtime, first_img, self.ero, self.backend)
+        with self._index_lock:
+            self.books_index[(book, ep)] = BookData(book, ep, mtime, first_img, self.ero, self.backend)
         logger.debug(f"Updated cache for: {book}/{ep}")
 
     async def remove_book_async(self, book: str, ep: str):
@@ -94,20 +101,23 @@ class ComicCacheManager:
 
     def remove_book(self, book: str, ep: str):
         self.backend.remove_book_from_cache(book, ep)
-        if (book, ep) in self.books_index:
-            del self.books_index[(book, ep)]
-            logger.debug(f"Removed from cache: {book}/{ep}")
+        with self._index_lock:
+            if (book, ep) in self.books_index:
+                del self.books_index[(book, ep)]
+        logger.debug(f"Removed from cache: {book}/{ep}")
 
     def set_handle(self, book: str, ep: str, handle: str):
         self.backend.set_book_handle(book, ep, handle)
-        if (book, ep) in self.books_index:
-            del self.books_index[(book, ep)]
+        with self._index_lock:
+            if (book, ep) in self.books_index:
+                del self.books_index[(book, ep)]
         logger.debug(f"Set handle '{handle}' for: {book}/{ep}")
 
     def reset_exist_flags(self):
         """重置 exist 字段并清空内存缓存"""
         self.backend.reset_cache()
-        self.books_index.clear()
+        with self._index_lock:
+            self.books_index.clear()
         logger.info(f"Reset exist flags for ero={self.ero}")
 
 
@@ -120,6 +130,7 @@ class ComicLibraryManager:
         self.active_pages_handler = None
         self.observer = None
         self.ero = False
+        self._background_sync_task = None  # 后台同步任务
 
     @property
     def bind_path(self):
@@ -141,6 +152,14 @@ class ComicLibraryManager:
             self.observer.stop()
             self.observer.join()
 
+        # 取消正在进行的后台同步任务
+        if self._background_sync_task and not self._background_sync_task.done():
+            self._background_sync_task.cancel()
+            try:
+                await self._background_sync_task
+            except asyncio.CancelledError:
+                pass
+
         self.active_path = new_comic_path
 
         if cache_key in self.cache_instances:
@@ -153,8 +172,12 @@ class ComicLibraryManager:
             if not cache_manager.is_scanned():
                 await asyncio.to_thread(cache_manager.initial_scan)
             else:
+                # 立即从缓存加载，不阻塞
                 cache_manager.load_from_db()
-                await self._sync_startup(cache_manager)
+                # 启动后台同步任务
+                self._background_sync_task = asyncio.create_task(
+                    self._background_sync(cache_manager)
+                )
 
             self.cache_instances[cache_key] = cache_manager
             self.pages_handlers[cache_key] = pages_handler
@@ -168,8 +191,41 @@ class ComicLibraryManager:
             self.observer.start()
             logger.debug(f"Now monitoring: {self.active_cache.scan_path} (ero={self.ero})")
 
+    async def _background_sync(self, cache_manager: ComicCacheManager):
+        """后台增量同步，不阻塞用户操作"""
+        try:
+            logger.debug(f"Starting background sync for ero={cache_manager.ero}")
+            with cache_manager._index_lock:
+                db_entries = set(cache_manager.books_index.keys())
+            fs_entries = await asyncio.to_thread(cache_manager._scan_fs_entries)
+
+            deleted = db_entries - fs_entries
+            added = fs_entries - db_entries
+
+            if deleted:
+                logger.info(f"Background sync: Found {len(deleted)} books deleted offline. Removing from cache...")
+                for book, ep in deleted:
+                    cache_manager.remove_book(book, ep)
+
+            if added:
+                logger.info(f"Background sync: Found {len(added)} books added offline. Adding to cache...")
+                tasks = [
+                    asyncio.to_thread(cache_manager.update_book_sync, book, ep)
+                    for book, ep in added
+                ]
+                await asyncio.gather(*tasks)
+
+            logger.debug("Background sync complete.")
+        except asyncio.CancelledError:
+            logger.debug("Background sync cancelled.")
+            raise
+        except Exception as e:
+            logger.error(f"Background sync error: {e}")
+
     async def _sync_startup(self, cache_manager: ComicCacheManager):
-        db_entries = set(cache_manager.books_index.keys())
+        """同步启动扫描（保留以支持旧代码路径）"""
+        with cache_manager._index_lock:
+            db_entries = set(cache_manager.books_index.keys())
         fs_entries = await asyncio.to_thread(cache_manager._scan_fs_entries)
 
         deleted = db_entries - fs_entries
@@ -182,8 +238,11 @@ class ComicLibraryManager:
 
         if added:
             logger.info(f"Found {len(added)} books added offline. Adding to cache...")
-            for book, ep in added:
-                await asyncio.to_thread(cache_manager.update_book_sync, book, ep)
+            tasks = [
+                asyncio.to_thread(cache_manager.update_book_sync, book, ep)
+                for book, ep in added
+            ]
+            await asyncio.gather(*tasks)
 
         logger.debug("Startup synchronization complete.")
 

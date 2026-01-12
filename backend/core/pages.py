@@ -44,20 +44,16 @@ class BookPagesHandler:
 
     def _try_cache_hit(self, book_md5: str, current_mtime: float) -> Optional[list]:
         """尝试缓存命中，成功返回 pages，否则返回 None"""
-        entry = self._cache.get(book_md5)
-        if entry and entry.pages is not None and entry.mtime == current_mtime:
+        if (entry := self._cache.get(book_md5)) and entry.pages is not None and entry.mtime == current_mtime:
             entry.last_access = time.time()
-            try:
+            with contextlib.suppress(Exception):
                 self._cache.move_to_end(book_md5)
-            except Exception:
-                pass
             return entry.pages
         return None
 
     def _ensure_entry(self, book_md5: str) -> CacheEntry:
         """确保 entry 存在，不存在则创建占位"""
-        entry = self._cache.get(book_md5)
-        if entry is None:
+        if (entry := self._cache.get(book_md5)) is None:
             entry = CacheEntry(md5=book_md5, pages=None, mtime=None, last_access=time.time(), lock=asyncio.Lock())
             self._cache[book_md5] = entry
             if len(self._cache) > self.max_entries:
@@ -124,13 +120,11 @@ class BookPagesHandler:
 
     async def invalidate(self, book_name: str):
         book_md5 = md5(book_name)
-        entry = self._cache.get(book_md5)
-        if not entry:
+        if not (entry := self._cache.get(book_md5)):
             return
         async with entry.lock:
-            if book_md5 in self._cache:
-                with contextlib.suppress(KeyError):
-                    del self._cache[book_md5]
+            with contextlib.suppress(KeyError):
+                del self._cache[book_md5]
 
 
     def clear_cache(self):
