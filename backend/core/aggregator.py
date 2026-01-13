@@ -4,8 +4,7 @@ from collections import defaultdict
 
 def _extract_num(ep: str) -> int:
     """提取章节名中的数字用于排序，提取失败返回0"""
-    m = re.search(r'\d+', ep)
-    return int(m.group()) if m else 0
+    return int(m.group()) if (m := re.search(r'\d+', ep)) else 0
 
 
 class BooksAggregator:

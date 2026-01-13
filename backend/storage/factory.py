@@ -4,11 +4,14 @@
 
 Factory class for creating storage backend instances based on configuration.
 """
-
+import json
+import contextlib
 from pathlib import Path
 from typing import Optional
 
 from infra import backend
+from utils import Var
+from utils.mode_strategy import DirectoryModeStrategy, CBZModeStrategy
 from .base import StorageBackend
 
 
@@ -67,4 +70,15 @@ class StorageBackendFactory:
         cache_key = f"{comic_path}|ero={ero}|type={backend_type}"
         return cls._instances.get(cache_key)
 
-
+    @classmethod
+    def check_path_books(cls, comic_path: Path) -> dict:
+        cgs_rule = comic_path / ".cgsRule.json"
+        cbz_mode = False
+        if cgs_rule.exists():
+            with contextlib.suppress(json.JSONDecodeError, IOError):
+                cbz_mode = json.loads(cgs_rule.read_text(encoding='utf-8')).get('downloaded_handle') == '.cbz'
+        strategy = CBZModeStrategy() if cbz_mode else DirectoryModeStrategy()
+        has_ero0 = len(strategy.collect_book_paths(comic_path)) > 0
+        ero1_path = comic_path / f"_{Var.doujinshi}"
+        has_ero1 = ero1_path.exists() and len(strategy.collect_book_paths(ero1_path)) > 0
+        return {"ero0": has_ero0, "ero1": has_ero1}

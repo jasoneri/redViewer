@@ -17,22 +17,18 @@ class AuthBackend(ABC):
     @abstractmethod
     def get_secret(self) -> Optional[str]:
         """获取密钥"""
-        pass
     
     @abstractmethod
     def set_secret(self, secret: str) -> bool:
         """设置密钥，返回是否成功"""
-        pass
     
     @abstractmethod
     def get_secret_path(self) -> Optional[str]:
         """获取密钥文件路径（仅文件模式有效）"""
-        pass
     
     @abstractmethod
     def is_writable(self) -> bool:
         """是否支持写入"""
-        pass
     
     def is_auth_required(self) -> bool:
         """是否需要认证"""

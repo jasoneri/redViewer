@@ -18,18 +18,9 @@
 轻简风漫画阅读器。  
 ~~先有 CGS 后有 rV，但 rV 写着写着，CGS 就倒反天罡为 rV 服务了~~
 
-<div style="margin: 32px 0;">
-  <a href="https://doc.redviewer.nyc.mn" target="_blank" style="
-    display: inline-block; padding: 12px 32px;
-    background: linear-gradient(100deg, #ef8e7bff 0%, #d32727ff 100%);
-    color: white; border-radius: 8px; text-decoration: none; font-size: 18px;
-    font-weight: 600; width: 150px;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-    transition: transform 0.2s, box-shadow 0.2s;
-  ">
-    🏠 项目主页
-  </a>
-</div>
+<a href="https://doc.redviewer.nyc.mn">
+  <img src="docs/public/home-button.svg" alt="项目主页">
+</a>
 
 ## 🎉 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/jasoneri/redViewer?color=blue&label=Ver&sort=semver)](https://github.com/jasoneri/redViewer/releases/latest)
 

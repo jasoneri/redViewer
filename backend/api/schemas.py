@@ -4,7 +4,7 @@
 from pathlib import Path
 from typing import Optional, Literal
 from pydantic import BaseModel
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 
 # MIME 类型映射
 MIME_TYPES = {
@@ -25,6 +25,10 @@ def get_mime_type(extension: str, default: str = 'application/octet-stream') -> 
 # 响应工具
 def not_found(message: str = "Resource not found") -> JSONResponse:
     return JSONResponse(content=message, status_code=404)
+
+
+def no_content() -> Response:
+    return Response(status_code=204)
 
 
 def bad_request(message: str = "Bad request") -> JSONResponse:

@@ -5,6 +5,7 @@ CBZ 文件缓存模块
 
 提供 ZipFile 对象的 LRU 缓存，避免重复打开 .cbz 文件，显著提升性能。
 """
+import contextlib
 import threading
 import zipfile
 from collections import OrderedDict
@@ -192,10 +193,8 @@ class CBZCache:
     
     def __del__(self):
         """析构函数：确保所有 ZipFile 被关闭"""
-        try:
+        with contextlib.suppress(Exception):
             self.close_all()
-        except:
-            pass
 
 
 # 全局缓存实例

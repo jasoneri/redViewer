@@ -1,0 +1,27 @@
+.VPHero.has-image .container { position: relative; padding-bottom: 80px; }
+.VPHero.has-image .main { position: static; }
+
+.home-demo {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.home-demo__btn {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px 32px;
+  border-radius: 10px;
+  text-decoration: none;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(100deg, #ef8e7bff 0%, #d32727ff 100%);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.home-demo__btn:hover { transform: translateY(-1px); }

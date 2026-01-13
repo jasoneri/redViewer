@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 from pathlib import Path
 
 from watchdog.events import FileSystemEventHandler
@@ -16,26 +17,15 @@ class ComicChangeHandler(FileSystemEventHandler):
 
     def _extract_book_ep(self, event_path: Path) -> tuple:
         """从事件路径提取 (book, ep)"""
-        try:
+        with contextlib.suppress(ValueError):
             relative_path = event_path.relative_to(self.cache.scan_path)
-            parts = relative_path.parts
-            if not parts:
-                return None, None
-            
-            if len(parts) == 1:
-                name = parts[0].replace('.cbz', '')
-                return name, ""
-            elif len(parts) >= 2:
-                book = parts[0]
-                second = parts[1]
-                # 如果第二部分是图片文件，说明是单本书籍，ep为空
+            if parts := relative_path.parts:
+                if len(parts) == 1:
+                    return parts[0].replace('.cbz', ''), ""
+                book, second = parts[0], parts[1]
                 if Path(second).suffix.lower() in IMAGE_EXTENSIONS:
                     return book, ""
-                # 否则是系列中的章节
-                ep = second.replace('.cbz', '')
-                return book, ep
-        except ValueError:
-            pass
+                return book, second.replace('.cbz', '')
         return None, None
 
     async def _debounced_update(self, book: str, ep: str):

@@ -57,6 +57,16 @@ class LocalStorageBackend(StorageBackend):
                     UNIQUE(book, ep)
                 )
             """)
+            # 目录 mtime 缓存表，用于增量同步优化
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS `dir_mtime_cache` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+                    `path` TEXT NOT NULL,
+                    `mtime` REAL NOT NULL,
+                    `ero` INTEGER NOT NULL DEFAULT 0,
+                    UNIQUE(path, ero)
+                )
+            """)
 
     # ========== 文件系统操作 ==========
 
@@ -149,6 +159,59 @@ class LocalStorageBackend(StorageBackend):
     def reset_cache(self):
         with self._get_conn() as conn:
             conn.execute('UPDATE episodes SET exist = 0 WHERE ero = ?', (self.ero,))
+            conn.execute('DELETE FROM dir_mtime_cache WHERE ero = ?', (self.ero,))
+
+    # ========== 目录 mtime 缓存操作 ==========
+
+    def get_cached_dir_mtime(self, dir_name: str) -> Optional[float]:
+        """获取缓存的目录 mtime"""
+        with self._get_conn() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                'SELECT mtime FROM dir_mtime_cache WHERE path = ? AND ero = ?',
+                (dir_name, self.ero)
+            )
+            row = cursor.fetchone()
+            return row[0] if row else None
+
+    def update_dir_mtime_cache(self, dir_name: str, mtime: float):
+        """更新目录 mtime 缓存"""
+        with self._get_conn() as conn:
+            conn.execute(
+                '''INSERT OR REPLACE INTO dir_mtime_cache (path, mtime, ero)
+                   VALUES (?, ?, ?)''',
+                (dir_name, mtime, self.ero)
+            )
+
+    def update_dir_mtime_cache_batch(self, entries: List[Tuple[str, float]]):
+        """批量更新目录 mtime 缓存"""
+        if entries:
+            with self._get_conn() as conn:
+                conn.executemany(
+                    '''INSERT OR REPLACE INTO dir_mtime_cache (path, mtime, ero)
+                       VALUES (?, ?, ?)''',
+                    [(path, mtime, self.ero) for path, mtime in entries]
+                )
+
+    def load_all_dir_mtimes(self) -> Dict[str, float]:
+        """加载所有目录 mtime 缓存"""
+        with self._get_conn() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                'SELECT path, mtime FROM dir_mtime_cache WHERE ero = ?',
+                (self.ero,)
+            )
+            return {row[0]: row[1] for row in cursor.fetchall()}
+
+    def load_entries_for_dir(self, dir_name: str) -> set:
+        """从数据库加载指定目录下的所有条目"""
+        with self._get_conn() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                'SELECT book, ep FROM episodes WHERE exist = 1 AND ero = ? AND book = ?',
+                (self.ero, dir_name)
+            )
+            return {(row[0], row[1]) for row in cursor.fetchall()}
 
     # ========== URL 生成 ==========
 
@@ -196,6 +259,10 @@ class LocalStorageBackend(StorageBackend):
         if ep:
             return self.scan_path / f"{book}/{ep}{ext}"
         return self.scan_path / f"{book}/{book}{ext}" if backend.config.cbz_mode else self.scan_path / book
+
+    def build_save_path(self, book: str, ep: str) -> Path:
+        sv_base = self.comic_path / '_save' / self._var.doujinshi if self.ero else self.comic_path / '_save'
+        return self.mode_strategy.build_save_path(sv_base, book, ep)
 
     def invalidate_book_cache(self, book_path: Path):
         self.mode_strategy.invalidate_cache(book_path)

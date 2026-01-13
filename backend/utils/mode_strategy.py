@@ -1,7 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import zipfile
+import contextlib
+import os
 import re
+import zipfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List, Optional, Tuple
@@ -26,10 +28,13 @@ class ModeStrategy(ABC):
     @abstractmethod
     def build_handle_path(self, scan_path: Path, book_name: str, ep_name: str) -> Path:
         """构建 handle 操作的目标路径"""
+
+    @abstractmethod
+    def build_save_path(self, sv_base: Path, book_name: str, ep_name: str) -> Path:
+        """构建 save 操作的目标路径"""
     
     def invalidate_cache(self, book_path: Path):
         """删除前释放缓存（默认无操作）"""
-        pass
     
     @property
     @abstractmethod
@@ -43,22 +48,25 @@ class DirectoryModeStrategy(ModeStrategy):
         return "Normal (Directory)"
     
     def build_handle_path(self, scan_path: Path, book_name: str, ep_name: str) -> Path:
-        if ep_name:
-            return scan_path / book_name / ep_name
-        return scan_path / book_name
+        return scan_path / book_name / ep_name if ep_name else scan_path / book_name
+
+    def build_save_path(self, sv_base: Path, book_name: str, ep_name: str) -> Path:
+        return sv_base / book_name / ep_name if ep_name else sv_base / book_name
     
     def collect_book_paths(self, comic_path: Path) -> List[Path]:
         all_paths = []
-        try:
-            for entry in comic_path.iterdir():
-                if entry.is_dir() and accpect_dir(entry.name):
-                    subdirs = [d for d in entry.iterdir() if d.is_dir()]
-                    if subdirs:
-                        all_paths.extend(subdirs)
-                    else:
-                        all_paths.append(entry)
-        except OSError:
-            pass
+        with contextlib.suppress(OSError):
+            with os.scandir(comic_path) as entries:
+                for entry in entries:
+                    if entry.is_dir() and accpect_dir(entry.name):
+                        subdirs = []
+                        with contextlib.suppress(OSError):
+                            with os.scandir(entry.path) as sub_entries:
+                                subdirs = [Path(e.path) for e in sub_entries if e.is_dir()]
+                        if subdirs:
+                            all_paths.extend(subdirs)
+                        else:
+                            all_paths.append(Path(entry.path))
         return all_paths
     
     def scan_book(self, book_path: Path, comic_path: Path, return_all: bool = False) -> Optional[Tuple]:
@@ -66,12 +74,17 @@ class DirectoryModeStrategy(ModeStrategy):
             return None
         try:
             mtime = book_path.stat().st_mtime
-            image_files = [x for x in book_path.iterdir()
-                          if x.is_file() and x.suffix.lower() in IMAGE_EXTENSIONS and not x.name.startswith('.')]
-            image_files.sort(key=lambda x: x.name)
+            image_files = []
+            with os.scandir(book_path) as entries:
+                for entry in entries:
+                    if entry.is_file() and not entry.name.startswith('.'):
+                        suffix = Path(entry.name).suffix.lower()
+                        if suffix in IMAGE_EXTENSIONS:
+                            image_files.append(entry.name)
+            image_files.sort()
             if not image_files:
                 return None
-            pages = [x.name for x in image_files] if return_all else image_files[0].name
+            pages = image_files if return_all else image_files[0]
             parent_name, chapter_name, display_name = extract_parent_and_chapter(book_path, comic_path)
             return (display_name, parent_name, chapter_name, mtime, pages)
         except (OSError, IndexError):
@@ -84,9 +97,10 @@ class CBZModeStrategy(ModeStrategy):
         return "CBZ (.cbz files)"
     
     def build_handle_path(self, scan_path: Path, book_name: str, ep_name: str) -> Path:
-        if ep_name:
-            return scan_path / book_name / f"{ep_name}.cbz"
-        return scan_path / book_name
+        return scan_path / book_name / f"{ep_name}.cbz" if ep_name else scan_path / book_name
+
+    def build_save_path(self, sv_base: Path, book_name: str, ep_name: str) -> Path:
+        return sv_base / book_name / f"{ep_name}.cbz" if ep_name else sv_base / book_name
     
     def invalidate_cache(self, book_path: Path):
         from utils.cbz_cache import get_cbz_cache
@@ -99,16 +113,17 @@ class CBZModeStrategy(ModeStrategy):
     
     def collect_book_paths(self, comic_path: Path) -> List[Path]:
         all_paths = []
-        try:
-            for entry in comic_path.iterdir():
-                if entry.is_file() and entry.suffix.lower() == '.cbz':
-                    all_paths.append(entry)
-                elif entry.is_dir() and accpect_dir(entry.name):
-                    for sub_entry in entry.iterdir():
-                        if sub_entry.is_file() and sub_entry.suffix.lower() == '.cbz':
-                            all_paths.append(sub_entry)
-        except OSError:
-            pass
+        with contextlib.suppress(OSError):
+            with os.scandir(comic_path) as entries:
+                for entry in entries:
+                    if entry.is_file() and entry.name.lower().endswith('.cbz'):
+                        all_paths.append(Path(entry.path))
+                    elif entry.is_dir() and accpect_dir(entry.name):
+                        with contextlib.suppress(OSError):
+                            with os.scandir(entry.path) as sub_entries:
+                                for sub_entry in sub_entries:
+                                    if sub_entry.is_file() and sub_entry.name.lower().endswith('.cbz'):
+                                        all_paths.append(Path(sub_entry.path))
         return all_paths
     
     def scan_book(self, book_path: Path, comic_path: Path, return_all: bool = False) -> Optional[Tuple]:
