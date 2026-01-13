@@ -27,7 +27,7 @@ def not_found(message: str = "Resource not found") -> JSONResponse:
     return JSONResponse(content=message, status_code=404)
 
 
-def no_content(message: str = "") -> Response:
+def no_content() -> Response:
     return Response(status_code=204)
 
 

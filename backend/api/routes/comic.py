@@ -34,7 +34,7 @@ async def get_books(request: Request, sort: str = Query(None)):
     await ensure_library_loaded()
     cache = lib_mgr.active_cache
     if not cache or not cache.books_index:
-        return no_content(ErrorMessages.NO_BOOKS)
+        return no_content()
     books = list(cache.books_index.values())
     qs = QuerySort(sort or "time_desc")
     if qs.func == 'name':
@@ -85,7 +85,7 @@ async def update_conf(conf_content: ConfContent):
     if other_has:
         mode_hint = "非ero" if lib_mgr.ero else "ero"
         return {"message": f"路径已更新，当前模式无书籍，请切换到{mode_hint}模式", "switch_ero": not lib_mgr.ero}
-    return no_content("update success, but no books exists in new path")
+    return no_content()
 
 
 SYSTEM_DIRS = {'$Recycle.Bin', 'System Volume Information', '$RECYCLE.BIN', 'Recovery', 'ProgramData', 'Windows', 'Config.Msi'}
@@ -95,21 +95,25 @@ SYSTEM_DIRS = {'$Recycle.Bin', 'System Volume Information', '$RECYCLE.BIN', 'Rec
 async def list_filesystem(path: str = None):
     is_win = platform.system() == "Windows"
     roots = [f"{d}:\\" for d in __import__('string').ascii_uppercase if Path(f"{d}:\\").exists()] if is_win else ["/"]
-    if not path:
-        return {"current": None, "parent": None, "directories": roots if is_win else [], "roots": roots}
-    p = Path(path)
+    p = Path(path) if path else backend.config.comic_path
     if not p.exists() or not p.is_dir():
         return {"error": "路径不存在", "roots": roots}
     def is_valid(item):
         try:
-            return item.is_dir() and not item.name.startswith(('.', '$')) and item.name not in SYSTEM_DIRS and list(item.iterdir()) is not None
+            return item.is_dir() and not item.name.startswith(('.', '$')) and item.name not in SYSTEM_DIRS and next(item.iterdir(), True)
         except PermissionError:
             return False
+    # 生成路径分段
+    segments, cur = [], p
+    while cur != cur.parent:
+        segments.insert(0, {"path": str(cur), "name": cur.name or str(cur)})
+        cur = cur.parent
+    segments.insert(0, {"path": str(cur), "name": str(cur)})
     try:
         dirs = sorted(item.name for item in p.iterdir() if is_valid(item))
     except PermissionError:
         return {"error": "无权限访问", "roots": roots}
-    return {"current": str(p), "parent": str(p.parent) if p.parent != p else None, "directories": dirs, "roots": roots}
+    return {"current": str(p), "parent": str(p.parent) if p.parent != p else None, "directories": dirs, "roots": roots, "path_segments": segments}
 
 
 @index_router.post("/force_rescan")
@@ -149,6 +153,8 @@ def _handle_and_cleanup(book_path: Path, handle_type: str, dest: Path, series_di
 @require_lock("book_handle")
 async def handle(request: Request, book: ComicHandleRequest):
     cache = lib_mgr.active_cache
+    if not cache.backend.supports_static_mount():
+        raise HTTPException(400, "当前存储后端不支持本地操作")
     book_name, ep_name = book.book, book.ep or ""
     book_path = cache.backend.build_handle_path(cache.scan_path, book_name, ep_name)
     if not book_path.exists():
