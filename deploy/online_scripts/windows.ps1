@@ -118,8 +118,8 @@ function Install-Environment {
     # 安装Node.js (--backend-only 模式跳过)
     if (-not $script:backendOnly -and -not (Get-Command npm -ErrorAction SilentlyContinue)) {
         Write-Output "[Install-Environment]下载 Node.js 中..."
-        $nodeInstaller = "node-v22.16.0-x64.msi"
-        $nodeUrl = "https://npmmirror.com/mirrors/node/v22.16.0/$nodeInstaller"
+        $nodeInstaller = "node-v24.9.0-x64.msi"
+        $nodeUrl = "https://registry.npmmirror.com/-/binary/node/latest-v24.x/$nodeInstaller"
         $installerPath = Join-Path $originalWorkingDir $nodeInstaller
         Invoke-WebRequest -Uri $nodeUrl -OutFile $installerPath
 
