@@ -1,7 +1,7 @@
 <template>
   <el-container>
     <el-header height="5vh" :style="`min-height: 40px`">
-      <TopBtnGroupOfEp :bookName="bookName" :previousSeries="previousSeries" :nextSeries="nextSeries" />
+      <TopBtnGroupOfEp :bookName="bookName" :previousSeries="previousSeries" :nextSeries="nextSeries" :seriesList="seriesOnly" />
     </el-header>
     <el-main>
       <el-scrollbar ref="scrollbarRef">
