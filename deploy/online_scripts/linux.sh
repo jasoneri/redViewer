@@ -48,9 +48,9 @@ test_environment() {
         echo "❌ uv未安装"
         envMissing=true
     fi
-    # --backend-only 模式跳过 Node.js 检查
-    if [ -z "$BACKEND_ONLY" ] && ! command -v npm &> /dev/null; then
-        echo "❌ Node.js未安装"
+    # --backend-only 模式跳过 bun 检查
+    if [ -z "$BACKEND_ONLY" ] && ! command -v bun &> /dev/null; then
+        echo "❌ bun未安装"
         envMissing=true
     fi
     
@@ -84,6 +84,10 @@ speed_gtihub() {
 }
 
 install_environment() {
+    uv_ok=true
+    python_ok=true
+    bun_ok=true
+    
     # 检查Homebrew
     if ! command -v brew &> /dev/null; then
         echo "❌ Homebrew未安装，正在安装..."
@@ -97,21 +101,52 @@ install_environment() {
         echo "❌ uv未安装，正在安装..."
         brew install uv
         source $HOME/.zshrc
-
-        echo "uv安装python..."
-        mirrorUrl=$(speed_gtihub "https://github.com/astral-sh/python-build-standalone/releases/download")
-        uv python install 3.12 --mirror "$mirrorUrl" --no-cache
-        echo 'export UV_MANAGED_PYTHON=1' >> $HOME/.zshrc
-        source $HOME/.zshrc
+        
+        if ! command -v uv &> /dev/null; then
+            uv_ok=false
+        else
+            echo "uv安装python..."
+            mirrorUrl=$(speed_gtihub "https://github.com/astral-sh/python-build-standalone/releases/download")
+            if ! uv python install 3.12 --mirror "$mirrorUrl" --no-cache; then
+                python_ok=false
+            fi
+            echo 'export UV_MANAGED_PYTHON=1' >> $HOME/.zshrc
+            source $HOME/.zshrc
+        fi
     fi
     
-    # 安装Node.js (--backend-only 模式跳过)
-    if [ -z "$BACKEND_ONLY" ] && ! command -v npm &> /dev/null; then
-        echo "安装 Node.js 中..."
-        brew install node
+    # 安装 bun (--backend-only 模式跳过)
+    if [ -z "$BACKEND_ONLY" ] && ! command -v bun &> /dev/null; then
+        echo "安装 bun 中..."
+        brew install oven-sh/bun/bun
         source $HOME/.zshrc
-        npm config set registry https://mirrors.huaweicloud.com/repository/npm/
+        
+        if ! command -v bun &> /dev/null; then
+            bun_ok=false
+        else
+            echo 'export BUN_CONFIG_REGISTRY="https://registry.npmmirror.com/"' >> $HOME/.zshrc
+            source $HOME/.zshrc
+        fi
     fi
+    
+    # 统一检测所有安装状态
+    if [ "$uv_ok" = false ]; then
+        echo "❌ uv 安装失败，请手动安装后重试"
+        echo "访问: https://docs.astral.sh/uv/getting-started/installation/"
+        exit 1
+    fi
+    
+    if [ "$python_ok" = false ]; then
+        echo "❌ Python 安装失败"
+        exit 1
+    fi
+    
+    if [ -z "$BACKEND_ONLY" ] && [ "$bun_ok" = false ]; then
+        echo "❌ bun 安装失败，请手动安装后重试"
+        echo "访问: https://bun.sh/docs/installation"
+        exit 1
+    fi
+    
     echo "✅ 环境安装完成"
 }
 
@@ -185,7 +220,7 @@ invoke_update() {
     if [ -z "$BACKEND_ONLY" ]; then
         echo "正在安装前端依赖..."
         cd frontend || exit
-        npm i
+        bun install
     fi
 
     cd "$originalWorkingDir" || exit
@@ -207,7 +242,7 @@ start_redviewer() {
     
     # 启动前端
     cd frontend || exit
-    npm run dev
+    bun run dev
     
     # 清理
     kill $backend_pid 2>/dev/null

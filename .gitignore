@@ -60,13 +60,14 @@ docs/.vitepress/cache
 *.lock
 deploy/desktop/resources/src/
 test_*
+tests/
 # self/conf
 conf.yml
 # self/bug-report
 _bug_log
 # ide
 .cursor
-/plans
+plans/
 .kilocode/*
 .kilocodemodes
 .claude
