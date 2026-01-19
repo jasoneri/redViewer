@@ -57,6 +57,9 @@ codecov*
 *.hash
 docs/.vitepress/dist
 docs/.vitepress/cache
+*.lock
+deploy/desktop/resources/src/
+test_*
 # self/conf
 conf.yml
 # self/bug-report
@@ -67,6 +70,8 @@ _bug_log
 .kilocode/*
 .kilocodemodes
 .claude
+.ace-tool/
+nul
 # uv
 .python-version
-uv.lock
+*.exe

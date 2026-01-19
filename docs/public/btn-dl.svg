@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="143" height="48" viewBox="0 0 143 48">
+  <defs>
+    <linearGradient id="g" x1="-267" y1="0" x2="143" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#d32727"/>
+      <stop offset="100%" stop-color="#e9674e"/>
+    </linearGradient>
+  </defs>
+  <path d="M15,0 L135,0 A8,8 0 0,1 143,8 L143,40 A8,8 0 0,1 135,48 L0,48 Z" fill="url(#g)"/>
+  <text x="75" y="30" text-anchor="middle" fill="white" font-family="system-ui,sans-serif" font-size="16" font-weight="600">⬇️ 下载</text>
+</svg>
