@@ -1,0 +1,15 @@
+# redViewer PyEnv Configuration - China Mirrors
+
+[pypi]
+# Primary mirror - Huawei Cloud
+index_url = "https://repo.huaweicloud.com/repository/pypi/simple"
+# Fallback mirrors
+extra_index_urls = [
+    "https://pypi.tuna.tsinghua.edu.cn/simple",
+    "https://mirrors.aliyun.com/pypi/simple/"
+]
+
+[python]
+# Python download mirror
+download_mirror = "https://repo.huaweicloud.com/python/"
+

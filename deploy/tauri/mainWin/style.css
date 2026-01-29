@@ -1,0 +1,78 @@
+body {
+    margin: 0;
+    font-family: sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+    background-color: transparent; /* Needed for transparency */
+}
+
+.container {
+    background: rgba(255, 255, 255, 0.15); /* Light glassmorphism fallback */
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 20px;
+    text-align: center;
+    color: #333; /* Default text color */
+    width: 360px; /* Adjust to fit window size 400x240 with padding */
+    height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: center;
+    box-sizing: border-box; /* Include padding in width/height */
+}
+
+h1 {
+    margin: 0;
+    font-size: 1.8em;
+}
+
+p {
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+
+button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s ease;
+}
+
+button svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+/* Dark mode styles */
+body.dark .container {
+    background: rgba(0, 0, 0, 0.3); /* Dark glassmorphism fallback */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #eee; /* Dark mode text color */
+}
+
+body.dark button {
+    background-color: #6a1b9a; /* Dark mode button color */
+}
+
+body.dark button:hover {
+    background-color: #4a148c;
+}

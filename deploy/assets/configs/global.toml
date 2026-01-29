@@ -1,0 +1,10 @@
+# redViewer PyEnv Configuration - Global Sources
+# Use with: rV.exe /pyenv global.toml (default)
+
+[pypi]
+# Official PyPI
+index_url = "https://pypi.org/simple"
+
+[python]
+# Official Python downloads
+download_mirror = "https://www.python.org/ftp/python/"

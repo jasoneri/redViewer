@@ -39,14 +39,21 @@ analyze/
 *.d
 *.zip
 *demo*.py
-__temp
+__temp/
 test/*
+test_*
+tests/
 .lh/
 .env
 *.psd
 *.clip
+log/
 # self/build
+*.tmp
+*.temp
 temp
+*test.*
+tree.txt
 *-in.txt
 untitled*
 Pipfile
@@ -58,9 +65,7 @@ codecov*
 docs/.vitepress/dist
 docs/.vitepress/cache
 *.lock
-deploy/desktop/resources/src/
-test_*
-tests/
+deploy/stage/src/
 # self/conf
 conf.yml
 # self/bug-report
@@ -73,6 +78,22 @@ plans/
 .claude
 .ace-tool/
 nul
+openspec/
 # uv
 .python-version
 *.exe
+# Desktop deployment
+deploy/stage/
+schemas/
+target/
+debug/
+**/*.rs.bk
+*.pdb
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+.env.local
+.env.*.local
+*.wixobj
+*.wixpdb

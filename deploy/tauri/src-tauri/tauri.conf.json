@@ -1,0 +1,53 @@
+{
+  "$schema": "https://schema.tauri.app/v2/config.json",
+  "productName": "rV",
+  "version": "1.5.2",
+  "identifier": "jsoneri.redviewer",
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "publisher": "jasoneri",
+    "icon": [
+      "../../assets/icons/icon.png",
+      "../../assets/icons/icon.ico",
+      "../../assets/icons/icon.icns"
+    ],
+    "externalBin": [
+      "../../stage/uv"
+    ],
+    "resources": {
+      "../../stage/src": "res/src",
+      "../../stage/dist": "res/dist",
+      "../../stage/rvInstaller.exe": "rvInstaller.exe",
+      "../../assets/configs/cn.toml": "res/cn.toml",
+      "../../assets/configs/global.toml": "res/global.toml",
+      "../../assets/icons/icon.ico": "res/icon.ico",
+      "../../assets/icons/icon.png": "res/icon.png",
+      "../../assets/icons/icon.icns": "res/icon.icns",
+      "../../assets/icons/setup.png": "res/setup.png",
+      "../mainWin": "res/mainWin"
+    },
+    "windows": {
+      "nsis": {
+        "template": "./windows/installer.nsi",
+        "installerHooks": "./windows/hooks.nsh",
+        "installMode": "currentUser",
+        "languages": ["English", "SimpChinese"],
+        "displayLanguageSelector": true
+      }
+    }
+  },
+  "plugins": {}
+}
