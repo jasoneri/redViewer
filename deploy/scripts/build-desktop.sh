@@ -8,12 +8,10 @@
 #   ./build-desktop.sh                       # Build all (Stage 1 + Stage 2)
 #   ./build-desktop.sh -t installer          # Stage 1 only: build rvInstaller
 #   ./build-desktop.sh -t bundle             # Stage 2 only: build app (requires Stage 1 output)
-#   ./build-desktop.sh -r                    # Release build
 #   ./build-desktop.sh -s                    # Skip frontend build
 
 set -euo pipefail
 
-RELEASE=false
 SKIP_FRONTEND=false
 TARGET="all"  # all, installer, bundle
 CROSS_TARGET=""
@@ -21,10 +19,6 @@ CROSS_TARGET=""
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        -r|--release)
-            RELEASE=true
-            shift
-            ;;
         -s|--skip-frontend)
             SKIP_FRONTEND=true
             shift
@@ -39,7 +33,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: ./build-desktop.sh [-r|--release] [-s|--skip-frontend] [-t|--target all|installer|bundle]"
+            echo "Usage: ./build-desktop.sh [-s|--skip-frontend] [-t|--target all|installer|bundle]"
             exit 1
             ;;
     esac
@@ -91,24 +85,13 @@ build_installer() {
     echo "=== STAGE 1: Building rvInstaller ==="
     cd "$TAURI_DIR"
 
-    if [ "$RELEASE" = true ]; then
-        echo "Building rvInstaller (release)..."
-        if [ -n "$CROSS_TARGET" ]; then
-            cargo build -p installer --release --target "$CROSS_TARGET"
-            INSTALLER_PATH="$TAURI_DIR/target/$CROSS_TARGET/release/rvInstaller"
-        else
-            cargo build -p installer --release
-            INSTALLER_PATH="$TAURI_DIR/target/release/rvInstaller"
-        fi
+    echo "Building rvInstaller (release)..."
+    if [ -n "$CROSS_TARGET" ]; then
+        cargo build -p installer --release --target "$CROSS_TARGET"
+        INSTALLER_PATH="$TAURI_DIR/target/$CROSS_TARGET/release/rvInstaller"
     else
-        echo "Building rvInstaller (debug)..."
-        if [ -n "$CROSS_TARGET" ]; then
-            cargo build -p installer --target "$CROSS_TARGET"
-            INSTALLER_PATH="$TAURI_DIR/target/$CROSS_TARGET/debug/rvInstaller"
-        else
-            cargo build -p installer
-            INSTALLER_PATH="$TAURI_DIR/target/debug/rvInstaller"
-        fi
+        cargo build -p installer --release
+        INSTALLER_PATH="$TAURI_DIR/target/release/rvInstaller"
     fi
 
     if [ ! -f "$INSTALLER_PATH" ]; then
@@ -166,13 +149,9 @@ copy_installer_to_stage() {
 
     local installer_path="$INSTALLER_PATH"
 
-    # If path not set, try to find it
+    # If path not set, use release path
     if [ -z "$installer_path" ]; then
-        if [ "$RELEASE" = true ]; then
-            installer_path="$TAURI_DIR/target/release/rvInstaller"
-        else
-            installer_path="$TAURI_DIR/target/debug/rvInstaller"
-        fi
+        installer_path="$TAURI_DIR/target/release/rvInstaller"
     fi
 
     if [ ! -f "$installer_path" ]; then
@@ -318,21 +297,12 @@ build_tauri() {
     echo "--- Building Tauri Application ---"
     cd "$TAURI_DIR/src-tauri"
 
-    if [ "$RELEASE" = true ]; then
-        local target_dir="$PROJECT_ROOT/__temp/tauri_dist"
-        echo "Building release (output to $target_dir)..."
-        if [ -n "$CROSS_TARGET" ]; then
-            CARGO_TARGET_DIR="$target_dir" cargo tauri build --target "$CROSS_TARGET"
-        else
-            CARGO_TARGET_DIR="$target_dir" cargo tauri build
-        fi
+    local target_dir="$PROJECT_ROOT/__temp/tauri_dist"
+    echo "Building release (output to $target_dir)..."
+    if [ -n "$CROSS_TARGET" ]; then
+        CARGO_TARGET_DIR="$target_dir" cargo tauri build --target "$CROSS_TARGET"
     else
-        echo "Building debug..."
-        if [ -n "$CROSS_TARGET" ]; then
-            cargo tauri build --debug --target "$CROSS_TARGET"
-        else
-            cargo tauri build --debug
-        fi
+        CARGO_TARGET_DIR="$target_dir" cargo tauri build
     fi
 
     echo "Tauri build completed"
@@ -397,17 +367,11 @@ if [[ "$TARGET" == "bundle" || "$TARGET" == "all" ]]; then
     build_tauri
 
     # Release verification
-    if [ "$RELEASE" = true ]; then
-        verify_bundle_contract
-    fi
+    verify_bundle_contract
 fi
 
 #endregion
 
 echo ""
 echo "=== Build Complete ==="
-if [ "$RELEASE" = true ]; then
-    echo "Release bundles location: $PROJECT_ROOT/__temp/tauri_dist/release/bundle/"
-else
-    echo "Debug app location: $TAURI_DIR/target/debug/"
-fi
+echo "Release bundles location: $PROJECT_ROOT/__temp/tauri_dist/release/bundle/"

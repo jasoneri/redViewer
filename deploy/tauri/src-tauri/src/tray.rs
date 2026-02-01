@@ -3,19 +3,18 @@
 use anyhow::Context;
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
-    tray::{TrayIcon, TrayIconBuilder, TrayIconEvent},
+    tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent},
     Manager,
 };
 use tauri_plugin_opener::OpenerExt;
 
-use crate::guide;
+use crate::main_window;
 use crate::python::PythonManager;
 use crate::webserver::WebServer;
 use rv_lib::open_in_file_manager;
 
 // Menu item identifiers
 pub const MENU_OPEN: &str = "open";
-pub const MENU_SHOW_WIN: &str = "show_win";
 pub const MENU_LOGS: &str = "logs";
 pub const MENU_RESTART: &str = "restart";
 pub const MENU_QUIT: &str = "quit";
@@ -23,15 +22,13 @@ pub const MENU_QUIT: &str = "quit";
 /// Build the system tray with menu
 pub fn build_tray(app: &tauri::AppHandle) -> tauri::Result<TrayIcon> {
     let open = MenuItem::with_id(app, MENU_OPEN, "Open redViewer", true, None::<&str>)?;
-    let show_win = MenuItem::with_id(app, MENU_SHOW_WIN, "Show Main Window", true, None::<&str>)?;
     let logs = MenuItem::with_id(app, MENU_LOGS, "View Logs", true, None::<&str>)?;
     let restart = MenuItem::with_id(app, MENU_RESTART, "Restart Backend", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, MENU_QUIT, "Quit", true, None::<&str>)?;
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
-    let sep3 = PredefinedMenuItem::separator(app)?;
 
-    let menu = Menu::with_items(app, &[&open, &show_win, &sep1, &logs, &sep2, &restart, &sep3, &quit])?;
+    let menu = Menu::with_items(app, &[&open, &restart, &sep1, &logs, &sep2, &quit])?;
     let app_handle = app.clone();
 
     let tray = TrayIconBuilder::new()
@@ -41,6 +38,7 @@ pub fn build_tray(app: &tauri::AppHandle) -> tauri::Result<TrayIcon> {
                 .clone(),
         )
         .menu(&menu)
+        .show_menu_on_left_click(false)
         .on_menu_event(|app, event| {
             let pm = app.try_state::<PythonManager>();
             let ws = app.try_state::<WebServer>();
@@ -56,12 +54,17 @@ pub fn build_tray(app: &tauri::AppHandle) -> tauri::Result<TrayIcon> {
 
 /// Handle system tray events
 pub fn handle_tray_event(app: &tauri::AppHandle, event: TrayIconEvent) {
-    let pm = app.try_state::<PythonManager>();
-    let ws = app.try_state::<WebServer>();
-
     match event {
+        TrayIconEvent::Click {
+            button: MouseButton::Left,
+            button_state: MouseButtonState::Up,
+            ..
+        } => {
+            main_window::show_main_win(app);
+        }
         TrayIconEvent::DoubleClick { .. } => {
-            // Double-click opens browser
+            let pm = app.try_state::<PythonManager>();
+            let ws = app.try_state::<WebServer>();
             let url = resolve_open_url(ws.as_deref(), pm.as_deref());
             if let Err(e) = app.opener().open_url(&url, None::<&str>) {
                 tracing::warn!("User action failed: open browser (url={}): {}", url, e);
@@ -90,9 +93,6 @@ fn handle_menu_click(app: &tauri::AppHandle, ws: Option<&WebServer>, pm: Option<
             if let Err(e) = app.opener().open_url(&url, None::<&str>) {
                 tracing::warn!("User action failed: open browser (url={}): {}", url, e);
             }
-        }
-        MENU_SHOW_WIN => {
-            guide::show_main_win(app);
         }
         MENU_LOGS => {
             let Some(pm) = pm else {

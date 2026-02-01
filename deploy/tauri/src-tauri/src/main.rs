@@ -13,12 +13,13 @@
 )]
 
 mod args;
-mod guide;
+mod main_window;
 mod python;
+mod toast;
 mod tray;
 mod webserver;
 
-use rv_lib::{resolve_paths, resolve_uv, ensure_dirs, init_logging, UvPaths};
+use rv_lib::{resolve_paths, resolve_uv_paths, ensure_dirs, init_logging};
 use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::Manager;
 
@@ -141,6 +142,105 @@ fn fatal_error(msg: &str, err: &dyn std::fmt::Display) -> ! {
     std::process::exit(1);
 }
 
+/// Ensure backend is initialized on first run (macOS/Linux only)
+///
+/// On macOS/Linux, the backend source needs to be copied from app resources
+/// to the data directory on first run, then `uv sync` is executed to create
+/// the virtual environment.
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+fn ensure_backend_initialized() -> anyhow::Result<()> {
+    use anyhow::Context;
+    use std::process::Command;
+
+    let base = dirs::data_local_dir().context("failed to resolve data_local_dir")?;
+    let backend_dir = base.join("redViewer").join("backend");
+
+    // Skip if already fully initialized (pyproject.toml AND .venv exist)
+    let pyproject_exists = backend_dir.join("pyproject.toml").exists();
+    let venv_exists = backend_dir.join(".venv").exists();
+
+    if pyproject_exists && venv_exists {
+        return Ok(());
+    }
+
+    // If pyproject exists but .venv doesn't, we need to run uv sync
+    let needs_copy = !pyproject_exists;
+
+    tracing::info!("First run: initializing backend (copy={}, sync=true)...", needs_copy);
+
+    // Copy backend source only if needed
+    if needs_copy {
+        // Find app resources
+        let exe_dir = std::env::current_exe()
+            .context("get exe path")?
+            .parent()
+            .ok_or_else(|| anyhow::anyhow!("cannot get exe dir"))?
+            .to_path_buf();
+
+        // On macOS, resources are in Contents/Resources/res/src
+        // On Linux AppImage, resources are in the same directory as the executable
+        #[cfg(target_os = "macos")]
+        let src = exe_dir
+            .parent() // Contents
+            .and_then(|p| Some(p.join("Resources").join("res").join("src")))
+            .ok_or_else(|| anyhow::anyhow!("cannot resolve macOS resources path"))?;
+
+        #[cfg(target_os = "linux")]
+        let src = exe_dir.join("res").join("src");
+
+        if !src.exists() {
+            return Err(anyhow::anyhow!(
+                "Backend source not found in app resources: {}",
+                src.display()
+            ));
+        }
+
+        std::fs::create_dir_all(&backend_dir).context("create backend dir")?;
+        copy_dir_recursive(&src, &backend_dir).context("copy backend source")?;
+        tracing::info!("Backend source copied to {}", backend_dir.display());
+    }
+
+    // Resolve uv path and run sync
+    let uv = rv_lib::resolve_uv()?;
+    tracing::info!("Running uv sync...");
+
+    let status = Command::new(&uv)
+        .current_dir(&backend_dir)
+        .arg("sync")
+        .status()
+        .context("uv sync")?;
+
+    if !status.success() {
+        return Err(anyhow::anyhow!("uv sync failed"));
+    }
+
+    tracing::info!("Backend initialization complete");
+    Ok(())
+}
+
+/// Recursively copy a directory
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+fn copy_dir_recursive(src: &std::path::Path, dst: &std::path::Path) -> anyhow::Result<()> {
+    use anyhow::Context;
+
+    std::fs::create_dir_all(dst).context("mkdir dst")?;
+
+    for entry in std::fs::read_dir(src).context("read_dir src")? {
+        let entry = entry.context("dir entry")?;
+        let ty = entry.file_type().context("file_type")?;
+        let from = entry.path();
+        let to = dst.join(entry.file_name());
+
+        if ty.is_dir() {
+            copy_dir_recursive(&from, &to)?;
+        } else if ty.is_file() {
+            std::fs::copy(&from, &to)
+                .with_context(|| format!("copy {} -> {}", from.display(), to.display()))?;
+        }
+    }
+    Ok(())
+}
+
 fn main() {
     // Install error hooks first, before anything else
     if let Err(e) = install_error_hooks() {
@@ -167,6 +267,12 @@ fn main() {
     tracing::info!("redViewer tray starting (version {})", env!("CARGO_PKG_VERSION"));
     tracing::info!("Config dir: {}", paths.config_dir.display());
 
+    // On macOS/Linux, ensure backend is initialized on first run
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    if let Err(e) = ensure_backend_initialized() {
+        fatal_error("Failed to initialize backend", &e);
+    }
+
     // Backend-only mode: no Tauri, just Python backend
     if args.backend_only {
         tracing::info!("Backend-only mode requested");
@@ -187,18 +293,13 @@ fn main() {
         .setup(move |app| {
             tracing::info!("Tauri setup starting...");
 
-            // Resolve uv binary path
-            let uv = match resolve_uv() {
-                Ok(uv) => uv,
+            // Resolve uv paths using unified path resolution
+            let uv_paths = match resolve_uv_paths(&paths) {
+                Ok(p) => p,
                 Err(e) => {
-                    tracing::error!("Failed to resolve uv: {}", e);
+                    tracing::error!("Failed to resolve uv paths: {}", e);
                     return Err(e.into());
                 }
-            };
-
-            let uv_paths = UvPaths {
-                uv,
-                pyproject_dir: paths.runtime_dir.join("src"),
             };
 
             // Create and start Python manager
@@ -281,20 +382,23 @@ fn main() {
             if !args.no_tray {
                 let _tray = tray::build_tray(&app.handle())?;
             }
-
             // Create and show main window
-            if let Err(e) = guide::create_main_win(&app.handle()) {
+            if let Err(e) = main_window::create_main_win(&app.handle()) {
                 tracing::warn!("Failed to create main window: {}", e);
                 // Non-fatal: continue without main window
             }
-
+            // Create toast window
+            if let Err(e) = toast::create_toast_win(&app.handle()) {
+                tracing::warn!("Failed to create toast window: {}", e);
+                // Non-fatal: continue without toast window
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            guide::guide_cancel_auto_close,
-            guide::guide_open_browser,
-            guide::guide_close,
+            main_window::main_window_open_browser,
+            main_window::main_window_close,
             get_system_theme,
+            toast::show_toast,
         ])
         .build(ctx);
 
@@ -314,14 +418,9 @@ fn main() {
 
 /// Run backend-only mode without Tauri
 fn run_backend_only(paths: &rv_lib::AppPaths, _verbose: bool) {
-    let uv = match resolve_uv() {
-        Ok(uv) => uv,
-        Err(e) => fatal_error("Failed to resolve uv", &e),
-    };
-
-    let uv_paths = UvPaths {
-        uv,
-        pyproject_dir: paths.runtime_dir.join("src"),
+    let uv_paths = match resolve_uv_paths(paths) {
+        Ok(p) => p,
+        Err(e) => fatal_error("Failed to resolve uv paths", &e),
     };
 
     let pm = PythonManager::new(

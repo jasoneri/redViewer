@@ -106,7 +106,7 @@ install_environment() {
             uv_ok=false
         else
             echo "uv安装python..."
-            mirrorUrl=$(speed_gtihub "https://github.com/astral-sh/python-build-standalone/releases/download")
+            mirrorUrl="https://mirror.nju.edu.cn/github-release/astral-sh/python-build-standalone"
             if ! uv python install 3.12 --mirror "$mirrorUrl" --no-cache; then
                 python_ok=false
             fi

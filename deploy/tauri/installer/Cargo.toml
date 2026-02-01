@@ -20,3 +20,6 @@ tracing-subscriber = { workspace = true }
 tracing-appender = { workspace = true }
 dirs = { workspace = true }
 toml = { workspace = true }
+
+[target.'cfg(windows)'.build-dependencies]
+embed-resource = "1"

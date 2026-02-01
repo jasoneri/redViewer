@@ -30,14 +30,8 @@
     "resources": {
       "../../stage/src": "res/src",
       "../../stage/dist": "res/dist",
-      "../../stage/rvInstaller.exe": "rvInstaller.exe",
-      "../../assets/configs/cn.toml": "res/cn.toml",
-      "../../assets/configs/global.toml": "res/global.toml",
-      "../../assets/icons/icon.ico": "res/icon.ico",
-      "../../assets/icons/icon.png": "res/icon.png",
-      "../../assets/icons/icon.icns": "res/icon.icns",
-      "../../assets/icons/setup.png": "res/setup.png",
-      "../mainWin": "res/mainWin"
+      "../../assets/configs/cn.toml": "res/conf/cn.toml",
+      "../../assets/configs/global.toml": "res/conf/global.toml"
     },
     "windows": {
       "nsis": {
@@ -45,7 +39,9 @@
         "installerHooks": "./windows/hooks.nsh",
         "installMode": "currentUser",
         "languages": ["English", "SimpChinese"],
-        "displayLanguageSelector": true
+        "displayLanguageSelector": true,
+        "sidebarImage": "../../assets/icons/setup.bmp",
+        "installerIcon": "../../assets/icons/setup.ico"
       }
     }
   },

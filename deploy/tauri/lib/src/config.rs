@@ -19,12 +19,33 @@ pub struct AppPaths {
 }
 
 /// Resolve application paths based on platform
+///
+/// Path strategy:
+/// - Windows: All data in %LOCALAPPDATA%\redViewer
+/// - macOS: Data in ~/Library/Application Support/redViewer, logs in ~/Library/Logs/redViewer
+/// - Linux: Data in ~/.local/share/redViewer, config in ~/.config/redViewer (XDG)
 pub fn resolve_paths() -> anyhow::Result<AppPaths> {
-    let base = dirs::config_dir().context("failed to resolve config_dir")?;
-    let config_dir = base.join("redViewer");
+    let base = dirs::data_local_dir().context("failed to resolve data_local_dir")?;
+    let data_root = base.join("redViewer");
+
+    let config_dir = if cfg!(target_os = "linux") {
+        dirs::config_dir()
+            .context("failed to resolve config_dir")?
+            .join("redViewer")
+    } else {
+        data_root.join("config")
+    };
+
+    let log_dir = if cfg!(target_os = "macos") {
+        dirs::home_dir()
+            .context("failed to resolve home_dir")?
+            .join("Library/Logs/redViewer")
+    } else {
+        data_root.join("logs")
+    };
+
+    let runtime_dir = data_root.join("runtime");
     let config_file = config_dir.join("conf.yml");
-    let log_dir = config_dir.join("logs");
-    let runtime_dir = config_dir.join("runtime");
     let app_settings_file = config_dir.join("app-settings.json");
 
     Ok(AppPaths {

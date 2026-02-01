@@ -3,7 +3,7 @@
 //! Handles Python installation, dependency management, and backend source staging.
 
 use anyhow::{anyhow, Context};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -26,34 +26,66 @@ pub struct PyPIConfig {
 
 #[derive(Debug, Deserialize)]
 pub struct PythonConfig {
-    pub download_mirror: Option<String>,
+    #[serde(alias = "download_mirror")]
+    pub install_mirror: Option<String>,
 }
-
-// /// Offline bundle manifest
-// #[derive(Debug, Serialize, Deserialize)]
-// pub struct OfflineManifest {
-//     pub version: String,
-//     pub created_at: String,
-//     pub files: Vec<OfflineFile>,
-// }
-
-// #[derive(Debug, Serialize, Deserialize)]
-// pub struct OfflineFile {
-//     pub path: String,
-//     pub size: u64,
-//     pub sha256: String,
-// }
 
 /// Run the installation process
 pub fn run_install(paths: &AppPaths, pyenv: Option<String>) -> anyhow::Result<()> {
     let uv = resolve_uv()?;
-    let pyproject_dir = paths.runtime_dir.join("src");
+
+    // Platform-specific pyproject_dir resolution
+    #[cfg(target_os = "windows")]
+    let pyproject_dir = {
+        // Windows: Use $INSTDIR/res/src directly, no staging to Roaming
+        let exe_dir = std::env::current_exe()
+            .context("get exe path")?
+            .parent()
+            .ok_or_else(|| anyhow!("cannot get exe dir"))?
+            .to_path_buf();
+        exe_dir.join("res").join("src")
+    };
+
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    let pyproject_dir = {
+        // macOS/Linux: Stage backend to $DATA_LOCAL_DIR/redViewer/backend
+        let base = dirs::data_local_dir().context("failed to resolve data_local_dir")?;
+        let dst = base.join("redViewer").join("backend");
+
+        let exe_dir = std::env::current_exe()
+            .context("get exe path")?
+            .parent()
+            .ok_or_else(|| anyhow!("cannot get exe dir"))?
+            .to_path_buf();
+
+        // On macOS, resources are in Contents/Resources, not Contents/MacOS
+        #[cfg(target_os = "macos")]
+        let src = exe_dir
+            .parent() // Contents
+            .map(|p| p.join("Resources").join("res").join("src"))
+            .ok_or_else(|| anyhow!("cannot resolve macOS resources path"))?;
+
+        #[cfg(target_os = "linux")]
+        let src = exe_dir.join("res").join("src");
+
+        if !dst.join("pyproject.toml").exists() {
+            tracing::info!("Staging backend source to {}", dst.display());
+            std::fs::create_dir_all(&dst).context("create backend dir")?;
+            copy_dir_all(&src, &dst).context("stage backend source")?;
+        }
+
+        dst
+    };
 
     tracing::info!("Using uv at: {}", uv.display());
     tracing::info!("Project dir: {}", pyproject_dir.display());
 
-    // Stage backend source if needed
-    stage_backend_source(paths)?;
+    if !pyproject_dir.join("pyproject.toml").exists() {
+        return Err(anyhow!(
+            "pyproject.toml not found in {}. Ensure res/src is bundled correctly.",
+            pyproject_dir.display()
+        ));
+    }
 
     // Load PyEnv profile if specified
     let pyenv_config = pyenv
@@ -64,7 +96,7 @@ pub fn run_install(paths: &AppPaths, pyenv: Option<String>) -> anyhow::Result<()
     tracing::info!("Installing Python via uv...");
     ensure_managed_python(&uv, &pyproject_dir, pyenv_config.as_ref())?;
 
-    // Sync dependencies
+    // Sync dependencies (creates .venv in $INSTDIR/res/src)
     tracing::info!("Syncing dependencies via uv...");
     uv_sync(&uv, &pyproject_dir, pyenv_config.as_ref())?;
 
@@ -181,12 +213,21 @@ fn load_pyenv_config(_paths: &AppPaths, profile: &str) -> anyhow::Result<PyEnvCo
     }
 
     // Find profile in bundled resources
+    // Try both res/conf/ and res/ paths for compatibility
     let exe_dir = std::env::current_exe()
         .context("get exe path")?
         .parent()
         .ok_or_else(|| anyhow!("cannot get exe dir"))?
         .to_path_buf();
 
+    // Try res/conf/<profile> first (new layout)
+    let p = exe_dir.join("res").join("conf").join(profile);
+    if p.exists() {
+        let content = std::fs::read_to_string(&p).context("read pyenv profile")?;
+        return toml::from_str(&content).context("parse pyenv profile");
+    }
+
+    // Fallback to res/<profile> (legacy layout)
     let p = exe_dir.join("res").join(profile);
     if p.exists() {
         let content = std::fs::read_to_string(&p).context("read pyenv profile")?;
@@ -202,10 +243,10 @@ fn ensure_managed_python(uv: &Path, pyproject_dir: &Path, pyenv_config: Option<&
     cmd.current_dir(pyproject_dir)
         .args(["python", "install", "3.12"]);
 
-    // Apply mirror if configured
+    // Apply python-build-standalone mirror if configured
     if let Some(config) = pyenv_config {
         if let Some(ref python) = config.python {
-            if let Some(ref mirror) = python.download_mirror {
+            if let Some(ref mirror) = python.install_mirror {
                 cmd.arg("--mirror").arg(mirror);
             }
         }

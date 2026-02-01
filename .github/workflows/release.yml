@@ -1,17 +1,20 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'  
-  workflow_dispatch:
+  workflow_run:
+    workflows: ["Build Desktop App"]
+    types:
+      - completed
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
-  compose-and-release:
-    if: startsWith(github.ref, 'refs/tags/')
+  release:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      startsWith(github.event.workflow_run.head_branch, 'v')
     runs-on: ubuntu-latest
     container:
       image: python:3.12-slim
@@ -20,32 +23,47 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0  # 获取完整历史记录用于生成日志
+        ref: ${{ github.event.workflow_run.head_branch }}
+        fetch-depth: 0
+
+    - name: Download artifacts from build workflow
+      uses: actions/download-artifact@v4
+      with:
+        run-id: ${{ github.event.workflow_run.id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        path: artifacts
+
+    - name: Display artifact structure
+      run: ls -R artifacts
 
     - name: Compose Release Notes
       id: compose_notes
       run: |
-        # 获取当前标签
-        TAG_NAME="${GITHUB_REF#refs/tags/}"
+        TAG_NAME="${{ github.event.workflow_run.head_branch }}"
+        echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
         echo "version: $TAG_NAME"
-        
-        # 判断是否为测试版
+
         if [[ "$TAG_NAME" == *beta* ]]; then
           echo "is_beta=true" >> $GITHUB_OUTPUT
         else
           echo "is_beta=false" >> $GITHUB_OUTPUT
         fi
-        
-        # 组合最终发布内容（使用预设文件拼接）
+
         cat docs/_github/release_notes.md >> full_body.md
         cat docs/_github/preset.md >> full_body.md
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: ${{ github.ref }}
-        name: ${{ github.ref_name }}
+        tag_name: ${{ steps.compose_notes.outputs.tag_name }}
+        name: ${{ steps.compose_notes.outputs.tag_name }}
         body_path: full_body.md
+        draft: true
         prerelease: ${{ steps.compose_notes.outputs.is_beta == 'true' }}
+        files: |
+          artifacts/**/*.exe
+          artifacts/**/*.dmg
+          artifacts/**/*.AppImage
+          artifacts/**/*.deb
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

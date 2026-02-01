@@ -38,10 +38,10 @@ Var MirrorPageVisited    ; Track if page was ever visited
   !define MIRROR_PAGE_SUBTITLE "Select the Python package mirror source"
 !endif
 !ifndef MIRROR_GLOBAL_TEXT
-  !define MIRROR_GLOBAL_TEXT "Global (PyPI - recommended for most users)"
+  !define MIRROR_GLOBAL_TEXT "Global (github/python-build-standalone, PyPI)"
 !endif
 !ifndef MIRROR_CN_TEXT
-  !define MIRROR_CN_TEXT "China Mirror (faster in China)"
+  !define MIRROR_CN_TEXT "China (NJU, huaweicloud pypi)"
 !endif
 !ifndef DEPS_INSTALLING
   !define DEPS_INSTALLING "Installing Python dependencies..."
@@ -141,7 +141,7 @@ Function MirrorPageCreate
   ${EndIf}
 
   ; Create description label
-  ${NSD_CreateLabel} 20 10 400 30 "Please select the Python package download source. If you are in China, selecting the China Mirror will significantly speed up the installation."
+  ${NSD_CreateLabel} 20 10 400 30 "Select the Python package download source. China for speed up chinese users"
   Pop $0
 
   ; Create radio buttons
@@ -227,9 +227,9 @@ FunctionEnd
 
   ; Determine config file based on mirror choice
   ${If} $MirrorChoice == "cn"
-    StrCpy $1 "$INSTDIR\res\cn.toml"
+    StrCpy $1 "$INSTDIR\res\conf\cn.toml"
   ${Else}
-    StrCpy $1 "$INSTDIR\res\global.toml"
+    StrCpy $1 "$INSTDIR\res\conf\global.toml"
   ${EndIf}
 
   ; Execute rvInstaller.exe
@@ -265,7 +265,11 @@ FunctionEnd
 ; POSTUNINSTALL Hook
 ;------------------------------------------------------------------------------
 !macro NSIS_HOOK_POSTUNINSTALL
-  ; Optional: Clean up config directory
-  ; Uncomment the following lines to remove user data on uninstall
-  ; RMDir /r "${CONFIG_DIR}"
+  ; Clean up runtime-generated files only on full uninstall (not upgrade)
+  ${If} $UpdateMode <> 1
+    Delete /REBOOTOK "$INSTDIR\res\src\uv.lock"
+    RMDir /r /REBOOTOK "$INSTDIR\res\src\.venv"
+    RMDir /r /REBOOTOK "$INSTDIR\res"
+    RMDir /REBOOTOK "$INSTDIR"
+  ${EndIf}
 !macroend

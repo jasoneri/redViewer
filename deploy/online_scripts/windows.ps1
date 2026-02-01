@@ -67,7 +67,8 @@ function Speedgithub {
     if (-not $script:asked) {
         $enableSpeed = Read-Host "是否启用加速？(y/n)"
         if ($enableSpeed -eq 'y') {
-            $speedUrl = Read-Host "请粘贴格式链接（进 github.akams.cn 输入任意字符获取，例如：https://aaaa.bbbb/https/114514）"
+            Write-Host "（进 github.akams.cn 输入 https://github.com/aabb 点击 Direct，例如：https://aaaa.bbbb/https://github.com/aabb）"
+            $speedUrl = Read-Host "请粘贴格式链接"
             if ($speedUrl -match '(https?://[^/]+)') {
                 $script:speedPrefix = $Matches[1]
                 Write-Host "✈️ 加速前缀: $script:speedPrefix"  # 使用 Write-Host 避免返回值
@@ -123,7 +124,7 @@ function Install-Environment {
             $uv_ok = $false
         } else {
             Write-Output "[Install-Environment]uv安装python..."
-            $mirrorUrl = Speedgithub -originalUrl "https://github.com/astral-sh/python-build-standalone/releases/download"
+            $mirrorUrl = "https://mirror.nju.edu.cn/github-release/astral-sh/python-build-standalone"
             uv python install 3.12 --mirror $mirrorUrl --no-cache
             
             if ($LASTEXITCODE -ne 0) {

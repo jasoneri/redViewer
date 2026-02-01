@@ -18,6 +18,7 @@ rv_lib = { path = "../lib", package = "lib" }
 tauri = { workspace = true }
 tauri-plugin-opener = { workspace = true }
 tauri-plugin-single-instance = { workspace = true }
+notify-rust = { workspace = true }
 anyhow = { workspace = true }
 color-eyre = { workspace = true }
 thiserror = { workspace = true }

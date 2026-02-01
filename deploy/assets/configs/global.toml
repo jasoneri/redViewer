@@ -6,5 +6,5 @@
 index_url = "https://pypi.org/simple"
 
 [python]
-# Official Python downloads
-download_mirror = "https://www.python.org/ftp/python/"
+# python-build-standalone mirror for uv (default: GitHub)
+install_mirror = "https://github.com/astral-sh/python-build-standalone/releases/download"

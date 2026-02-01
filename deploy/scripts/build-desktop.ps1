@@ -7,11 +7,9 @@
 #   .\build-desktop.ps1                      # Build all (Stage 1 + Stage 2)
 #   .\build-desktop.ps1 -Target Installer    # Stage 1 only: build rvInstaller.exe
 #   .\build-desktop.ps1 -Target Bundle       # Stage 2 only: build NSIS (requires Stage 1 output)
-#   .\build-desktop.ps1 -Release             # Release build
 #   .\build-desktop.ps1 -SkipFrontend        # Skip frontend build (use existing dist)
 
 param(
-    [switch]$Release,
     [switch]$SkipFrontend,
     [ValidateSet('All', 'Installer', 'Bundle')]
     [string]$Target = 'All'
@@ -51,23 +49,13 @@ function Build-Installer {
     Write-Host "`n=== STAGE 1: Building rvInstaller ===" -ForegroundColor Magenta
     Push-Location $TauriDir
     try {
-        if ($Release) {
-            Write-Host "Building rvInstaller (release)..."
-            cargo build -p installer --release
-            if ($LASTEXITCODE -ne 0) {
-                Write-Error "Cargo build for installer (release) failed with exit code $LASTEXITCODE"
-                exit 1
-            }
-            $script:InstallerPath = Join-Path $TauriDir "target/release/rvInstaller.exe"
-        } else {
-            Write-Host "Building rvInstaller (debug)..."
-            cargo build -p installer
-            if ($LASTEXITCODE -ne 0) {
-                Write-Error "Cargo build for installer (debug) failed with exit code $LASTEXITCODE"
-                exit 1
-            }
-            $script:InstallerPath = Join-Path $TauriDir "target/debug/rvInstaller.exe"
+        Write-Host "Building rvInstaller (release)..."
+        cargo build -p installer --release
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "Cargo build for installer (release) failed with exit code $LASTEXITCODE"
+            exit 1
         }
+        $script:InstallerPath = Join-Path $TauriDir "target/release/rvInstaller.exe"
 
         if (-not (Test-Path $script:InstallerPath)) {
             Write-Host "rvInstaller.exe not found at: $script:InstallerPath" -ForegroundColor Red
@@ -129,13 +117,9 @@ function Copy-InstallerToStage {
 
     Write-Host "`n--- Staging rvInstaller.exe ---" -ForegroundColor Yellow
 
-    # If path not provided, try to find it
+    # If path not provided, use release path
     if (-not $InstallerPath) {
-        if ($Release) {
-            $InstallerPath = Join-Path $TauriDir "target/release/rvInstaller.exe"
-        } else {
-            $InstallerPath = Join-Path $TauriDir "target/debug/rvInstaller.exe"
-        }
+        $InstallerPath = Join-Path $TauriDir "target/release/rvInstaller.exe"
     }
 
     if (-not (Test-Path $InstallerPath)) {
@@ -312,29 +296,18 @@ function Build-Tauri {
     $srcTauriDir = Join-Path $TauriDir "src-tauri"
     Push-Location $srcTauriDir
     try {
-        if ($Release) {
-            $env:CARGO_TARGET_DIR = "$ProjectRoot/__temp/tauri_dist"
-            Write-Host "Building release (output to $env:CARGO_TARGET_DIR)..."
-            cargo tauri build
-            if ($LASTEXITCODE -ne 0) {
-                Write-Error "Cargo Tauri build (release) failed with exit code $LASTEXITCODE"
-                exit 1
-            }
-        } else {
-            Write-Host "Building debug..."
-            $env:RUSTFLAGS = "-D clippy::unwrap_used -D clippy::expect_used -D warnings"
-            cargo tauri build --debug
-            if ($LASTEXITCODE -ne 0) {
-                Write-Error "Cargo Tauri build (debug) failed with exit code $LASTEXITCODE"
-                exit 1
-            }
+        $env:CARGO_TARGET_DIR = "$ProjectRoot/__temp/tauri_dist"
+        Write-Host "Building release (output to $env:CARGO_TARGET_DIR)..."
+        cargo tauri build
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "Cargo Tauri build (release) failed with exit code $LASTEXITCODE"
+            exit 1
         }
 
         Write-Host "Tauri build completed" -ForegroundColor Green
     }
     finally {
         Pop-Location
-        Remove-Item Env:RUSTFLAGS -ErrorAction SilentlyContinue
     }
 }
 
@@ -408,20 +381,14 @@ if ($Target -in @('Bundle', 'All')) {
     Build-Tauri
 
     # Release verification
-    if ($Release) {
-        Test-BundleContract
-        Remove-Item Env:CARGO_TARGET_DIR -ErrorAction SilentlyContinue
-    }
+    Test-BundleContract
+    Remove-Item Env:CARGO_TARGET_DIR -ErrorAction SilentlyContinue
 }
 
 #endregion
 
 Write-Host "`n=== Build Complete ===" -ForegroundColor Green
 
-if ($Release) {
-    $bundleDir = "$ProjectRoot/__temp/tauri_dist/release/bundle"
-    Write-Host "Release bundle location: $bundleDir" -ForegroundColor Yellow
-    Write-Host "  - NSIS: $bundleDir\nsis\" -ForegroundColor Cyan
-} else {
-    Write-Host "Debug exe location: $TauriDir\target\debug\redviewer-tray.exe" -ForegroundColor Yellow
-}
+$bundleDir = "$ProjectRoot/__temp/tauri_dist/release/bundle"
+Write-Host "Release bundle location: $bundleDir" -ForegroundColor Yellow
+Write-Host "  - NSIS: $bundleDir\nsis\" -ForegroundColor Cyan

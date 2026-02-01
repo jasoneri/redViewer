@@ -12,7 +12,7 @@ on:
         default: ''
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -77,8 +77,8 @@ jobs:
         shell: pwsh
         run: |
           cd deploy/scripts
-          # Full build: Stage 1 (rvInstaller) + Stage 2 (MSI bundle)
-          .\build-desktop.ps1 -Release
+          # Full build: Stage 1 (rvInstaller) + Stage 2 (NSIS bundle)
+          .\build-desktop.ps1
 
       - name: Build (macOS/Linux)
         if: runner.os != 'Windows'
@@ -87,7 +87,7 @@ jobs:
           cd deploy/scripts
           chmod +x build-desktop.sh
           # Full build: Stage 1 (rvInstaller) + Stage 2 (app bundle)
-          ./build-desktop.sh -r --cross-target ${{ matrix.target }}
+          ./build-desktop.sh --cross-target ${{ matrix.target }}
 
       # Artifact paths: Release builds output to __temp/tauri_dist
       - name: Upload artifacts (Windows)
@@ -96,7 +96,6 @@ jobs:
         with:
           name: rv-windows-${{ matrix.target }}
           path: |
-            __temp/tauri_dist/release/bundle/msi/*.msi
             __temp/tauri_dist/release/bundle/nsis/*.exe
 
       - name: Upload artifacts (macOS)
@@ -115,60 +114,3 @@ jobs:
           path: |
             __temp/tauri_dist/release/bundle/appimage/*.AppImage
             __temp/tauri_dist/release/bundle/deb/*.deb
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Display structure
-        run: ls -R artifacts
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          draft: true
-          files: |
-            artifacts/**/*.msi
-            artifacts/**/*.exe
-            artifacts/**/*.dmg
-            artifacts/**/*.AppImage
-            artifacts/**/*.deb
-          body: |
-            ## rV Desktop ${{ github.ref_name }}
-
-            ### Installation
-
-            **Windows:**
-            - Download `rV_*_x64-setup.exe` (NSIS installer)
-            - Or download `rV_*_x64_en-US.msi` (MSI installer)
-            - MSI will automatically install Python dependencies during setup via rvInstaller
-
-            **macOS:**
-            - Download `rV_*_x64.dmg` (Intel)
-            - Or download `rV_*_aarch64.dmg` (Apple Silicon)
-
-            **Linux:**
-            - Download `rV_*_amd64.AppImage`
-            - Or download `rV_*_amd64.deb` (Debian/Ubuntu)
-
-            ### Manual Dependency Installation (if needed)
-
-            If dependencies were not installed automatically, run rvInstaller:
-            ```bash
-            # Windows
-            rvInstaller.exe /i /pyenv cn.toml  # China mirror
-            rvInstaller.exe /i                  # Global mirror
-            ```
-
-            ### Two-Stage Build Architecture
-
-            This release uses a two-stage build:
-            - **Stage 1**: rvInstaller.exe (handles Python/dependency installation)
-            - **Stage 2**: rv.exe + MSI bundle (main application)

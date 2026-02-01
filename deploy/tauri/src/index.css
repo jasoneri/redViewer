@@ -15,47 +15,164 @@ html, body, #root {
   background: transparent;
 }
 
-/* Glassmorphism card */
-.glass-card {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 16px;
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+/* Main window container with background image */
+.main-window-container {
+  width: 450px;
+  height: 300px;
+  background-image: url('/assets/desktop_bg.png');
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  border-radius: 8px;
 }
 
-.dark .glass-card {
-  background: rgba(30, 30, 30, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+.main-window-container:active {
+  cursor: grabbing;
 }
 
-/* Fallback for systems without backdrop-filter support */
-@supports not (backdrop-filter: blur(20px)) {
-  .glass-card {
-    background: rgba(245, 245, 245, 0.95);
+/* Main action button - rV.png icon, height fill */
+.main-action-btn {
+  height: 25%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 18px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+  padding: 0;
+}
+
+.main-action-btn:hover:not(:disabled) {
+  transform: scale(1.05);
+}
+
+.main-action-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.main-action-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.main-action-btn img {
+  height: 100%;
+  width: auto;
+}
+
+/* Hint arrow icon - absolutely positioned to the right of center */
+.hint-arrow {
+  position: absolute;
+  top: 50%;
+  left: calc(50% + 42px);
+  transform: translateY(-50%);
+  pointer-events: none;
+  opacity: 0.95;
+  filter: drop-shadow(0 8px 18px rgba(255, 0, 0, 0.35));
+}
+
+/* Bounce left animation for hint arrow */
+.animate-bounce-left {
+  animation: bounce-left 0.9s infinite;
+}
+
+@keyframes bounce-left {
+  0%, 100% {
+    transform: translateY(-50%) translateX(-14px);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
   }
-  .dark .glass-card {
-    background: rgba(30, 30, 30, 0.95);
+  50% {
+    transform: translateY(-50%) translateX(0);
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
   }
 }
 
-/* Close animation */
+/* Slow pulse animation for tray button */
+.animate-pulse-slow {
+  animation: pulse-slow 4s ease-in-out infinite;
+}
+
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* Close to tray button */
+.close-to-tray-btn {
+  position: absolute;
+  bottom: 16px;
+  padding: 4px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  backdrop-filter: blur(4px);
+  transition: background-color 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.close-to-tray-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.close-to-tray-btn:active {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.close-to-tray-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-bounce-left,
+  .animate-pulse-slow {
+    animation: none;
+  }
+}
+
+/* Close animation (for auto-close) */
 .closing {
   opacity: 0;
   transform: scale(0.95);
   transition: opacity 200ms ease-out, transform 200ms ease-out;
 }
 
+/* Error message style */
+.error-message {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: rgb(220 38 38);
+  background-color: rgb(254 242 242);
+  border-radius: 0.5rem;
+  text-align: center;
+}
+
+.dark .error-message {
+  color: rgb(248 113 113);
+  background-color: rgba(127 29 29, 0.3);
+}
+
 /* Preview mode: show gradient background to visualize transparency */
 @media (display-mode: browser) {
   html {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: transparent;
     min-height: 100vh;
     display: flex;
     align-items: center;

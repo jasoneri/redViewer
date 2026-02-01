@@ -22,6 +22,7 @@ pub use paths::{
     UvPaths,
     resolve_uv,
     resolve_uv_paths,
+    resolve_install_src_dir,
 };
 
 pub use python::{

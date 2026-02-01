@@ -64,6 +64,15 @@ impl PythonManager {
         }
 
         tracing::info!("Starting backend: uv run backend/app.py");
+        tracing::info!("Project dir: {}", g.uv.pyproject_dir.display());
+
+        // Setup stderr logging to help diagnose issues
+        let log_path = g.paths.log_dir.join("backend-stderr.log");
+        let stderr_file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&log_path)
+            .context("open backend stderr log")?;
 
         let mut cmd = Command::new(&g.uv.uv);
         cmd.current_dir(&g.uv.pyproject_dir)
@@ -74,7 +83,7 @@ impl PythonManager {
             .env("RV_DEPLOY_MODE", "local")
             .stdin(Stdio::null())
             .stdout(Stdio::null())
-            .stderr(Stdio::null());
+            .stderr(stderr_file);
 
         // Windows: prevent console window
         #[cfg(target_os = "windows")]
@@ -86,6 +95,7 @@ impl PythonManager {
 
         let child = cmd.spawn().context("spawn backend (uv run backend/app.py)")?;
         tracing::info!("Backend started with PID: {}", child.id());
+        tracing::info!("Backend stderr log: {}", log_path.display());
         g.child = Some(child);
         Ok(())
     }

@@ -10,6 +10,6 @@ extra_index_urls = [
 ]
 
 [python]
-# Python download mirror
-download_mirror = "https://repo.huaweicloud.com/python/"
+# python-build-standalone mirror for uv (NJU mirror)
+install_mirror = "https://mirror.nju.edu.cn/github-release/astral-sh/python-build-standalone"
 
