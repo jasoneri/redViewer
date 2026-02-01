@@ -18,8 +18,8 @@
 <div v-if="showDialog" @click="showDialog = false" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;">
   <div @click.stop style="background: var(--vp-c-bg); border-radius: 8px; padding: 24px; max-width: 500px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);">
     <div style="display: flex; gap: 16px; align-items: center;"><div style="flex: 1; line-height: 1.6;">
-        【Linux.do】给 CGS 和 rv 点 star ，<br>
-        然后加群备注 github用户名 后私聊群主即可
+        【Linux.do】给 CGS 和 rv 点 star ，(半年内的新gh号请回)<br>
+        然后加群备注 <code>lxd注册-{github用户名}</code>， <br>阅读 lxd 注册群公告后根据指示操作
       </div>
       <a href="https://qm.qq.com/q/T2SONVQmiW" target="_blank" style="padding: 8px 16px; border-radius: 4px; border: 1px solid var(--vp-c-brand); background: var(--vp-c-brand); color: white; text-decoration: none; white-space: nowrap; cursor: pointer;"
       >Q群</a>
