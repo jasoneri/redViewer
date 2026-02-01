@@ -1,0 +1,10 @@
+# redViewer PyEnv Configuration - Global Sources
+# Use with: rV.exe /pyenv global.toml (default)
+
+[pypi]
+# Official PyPI
+index_url = "https://pypi.org/simple"
+
+[python]
+# python-build-standalone mirror for uv (default: GitHub)
+install_mirror = "https://github.com/astral-sh/python-build-standalone/releases/download"

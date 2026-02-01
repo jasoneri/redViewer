@@ -52,9 +52,9 @@ function Test-Environment {
         Write-Output "[Test-Environment]❌ uv未安装"
         $envMissing = $true
     }
-    # 检查Node.js (--backend-only 模式跳过)
-    if (-not $script:backendOnly -and -not (Get-Command npm -ErrorAction SilentlyContinue)) {
-        Write-Output "[Test-Environment]❌ Node.js未安装"
+    # 检查bun (--backend-only 模式跳过)
+    if (-not $script:backendOnly -and -not (Get-Command bun -ErrorAction SilentlyContinue)) {
+        Write-Output "[Test-Environment]❌ bun未安装"
         $envMissing = $true
     }
     return $envMissing
@@ -67,7 +67,8 @@ function Speedgithub {
     if (-not $script:asked) {
         $enableSpeed = Read-Host "是否启用加速？(y/n)"
         if ($enableSpeed -eq 'y') {
-            $speedUrl = Read-Host "请粘贴格式链接（进 github.akams.cn 输入任意字符获取，例如：https://aaaa.bbbb/https/114514）"
+            Write-Host "（进 github.akams.cn 输入 https://github.com/aabb 点击 Direct，例如：https://aaaa.bbbb/https://github.com/aabb）"
+            $speedUrl = Read-Host "请粘贴格式链接"
             if ($speedUrl -match '(https?://[^/]+)') {
                 $script:speedPrefix = $Matches[1]
                 Write-Host "✈️ 加速前缀: $script:speedPrefix"  # 使用 Write-Host 避免返回值
@@ -88,6 +89,10 @@ function Speedgithub {
     }
 }
 function Install-Environment {
+    $uv_ok = $true
+    $python_ok = $true
+    $bun_ok = $true
+    
     # 检查是否以管理员权限运行
     $isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
     if (-not $isAdmin) {
@@ -99,8 +104,8 @@ function Install-Environment {
         }
         else {
             # 常规文件执行路径
-            Start-Process powershell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -NoExit -Command `"Set-Location '$originalWorkingDir'; & '$PSCommandPath' --install-env`"" 
-        }   
+            Start-Process powershell.exe -Verb RunAs -ArgumentList "-ExecutionPolicy Bypass -NoExit -Command `"Set-Location '$originalWorkingDir'; & '$PSCommandPath' --install-env`""
+        }
         exit
     }
     # 安装uv
@@ -110,27 +115,86 @@ function Install-Environment {
         $env:UV_INSTALLER_GHE_BASE_URL = Speedgithub -originalUrl "https://github.com"
         powershell -ExecutionPolicy ByPass -Command "Invoke-RestMethod -Uri 'https://astral.sh/uv/install.ps1' | Invoke-Expression"
         
-        Write-Output "[Install-Environment]uv安装python..."
-        $mirrorUrl = Speedgithub -originalUrl "https://github.com/astral-sh/python-build-standalone/releases/download"
-        uv python install 3.12 --mirror $mirrorUrl --no-cache
+        # 刷新环境变量
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        
+        # 验证 uv 是否安装成功
+        $uvCheck = uv --version 2>&1
+        if (-not $uvCheck -or $LASTEXITCODE -ne 0) {
+            $uv_ok = $false
+        } else {
+            Write-Output "[Install-Environment]uv安装python..."
+            $mirrorUrl = "https://mirror.nju.edu.cn/github-release/astral-sh/python-build-standalone"
+            uv python install 3.12 --mirror $mirrorUrl --no-cache
+            
+            if ($LASTEXITCODE -ne 0) {
+                $python_ok = $false
+            }
+        }
     }
     
-    # 安装Node.js (--backend-only 模式跳过)
-    if (-not $script:backendOnly -and -not (Get-Command npm -ErrorAction SilentlyContinue)) {
-        Write-Output "[Install-Environment]下载 Node.js 中..."
-        $nodeInstaller = "node-v22.16.0-x64.msi"
-        $nodeUrl = "https://npmmirror.com/mirrors/node/v22.16.0/$nodeInstaller"
-        $installerPath = Join-Path $originalWorkingDir $nodeInstaller
-        Invoke-WebRequest -Uri $nodeUrl -OutFile $installerPath
-
-        Write-Output "[Install-Environment]安装 Node.js 中..."
-        Start-Process -FilePath "msiexec.exe" -ArgumentList "/i", $installerPath -Wait
-        Remove-Item $installerPath
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-        npm config set registry https://mirrors.huaweicloud.com/repository/npm/
+    # 安装 bun (--backend-only 模式跳过)
+    if (-not $script:backendOnly -and -not (Get-Command bun -ErrorAction SilentlyContinue)) {
+        Write-Output "[Install-Environment]安装 bun 中..."
+        $bunVersion = "1.3.6"
+        $bunMirror = "https://registry.npmmirror.com/-/binary/bun/bun-v$bunVersion"
+        $bunFile = "bun-windows-x64.zip"
+        $bunZip = Join-Path $originalWorkingDir $bunFile
+        
+        Invoke-WebRequest -Uri "$bunMirror/$bunFile" -OutFile $bunZip
+        
+        # 解压并安装
+        $bunDir = Join-Path $env:USERPROFILE ".bun"
+        $bunBinDir = Join-Path $bunDir "bin"
+        if (-not (Test-Path $bunBinDir)) {
+            New-Item -ItemType Directory -Path $bunBinDir -Force | Out-Null
+        }
+        
+        Expand-Archive -Path $bunZip -DestinationPath $bunDir -Force
+        $extractedDir = Get-ChildItem -Path $bunDir -Directory -Filter "bun-*" | Select-Object -First 1
+        Move-Item -Path (Join-Path $extractedDir.FullName "bun.exe") -Destination $bunBinDir -Force
+        Remove-Item -Path $extractedDir.FullName -Recurse -Force
+        Remove-Item $bunZip
+        
+        # 添加到用户 PATH
+        $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
+        if ($userPath -notlike "*$bunBinDir*") {
+            [Environment]::SetEnvironmentVariable("Path", "$bunBinDir;$userPath", "User")
+        }
+        [Environment]::SetEnvironmentVariable("BUN_CONFIG_REGISTRY", "https://registry.npmmirror.com/", "User")
+        
+        $env:Path = "$bunBinDir;$env:Path"
+        $env:BUN_CONFIG_REGISTRY = "https://registry.npmmirror.com/"
+        
+        # 验证 bun 是否安装成功
+        if (-not (Get-Command bun -ErrorAction SilentlyContinue)) {
+            $bun_ok = $false
+        }
     }
+    
     # 刷新环境变量
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+    
+    # 统一检测所有安装状态
+    if (-not $uv_ok) {
+        Write-Host "❌ uv 安装失败，请手动安装后重试" -ForegroundColor Red
+        Write-Host "访问: https://docs.astral.sh/uv/getting-started/installation/" -ForegroundColor Yellow
+        Pause
+        exit 1
+    }
+    
+    if (-not $python_ok) {
+        Write-Host "❌ Python 安装失败" -ForegroundColor Red
+        Pause
+        exit 1
+    }
+    
+    if (-not $script:backendOnly -and -not $bun_ok) {
+        Write-Host "❌ bun 安装失败，请手动安装后重试" -ForegroundColor Red
+        Write-Host "访问: https://bun.sh/docs/installation" -ForegroundColor Yellow
+        Pause
+        exit 1
+    }
 
     Write-Host "✅ 环境安装完成，你应该退出现在的管理员终端，然后用以下任一方式继续操作" -ForegroundColor Green
     Write-Host "1. 直接使用 $originalWorkingDir/rV.bat"
@@ -197,7 +261,7 @@ function Install-Dependencies {
     if (-not $script:backendOnly) {
         Write-Output "[Install-Dependencies]正在安装前端依赖..."
         Set-Location frontend
-        npm i
+        bun install
     }
 }
 
@@ -285,7 +349,7 @@ function Start-RedViewer {
         # 启动前端并显示输出
         Write-Output "[Start-RedViewer]正在启动 rV 前端..."
         Set-Location (Join-Path $realProjPath "frontend")
-        npm run dev
+        bun run dev
         
         # 清理后端进程
         Stop-Job $backendJob

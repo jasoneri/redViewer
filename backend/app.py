@@ -1,3 +1,4 @@
+import os
 import pathlib
 import uvicorn
 import sys
@@ -15,4 +16,6 @@ app = create_app()
 
 
 if __name__ == '__main__':
-    uvicorn.run('app:app', host="0.0.0.0", port=12345, log_level="warning")
+    host = os.getenv("RV_HOST", "0.0.0.0")
+    port = int(os.getenv("RV_PORT", "12345"))
+    uvicorn.run('app:app', host=host, port=port, log_level="warning")

@@ -1,0 +1,21 @@
+body {
+  margin: 0;
+  background: transparent;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.toast {
+  width: 200px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #a5250ee7;
+}
+
+.toast-message {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  color: #ffffff;
+}

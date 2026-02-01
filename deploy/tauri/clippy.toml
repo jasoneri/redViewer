@@ -1,0 +1,14 @@
+# Clippy configuration for redViewer
+# Standard configuration only - use valid keys
+
+doc-valid-idents = [
+    "Rust",
+    "Tauri",
+    "FastAPI",
+    "WebSocket",
+    "DNS",
+    "HTTP",
+    "HTTPS",
+    "URL",
+    "URI",
+]

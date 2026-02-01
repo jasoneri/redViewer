@@ -41,37 +41,31 @@
 :::
 
 ::: details 有关 `rV在线体验` 的部署
-暂时使用的 Railway 部署后端， r2 放图片，不过r2免费储存才`10G`，  
-不建议日常使用，所以静态文件托管部分估摸不会扩展开发 ~~除非天降大善人让我体验爽再说~~  
-::: tip 顺便一提 Railway 免费额度似乎不足以让 在线体验 长期运行  
-欢迎[投喂](https://qm.qq.com/q/T2SONVQmiW)闲置服务器(让蹭后端部署就行)
+使用的 Railway 部署后端， r2 放图片，不过r2免费储存才`10G`，  
+不建议日常使用，所以静态文件托管部分估摸不会扩展开发  
 :::
 
 ## 前端
 
 ### 🎿 Step-1：Fork 项目
 
-1. 访问 [redViewer 项目](https://github.com/jasoneri/redViewer)
-2. 点击右上角的 "Fork" 按钮
-3. 选择您的 GitHub 账户
-4. 确认 Fork 完成
+[![Fork this repo](https://img.shields.io/badge/Fork-GitHub-181717?logo=github)](https://github.com/jasoneri/redViewer/fork)  
+
+1. ☝️ 点上面图标进行Fork
+2. 点击 `Create fork` 按钮
 
 ### 🏗️ Step-2：创建 Pages 项目
 
 #### 2.1 访问 Cloudflare Dashboard
 
-1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)
-2. 选择左侧菜单的 "计算和AI" > "Workers 和 Pages"
-3. 下方点击 `Looking to deploy Pages? Get started`
-4. 选择 " Git 存储库"
+[![Deploy on Cloudflare Pages](https://deploy.workers.cloudflare.com/button)](https://dash.cloudflare.com/?to=/:account/pages/new/provider/github)
 
-#### 2.2 连接 GitHub 仓库
+1. ☝️ 点上面图标，登陆你的 cf 账户
+2. cf 部署站点页面上，需要按操作进入 `github.com/settings/installations/12345`  
+这种返回到 github 上，access 权限增加 redViewer 或 All 完事
+3. 返回 cf 选 redViewer 点击 "开始设置"
 
-1. 如果首次使用，需要授权 Cloudflare 访问 GitHub
-2. 选择您 Fork 的 `redViewer` 仓库
-3. 点击 "开始设置"
-
-#### 2.3 配置项目设置
+#### 2.2 配置项目设置
 
 | 配置项 | 值 | 说明 |
 | -------- | ---- | ---- |
@@ -79,7 +73,7 @@
 | 生产分支 | `master` | 生产环境分支 |
 | 构建命令 | `npm install && npm run build` | 安装依赖并构建 |
 | 构建输出目录 | `dist` | Vite 默认输出目录 |
-| 根目录 | `frontend` | **重要：前端代码目录** |
+| 根目录(高级) | `frontend` | **重要：前端代码目录** |
 
 | 环境变量-变量名称 | 值 |
 | -------- | ---- |

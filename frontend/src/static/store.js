@@ -5,21 +5,34 @@ import axios from 'axios'
 let _backendUrl = localStorage.getItem('backendUrl') || import.meta.env.LAN_IP
 let _listBg = localStorage.getItem('list_bg') || null
 
+// 桌面模式：根据当前访问的 hostname 动态构建后端 URL
+// 例如：访问 http://192.168.31.15:8080 时，后端为 http://192.168.31.15:12345
+function detectDesktopBackendUrl() {
+  try {
+    const { hostname, port } = window.location
+    // 8080 端口是桌面版 Rust webserver，后端在同主机名的 12345 端口
+    if (port === '8080') {
+      return `http://${hostname}:12345`
+    }
+  } catch (_) {}
+  return null
+}
+
 // 异步初始化后端地址和背景 GIF
 export async function initBackend() {
-  // 优先级：localStorage > KV全局配置 > 构建时环境变量
+  // 优先级：localStorage > KV全局配置 > 桌面模式检测 > 构建时环境变量
   const localUrl = localStorage.getItem('backendUrl');
   const localBg = localStorage.getItem('list_bg');
-  
+
   if (localUrl) {
     _backendUrl = localUrl;
   }
-  
+
   if (localBg) {
     _listBg = localBg;
     return _backendUrl;
   }
-  
+
   try {
     const res = await fetch('/api/config');
     const { backendUrl, bgGif } = await res.json();
@@ -32,11 +45,13 @@ export async function initBackend() {
   } catch (e) {
     console.warn('获取全局配置失败，使用默认值');
   }
-  
+
   if (!localUrl) {
-    _backendUrl = import.meta.env.LAN_IP;
+    // 尝试桌面模式检测，如果失败则使用构建时配置
+    const desktopUrl = detectDesktopBackendUrl()
+    _backendUrl = desktopUrl || import.meta.env.LAN_IP;
   }
-  
+
   return _backendUrl;
 }
 
@@ -83,7 +98,8 @@ export const useSettingsStore = defineStore('settings', {
     sortValue: localStorage.getItem('sortValue') || '',
     customSorts: JSON.parse(localStorage.getItem('customSorts') || '[]'),
     scrollTopRecords: JSON.parse(localStorage.getItem('scrollTopRecords') || '{}'),
-    locks: { config_path: false, book_handle: false, switch_doujin: false, force_rescan: false }
+    locks: { config_path: false, book_handle: false, switch_doujin: false, force_rescan: false },
+    isPathConfigured: true
   }),
   actions: {
     toggleListMode() {
@@ -162,6 +178,9 @@ export const useSettingsStore = defineStore('settings', {
     },
     setLocks(locks) {
       this.locks = { ...this.locks, ...locks }
+    },
+    setPathConfigured(value) {
+      this.isPathConfigured = !!value
     }
   }
 })

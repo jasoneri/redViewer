@@ -1,0 +1,7 @@
+{
+  "bundle": {
+    "resources": {
+      "../../stage/rvInstaller.exe": "rvInstaller.exe"
+    }
+  }
+}

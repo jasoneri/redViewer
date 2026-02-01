@@ -6,8 +6,8 @@
 #   RV_COMIC_PATH=/tmp/comic
 #   RV_R2_PUBLIC_URL=https://your-r2-domain.com
 
-path: D:\Comic
-kemono_path: D:\pic\kemono
+path: ""
+kemono_path: ""
 
 # Storage backend: local | r2
 storage_backend: local

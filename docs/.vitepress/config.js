@@ -19,7 +19,7 @@ export default defineConfig({
       {
         text: '开始',
         items: [
-          { text: '🚀快速部署', link: '/deploy/' },
+          { text: '🚀快速开始', link: '/deploy/' },
           { text: '🍮进阶部署', link: '/deploy/adv' }
         ]
       },

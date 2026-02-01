@@ -29,6 +29,21 @@ export default defineConfig({
     vue(),
     // VueDevTools()
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vue core
+          'vue-vendor': ['vue', 'vue-router', 'pinia'],
+          // Element Plus UI library (large)
+          'element-plus': ['element-plus', '@element-plus/icons-vue'],
+          // Utilities
+          'utils': ['@vueuse/core', 'axios', 'lodash', 'crypto-js']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000
+  },
   server: {
     open: false,  //自动打开浏览器
     port: 8080,

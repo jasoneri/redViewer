@@ -10,10 +10,13 @@ hero:
     alt: redViewer
   actions:
     - theme: brand
-      text: 🚀快速部署
+      text: 🚀快速开始
       link: /deploy/
     - theme: alt
       text: 🎸功能预览
       link: /guide/
+    - theme: brand
+      text: 📦下载
+      link: /deploy/
 
 ---
