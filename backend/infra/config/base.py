@@ -6,6 +6,8 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 from pathlib import Path
 
+from platformdirs import user_data_dir
+
 
 class ConfigBackend(ABC):
     """配置后端抽象基类
@@ -45,8 +47,13 @@ class ConfigBackend(ABC):
     @property
     def comic_path(self) -> Path:
         path = self.get('path')
-        return Path(path) if path else Path('/tmp/comic')
-    
+        return Path(path) if path else Path(user_data_dir("Comic"))
+
+    @property
+    def is_path_configured(self) -> bool:
+        path = self.get('path', default="")
+        return bool(path and str(path).strip())
+
     @property
     def kemono_path(self) -> Optional[Path]:
         path = self.get('kemono_path')

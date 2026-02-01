@@ -3,6 +3,15 @@
   <el-dialog v-model="dialogVisible" title="修改配置" width="80vw" top="15vh" @open="onOpen">
     <el-form label-width="100px">
       <template v-if="!settingsStore.locks.config_path">
+        <el-alert
+          v-if="!settingsStore.isPathConfigured"
+          title="请配置漫画库路径"
+          description="当前使用的是临时目录，请选择存在书籍的目录保存"
+          type="warning"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 12px"
+        />
         <!-- 面包屑导航 -->
         <div v-if="pathSegments.length" class="path-breadcrumb">
           <el-breadcrumb separator="/">
@@ -137,6 +146,7 @@ const onOpen = async () => {
     const confRes = await axios.get(backend() + '/comic/conf')
     confForm.path = confRes.data.path || ''
     confForm.kemono_path = confRes.data.kemono_path || ''
+    settingsStore.setPathConfigured(confRes.data.path_configured)
   } catch {}
   // 获取当前配置路径的文件系统信息
   const res = await axios.get(backend() + '/comic/filesystem', { params: { path: confForm.path || undefined } })

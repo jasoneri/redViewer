@@ -118,7 +118,11 @@
     const list_bg = listBg();
     const errorText = computed(() => '这目录..<br>没有图片...')
     const backendErrText = computed(() => '后端异常...')
-    const emptyListText = computed(() => '没找到书籍列表，点击右上配置修改 path 看看吧...')
+    const emptyListText = computed(() =>
+      !settingsStore.isPathConfigured
+        ? '漫画路径未配置，请点击右上角菜单 → 配置，设置漫画库路径'
+        : '没找到书籍列表，点击右上配置修改 path 看看吧...'
+    )
 
     // 添加过滤方法
     const applyFilter = (data) => {
@@ -192,12 +196,16 @@
 
     onMounted(async () => {
       try {
-        const res = await axios.get(backend() + '/comic/switch_ero/')
-        if (res.data !== settingsStore.viewSettings.isEro) {
-          settingsStore.viewSettings.isEro = res.data
+        const [eroRes, confRes] = await Promise.all([
+          axios.get(backend() + '/comic/switch_ero/'),
+          axios.get(backend() + '/comic/conf')
+        ])
+        if (eroRes.data !== settingsStore.viewSettings.isEro) {
+          settingsStore.viewSettings.isEro = eroRes.data
         }
+        settingsStore.setPathConfigured(confRes.data.path_configured)
       } catch (e) {
-        console.warn('获取 ero 状态失败，使用本地缓存')
+        console.warn('获取初始状态失败，使用本地缓存')
       }
       init()
     })

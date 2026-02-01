@@ -51,6 +51,7 @@ class ConfContent(BaseModel):
 async def get_conf():
     return {
         "path": str(backend.config.comic_path),
+        "path_configured": backend.config.is_path_configured,
         "kemono_path": str(backend.config.kemono_path) if backend.config.kemono_path else ""
     }
 
