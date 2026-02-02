@@ -3,6 +3,7 @@
 //! Provides a custom toast notification window that appears at the bottom-right
 //! of the screen when the main window is minimized to tray.
 
+use anyhow::Context;
 use std::sync::atomic::{AtomicU64, Ordering};
 use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 use tokio::time::{sleep, Duration};
@@ -102,41 +103,41 @@ pub async fn show_toast(
     app: AppHandle,
     message: String,
 ) -> Result<(), String> {
+    show_toast_inner(&app, &message).map_err(|e| format!("{:#}", e))
+}
+
+fn show_toast_inner(app: &AppHandle, message: &str) -> anyhow::Result<()> {
     let toast_win = app
         .get_webview_window(TOAST_WIN_LABEL)
-        .ok_or("Toast window not found")?;
+        .ok_or_else(|| anyhow::anyhow!("Toast window not found"))?;
 
     // Get main window for position calculation
     let main_win = app
         .get_webview_window(super::main_window::MAIN_WIN_LABEL)
-        .ok_or("Main window not found")?;
+        .ok_or_else(|| anyhow::anyhow!("Main window not found"))?;
 
     // Increment generation for debouncing
     let state = app
         .try_state::<ToastState>()
-        .ok_or("ToastState not found")?;
+        .ok_or_else(|| anyhow::anyhow!("ToastState not found"))?;
     let current_generation = state.next_generation();
 
     // Calculate and set position
-    let position = calculate_toast_position(&main_win, &app)
-        .map_err(|e| format!("Failed to calculate position: {}", e))?;
+    let position = calculate_toast_position(&main_win, app)
+        .context("calculate toast position")?;
     toast_win
         .set_position(tauri::Position::Physical(position))
-        .map_err(|e| format!("Failed to set position: {}", e))?;
+        .context("set toast position")?;
 
     // Emit event to toast window frontend
     let payload = serde_json::json!({ "message": message });
     toast_win
         .emit("toast-show", payload)
-        .map_err(|e| format!("Failed to emit event: {}", e))?;
+        .context("emit toast-show event")?;
 
     // Show toast without stealing focus
-    toast_win
-        .show()
-        .map_err(|e| format!("Failed to show window: {}", e))?;
-    toast_win
-        .set_always_on_top(true)
-        .map_err(|e| format!("Failed to set always on top: {}", e))?;
+    toast_win.show().context("show toast window")?;
+    toast_win.set_always_on_top(true).context("set toast always on top")?;
 
     // Hide after duration (with debounce check)
     let app_clone = app.clone();

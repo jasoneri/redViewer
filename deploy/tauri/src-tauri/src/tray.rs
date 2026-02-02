@@ -1,6 +1,7 @@
 //! System tray management for redViewer
 
 use anyhow::Context;
+use rv_lib::ResultExt;
 use tauri::{
     menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent},
@@ -67,9 +68,9 @@ pub fn handle_tray_event(app: &tauri::AppHandle, event: TrayIconEvent) {
             let pm = app.try_state::<PythonManager>();
             let ws = app.try_state::<WebServer>();
             let url = resolve_open_url(ws.as_deref(), pm.as_deref());
-            if let Err(e) = app.opener().open_url(&url, None::<&str>) {
-                tracing::warn!("User action failed: open browser (url={}): {}", url, e);
-            }
+            app.opener()
+                .open_url(&url, None::<&str>)
+                .log_err_with(|| format!("open browser (url={})", url));
         }
         _ => {}
     }
@@ -91,9 +92,9 @@ fn handle_menu_click(app: &tauri::AppHandle, ws: Option<&WebServer>, pm: Option<
     match id {
         MENU_OPEN => {
             let url = resolve_open_url(ws, pm);
-            if let Err(e) = app.opener().open_url(&url, None::<&str>) {
-                tracing::warn!("User action failed: open browser (url={}): {}", url, e);
-            }
+            app.opener()
+                .open_url(&url, None::<&str>)
+                .log_err_with(|| format!("open browser (url={})", url));
         }
         MENU_LOGS => {
             let Some(pm) = pm else {
@@ -101,9 +102,8 @@ fn handle_menu_click(app: &tauri::AppHandle, ws: Option<&WebServer>, pm: Option<
                 return;
             };
             let path = pm.log_dir();
-            if let Err(e) = open_in_file_manager(&path) {
-                tracing::warn!("User action failed: open logs dir (path={}): {}", path.display(), e);
-            }
+            open_in_file_manager(&path)
+                .log_err_with(|| format!("open logs dir (path={})", path.display()));
         }
         MENU_RESTART => {
             let Some(pm) = pm else {
@@ -111,29 +111,43 @@ fn handle_menu_click(app: &tauri::AppHandle, ws: Option<&WebServer>, pm: Option<
                 return;
             };
             tracing::info!("Restarting backend...");
-            if let Err(e) = pm.restart() {
-                tracing::warn!("User action failed: restart backend: {}", e);
-            } else if let Err(e) = pm.wait_until_healthy(std::time::Duration::from_secs(20)) {
-                tracing::warn!("Restart completed but health check failed: {}", e);
-            } else {
-                tracing::info!("Backend restarted successfully");
+            if pm.restart().log_err("restart backend").is_some() {
+                if pm.wait_until_healthy(std::time::Duration::from_secs(20))
+                    .log_err("restart health check")
+                    .is_some()
+                {
+                    tracing::info!("Backend restarted successfully");
+                }
             }
         }
         MENU_QUIT => {
             tracing::info!("Quitting application...");
-            if let Some(ws) = ws {
-                if let Err(e) = ws.stop() {
-                    tracing::warn!("Best-effort cleanup failed: stop embedded web server: {}", e);
-                }
-            }
-            if let Some(pm) = pm {
-                if let Err(e) = pm.stop() {
-                    tracing::warn!("Best-effort cleanup failed: stop backend: {}", e);
-                }
-            }
-            // Set quit flag before calling exit to bypass prevent_exit
+            // Set quit flag and hide UI immediately for instant user feedback
             crate::request_quit();
-            app.exit(0);
+            main_window::hide_main_win(app);
+
+            let app_handle = app.clone();
+            // Async cleanup with timeout: use spawn_blocking to avoid blocking async runtime
+            let ws = ws.cloned();
+            let pm = pm.cloned();
+            tauri::async_runtime::spawn(async move {
+                let cleanup = tokio::task::spawn_blocking(move || {
+                    if let Some(ws) = ws {
+                        ws.stop().log_err("stop embedded web server");
+                    }
+                    if let Some(pm) = pm {
+                        pm.stop().log_err("stop backend");
+                    }
+                });
+                if tokio::time::timeout(std::time::Duration::from_secs(3), cleanup)
+                    .await
+                    .is_err()
+                {
+                    tracing::warn!("Best-effort cleanup timed out; forcing exit");
+                }
+
+                app_handle.exit(0);
+            });
         }
         _ => {}
     }

@@ -38,16 +38,15 @@ html, body, #root {
 /* LAN address display */
 .show-lan {
   position: absolute;
-  top: 8%;
+  top: 5%;
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(255, 255, 255, 0.1);
-  color: #f11c1c;
+  color: white;
   padding: 4px 6px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
-  backdrop-filter: blur(4px);
+  -webkit-text-stroke: 1px #f11c1c;
   pointer-events: none;
   user-select: none;
 }

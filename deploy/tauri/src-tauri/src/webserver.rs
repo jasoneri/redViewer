@@ -21,10 +21,11 @@ use hyper_util::{
     rt::TokioExecutor,
 };
 use local_ip_address::list_afinet_netifas;
+use parking_lot::Mutex;
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 use tokio::sync::oneshot;
 use tower_http::services::{ServeDir, ServeFile};
@@ -216,9 +217,7 @@ impl WebServer {
 
     /// Stop the web server
     pub fn stop(&self) -> anyhow::Result<()> {
-        let tx = self.inner.shutdown_tx.lock()
-            .map_err(|e| anyhow::anyhow!("Mutex poisoned: {}", e))?
-            .take();
+        let tx = self.inner.shutdown_tx.lock().take();
         if let Some(tx) = tx {
             let _ = tx.send(());
         }

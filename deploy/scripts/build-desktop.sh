@@ -61,6 +61,59 @@ echo "Target: $TARGET"
 echo "Project Root: $PROJECT_ROOT"
 echo "Deploy Dir: $DEPLOY_DIR"
 
+#region ===== Icon Generation =====
+
+build_icons() {
+    echo ""
+    echo "--- Generating Icons ---"
+
+    local icons_dir="$ASSETS_DIR/icons"
+    local icon_png="$icons_dir/icon.png"
+    local setup_png="$icons_dir/setup.png"
+    local temp_dir=""
+
+    # Use subshell to preserve working directory
+    (
+        cd "$TAURI_DIR/src-tauri" || exit 1
+
+        # Generate icon.ico/icns from icon.png
+        echo "Generating icons from icon.png..."
+        if ! cargo tauri icon --output "$icons_dir" "$icon_png"; then
+            echo "Failed to generate icons from icon.png"
+            exit 1
+        fi
+    ) || exit 1
+
+    # Generate setup.ico from setup.png (in subshell with cleanup trap)
+    if [ -f "$setup_png" ]; then
+        echo "Generating setup icon from setup.png..."
+        temp_dir="$PROJECT_ROOT/__temp/setup_icons_$$_$(date +%s)"
+        mkdir -p "$temp_dir"
+
+        # Ensure cleanup on exit
+        cleanup_temp() {
+            [ -d "$temp_dir" ] && rm -rf "$temp_dir"
+        }
+        trap cleanup_temp EXIT
+
+        (
+            cd "$TAURI_DIR/src-tauri" || exit 1
+            if ! cargo tauri icon --output "$temp_dir" "$setup_png"; then
+                echo "Failed to generate setup icon"
+                exit 1
+            fi
+        ) || exit 1
+
+        cp "$temp_dir/icon.ico" "$icons_dir/setup.ico"
+        rm -rf "$temp_dir"
+        trap - EXIT
+    fi
+
+    echo "Icons generated"
+}
+
+#endregion
+
 #region ===== Stage 1: Build Installer =====
 
 check_dependencies_stage1() {
@@ -325,6 +378,9 @@ verify_bundle_contract() {
 #region ===== Main Execution =====
 
 INSTALLER_PATH=""
+
+# Generate icons before build
+build_icons
 
 # Stage 1: Build Installer
 if [[ "$TARGET" == "installer" || "$TARGET" == "all" ]]; then

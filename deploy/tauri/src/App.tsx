@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { Loader2, ChevronsLeft } from 'lucide-react';
+import { Loader2, ChevronsLeft, AlertTriangle } from 'lucide-react';
 import { cn } from './lib/utils';
 
 declare global {
@@ -11,11 +11,15 @@ declare global {
   }
 }
 
+type BackendStatus = 'STARTING' | 'RUNNING' | 'ERROR';
+
 function App() {
   const [closing, setClosing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lanUrl, setLanUrl] = useState<string | null>(null);
+  const [status, setStatus] = useState<BackendStatus>('STARTING');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
   const isDragInitiated = useRef(false);
@@ -25,10 +29,38 @@ function App() {
     isDragInitiated.current = false;
   }, []);
 
+  // Listen for backend-ready event
   useEffect(() => {
-    invoke<string | null>('get_lan_url')
-      .then(setLanUrl)
+    // On mount, check if backend is already ready (handles page refresh)
+    invoke<{ status: BackendStatus; error?: string }>('get_backend_status')
+      .then((res) => {
+        setStatus(res.status);
+        if (res.status === 'ERROR') {
+          setErrorMessage(res.error || '后端未就绪');
+        } else if (res.status === 'RUNNING') {
+          setErrorMessage(null);
+          invoke<string | null>('get_lan_url')
+            .then(setLanUrl)
+            .catch(console.error);
+        }
+      })
       .catch(console.error);
+
+    // Also listen for the event (handles initial startup)
+    const unlistenPromise = listen<{ status: BackendStatus; error?: string }>('backend-ready', (event) => {
+      setStatus(event.payload.status);
+      if (event.payload.status === 'RUNNING') {
+        setErrorMessage(null);
+        invoke<string | null>('get_lan_url')
+          .then(setLanUrl)
+          .catch(console.error);
+      } else if (event.payload.status === 'ERROR') {
+        setErrorMessage(event.payload.error || 'Backend startup failed');
+      }
+    });
+    return () => {
+      unlistenPromise.then((unlisten) => unlisten());
+    };
   }, []);
 
   useEffect(() => {
@@ -108,26 +140,38 @@ function App() {
       onPointerCancel={handlePointerCancel}
       className={cn('main-window-container', closing && 'closing')}
     >
-      {lanUrl && <div className="show-lan">{lanUrl}</div>}
+      {status === 'STARTING' ? (
+        <Loader2 size={48} className="animate-spin text-white" role="status" aria-label="正在启动后端服务" />
+      ) : status === 'ERROR' ? (
+        <div className="text-center text-red-400 px-4" role="alert">
+          <AlertTriangle size={24} className="mx-auto mb-2" />
+          <div className="text-sm mb-2">启动失败</div>
+          <div className="text-xs opacity-70">{errorMessage}</div>
+        </div>
+      ) : (
+        <>
+          {lanUrl && <div className="show-lan">{lanUrl}</div>}
 
-      <button
-        className="main-action-btn"
-        onClick={handleOpenBrowser}
-        disabled={loading || closing}
-      >
-        {loading ? (
-          <Loader2 size={48} className="animate-spin text-white" />
-        ) : (
-          <img src="./assets/rV.png" alt="rV" />
-        )}
-      </button>
-      <ChevronsLeft
-        size={60}
-        strokeWidth={2.25}
-        color="red"
-        className="hint-arrow animate-bounce-left"
-        aria-hidden="true"
-      />
+          <button
+            className="main-action-btn"
+            onClick={handleOpenBrowser}
+            disabled={loading || closing}
+          >
+            {loading ? (
+              <Loader2 size={48} className="animate-spin text-white" />
+            ) : (
+              <img src="./assets/rV.png" alt="rV" />
+            )}
+          </button>
+          <ChevronsLeft
+            size={60}
+            strokeWidth={2.25}
+            color="red"
+            className="hint-arrow animate-bounce-left"
+            aria-hidden="true"
+          />
+        </>
+      )}
 
       {error && (
         <div className="error-message absolute bottom-14 max-w-[360px]">

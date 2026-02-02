@@ -21,14 +21,29 @@ mod tray;
 mod webserver;
 
 use rv_lib::{resolve_paths, resolve_uv_paths, ensure_dirs, init_logging};
-use std::sync::atomic::{AtomicBool, Ordering};
-use tauri::Manager;
+use serde_json::json;
+use std::sync::{
+    atomic::{AtomicBool, AtomicU8, Ordering},
+    Mutex,
+};
+use tauri::{Emitter, Manager};
 
 use crate::python::PythonManager;
 use crate::webserver::{WebServer, WebServerConfig};
 
 /// Global flag to indicate user-initiated quit (vs window close)
 static USER_QUIT_REQUESTED: AtomicBool = AtomicBool::new(false);
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum BackendStatus {
+    Starting = 0,
+    Running = 1,
+    Error = 2,
+}
+
+/// Global status to indicate backend readiness (persists across page reloads)
+static BACKEND_STATUS: AtomicU8 = AtomicU8::new(BackendStatus::Starting as u8);
+static BACKEND_ERROR: Mutex<Option<String>> = Mutex::new(None);
 
 /// Set the quit flag (called from tray menu)
 pub fn request_quit() {
@@ -40,9 +55,58 @@ fn is_quit_requested() -> bool {
     USER_QUIT_REQUESTED.load(Ordering::SeqCst)
 }
 
+/// Set backend status and optional error message
+fn set_backend_status(status: BackendStatus, error: Option<String>) {
+    // Update error first to avoid race where status is ERROR but error is None
+    if let Ok(mut guard) = BACKEND_ERROR.lock() {
+        if status == BackendStatus::Error {
+            *guard = error;
+        } else {
+            *guard = None;
+        }
+    }
+    BACKEND_STATUS.store(status as u8, Ordering::SeqCst);
+}
+
+/// Read backend status from atomic
+fn get_backend_status_value() -> BackendStatus {
+    match BACKEND_STATUS.load(Ordering::SeqCst) {
+        1 => BackendStatus::Running,
+        2 => BackendStatus::Error,
+        _ => BackendStatus::Starting,
+    }
+}
+
+fn status_to_str(status: BackendStatus) -> &'static str {
+    match status {
+        BackendStatus::Starting => "STARTING",
+        BackendStatus::Running => "RUNNING",
+        BackendStatus::Error => "ERROR",
+    }
+}
+
+fn build_backend_status_payload() -> serde_json::Value {
+    let status = get_backend_status_value();
+    let error = if status == BackendStatus::Error {
+        BACKEND_ERROR.lock().ok().and_then(|guard| guard.clone())
+    } else {
+        None
+    };
+    match error {
+        Some(e) => json!({ "status": status_to_str(status), "error": e }),
+        None => json!({ "status": status_to_str(status) }),
+    }
+}
+
 /// Check if running in development environment
 fn is_dev_env() -> bool {
     std::env::var("DEV_ENV").is_ok()
+}
+
+/// Get backend status (for frontend to query on page load/refresh)
+#[tauri::command]
+fn get_backend_status() -> serde_json::Value {
+    build_backend_status_payload()
 }
 
 /// Get the system theme
@@ -73,73 +137,33 @@ fn install_error_hooks() -> color_eyre::Result<()> {
     // Install color-eyre hooks
     color_eyre::install()?;
 
-    // Custom panic hook that writes crash report to file and shows MessageBox on Windows
+    // Custom panic hook: write crash.log for user bug reports
     let default_hook = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |panic_info| {
         // Call default hook first (prints to stderr if console available)
         default_hook(panic_info);
 
-        // Build crash report
-        let crash_msg = format!(
-            "redViewer crashed!\n\n{}\n\nBacktrace:\n{}",
-            panic_info,
-            std::backtrace::Backtrace::force_capture()
-        );
-
         // Write crash report to file
         if let Some(log_dir) = dirs::data_dir().map(|d| d.join("redViewer").join("logs")) {
             let _ = std::fs::create_dir_all(&log_dir);
             let crash_file = log_dir.join("crash.log");
+            let crash_msg = format!(
+                "redViewer crashed!\n\n{}\n\nBacktrace:\n{}",
+                panic_info,
+                std::backtrace::Backtrace::force_capture()
+            );
             let _ = std::fs::write(&crash_file, &crash_msg);
-
-            // In dev mode or debug build, show MessageBox on Windows
-            #[cfg(target_os = "windows")]
-            if is_dev_env() || cfg!(debug_assertions) {
-                show_error_message_box(&format!(
-                    "redViewer crashed!\n\nCrash report saved to:\n{}\n\n{}",
-                    crash_file.display(),
-                    panic_info
-                ));
-            }
         }
     }));
 
     Ok(())
 }
 
-/// Show error message box on Windows
-#[cfg(target_os = "windows")]
-fn show_error_message_box(msg: &str) {
-    use std::ffi::OsStr;
-    use std::iter::once;
-    use std::os::windows::ffi::OsStrExt;
-    use std::ptr::null_mut;
-
-    unsafe extern "system" {
-        fn MessageBoxW(hwnd: *mut std::ffi::c_void, text: *const u16, caption: *const u16, utype: u32) -> i32;
-    }
-
-    let wide_msg: Vec<u16> = OsStr::new(msg).encode_wide().chain(once(0)).collect();
-    let wide_title: Vec<u16> = OsStr::new("redViewer Error").encode_wide().chain(once(0)).collect();
-
-    const MB_OK: u32 = 0x00000000;
-    const MB_ICONERROR: u32 = 0x00000010;
-    unsafe {
-        MessageBoxW(null_mut(), wide_msg.as_ptr(), wide_title.as_ptr(), MB_OK | MB_ICONERROR);
-    }
-}
-
-/// Fatal error handler - logs error and shows message box in dev mode
+/// Fatal error handler - logs error and exits
 fn fatal_error(msg: &str, err: &dyn std::fmt::Display) -> ! {
     let full_msg = format!("{}: {:#}", msg, err);
     eprintln!("{}", full_msg);
     tracing::error!("{}", full_msg);
-
-    #[cfg(target_os = "windows")]
-    if is_dev_env() || cfg!(debug_assertions) {
-        show_error_message_box(&full_msg);
-    }
-
     std::process::exit(1);
 }
 
@@ -303,27 +327,15 @@ fn main() {
                 }
             };
 
-            // Create and start Python manager
+            // Create Python manager (don't start yet)
             let pm = PythonManager::new(
                 paths.clone(),
                 uv_paths,
                 python::BackendConfig::default(),
             );
 
-            tracing::info!("Starting Python backend...");
-            if let Err(e) = pm.start() {
-                tracing::error!("Failed to start backend: {}", e);
-                return Err(e.into());
-            }
-
-            // Wait for backend to be ready
-            tracing::info!("Waiting for backend to be ready...");
-            if let Err(e) = pm.wait_until_healthy(std::time::Duration::from_secs(30)) {
-                tracing::error!("Backend health check failed: {}", e);
-                return Err(e.into());
-            }
-
-            tracing::info!("Backend is ready at {}", pm.backend_url());
+            // Store PythonManager early so other handlers can access it
+            app.manage(pm.clone());
 
             // Resolve frontend dist directory
             let resource_dir = match app.path().resource_dir() {
@@ -361,44 +373,103 @@ fn main() {
                 }
             }
 
-            // Start embedded web server
-            tracing::info!("Starting embedded web server on http://0.0.0.0:8080...");
-            let ws = match WebServer::start(WebServerConfig {
-                backend_base: pm.backend_url(),
-                ..Default::default()
-            }) {
-                Ok(ws) => ws,
-                Err(e) => {
-                    tracing::error!("Failed to start embedded web server: {}", e);
-                    return Err(e.into());
-                }
-            };
-            tracing::info!("Embedded web server ready at {}", ws.url());
-
-            // Store managers in app state
-            app.manage(ws);
-            app.manage(pm);
+            // === UI First: Create tray, main window, toast before backend startup ===
 
             // Build system tray (unless disabled)
             if !args.no_tray {
                 let _tray = tray::build_tray(&app.handle())?;
             }
-            // Create and show main window
+            // Create and show main window (will show Loader until backend ready)
             if let Err(e) = main_window::create_main_win(&app.handle()) {
                 tracing::warn!("Failed to create main window: {}", e);
-                // Non-fatal: continue without main window
             }
             // Create toast window
             if let Err(e) = toast::create_toast_win(&app.handle()) {
                 tracing::warn!("Failed to create toast window: {}", e);
-                // Non-fatal: continue without toast window
             }
+
+            // === Async Backend Startup ===
+            let app_handle = app.handle().clone();
+            let pm_for_task = pm.clone();
+            set_backend_status(BackendStatus::Starting, None);
+            tauri::async_runtime::spawn(async move {
+                let result = tokio::task::spawn_blocking(move || {
+                    let mut ok = true;
+                    let mut err_msg: Option<String> = None;
+
+                    tracing::info!("Starting Python backend...");
+                    if let Err(e) = pm_for_task.start() {
+                        tracing::error!("Failed to start backend: {}", e);
+                        ok = false;
+                        err_msg = Some(format!("Failed to start backend: {}", e));
+                    }
+
+                    if ok {
+                        tracing::info!("Waiting for backend to be ready...");
+                        if let Err(e) = pm_for_task.wait_until_healthy(std::time::Duration::from_secs(30)) {
+                            tracing::error!("Backend health check failed: {}", e);
+                            ok = false;
+                            err_msg = Some(format!("Backend health check failed: {}", e));
+                        } else {
+                            tracing::info!("Backend is ready at {}", pm_for_task.backend_url());
+                        }
+                    }
+
+                    let ws = if ok {
+                        tracing::info!("Starting embedded web server on http://0.0.0.0:8080...");
+                        match WebServer::start(WebServerConfig {
+                            backend_base: pm_for_task.backend_url(),
+                            ..Default::default()
+                        }) {
+                            Ok(ws) => {
+                                tracing::info!("Embedded web server ready at {}", ws.url());
+                                Some(ws)
+                            }
+                            Err(e) => {
+                                tracing::error!("Failed to start embedded web server: {}", e);
+                                ok = false;
+                                err_msg = Some(format!("Failed to start embedded web server: {}", e));
+                                None
+                            }
+                        }
+                    } else {
+                        None
+                    };
+
+                    (ok, err_msg, ws)
+                })
+                .await;
+
+                match result {
+                    Ok((ok, err_msg, ws)) => {
+                        if let Some(ws) = ws {
+                            app_handle.manage(ws);
+                        }
+                        let status = if ok { BackendStatus::Running } else { BackendStatus::Error };
+                        set_backend_status(status, err_msg);
+                        let payload = build_backend_status_payload();
+                        if let Err(e) = app_handle.emit("backend-ready", payload) {
+                            tracing::warn!("Failed to emit backend-ready: {}", e);
+                        }
+                    }
+                    Err(e) => {
+                        let error = format!("Backend task join error: {}", e);
+                        set_backend_status(BackendStatus::Error, Some(error));
+                        let payload = build_backend_status_payload();
+                        if let Err(e) = app_handle.emit("backend-ready", payload) {
+                            tracing::warn!("Failed to emit backend-ready: {}", e);
+                        }
+                    }
+                }
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             main_window::main_window_open_browser,
             main_window::main_window_close,
             main_window::get_lan_url,
+            get_backend_status,
             get_system_theme,
             toast::show_toast,
         ])

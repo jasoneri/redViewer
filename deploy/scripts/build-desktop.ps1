@@ -25,6 +25,51 @@ Write-Host "Target: $Target"
 Write-Host "Project Root: $ProjectRoot"
 Write-Host "Deploy Dir: $DeployDir"
 
+#region ===== Icon Generation =====
+
+function Build-Icons {
+    Write-Host "`n--- Generating Icons ---" -ForegroundColor Yellow
+
+    $iconsDir = Join-Path $AssetsDir "icons"
+    $iconPng = Join-Path $iconsDir "icon.png"
+    $setupPng = Join-Path $iconsDir "setup.png"
+
+    Push-Location (Join-Path $TauriDir "src-tauri")
+    $tempDir = $null
+    try {
+        # Generate icon.ico/icns from icon.png
+        Write-Host "Generating icons from icon.png..."
+        cargo tauri icon --output $iconsDir $iconPng
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Failed to generate icons from icon.png" -ForegroundColor Red
+            exit 1
+        }
+
+        # Generate setup.ico from setup.png
+        if (Test-Path $setupPng) {
+            Write-Host "Generating setup icon from setup.png..."
+            $tempDir = Join-Path $ProjectRoot "__temp/setup_icons_$(Get-Date -Format 'yyyyMMddHHmmss')"
+            New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+            cargo tauri icon --output $tempDir $setupPng
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "Failed to generate setup icon" -ForegroundColor Red
+                exit 1
+            }
+            Copy-Item (Join-Path $tempDir "icon.ico") (Join-Path $iconsDir "setup.ico") -Force
+        }
+    }
+    finally {
+        Pop-Location
+        if ($tempDir -and (Test-Path $tempDir)) {
+            Remove-Item -Recurse -Force $tempDir
+        }
+    }
+
+    Write-Host "Icons generated" -ForegroundColor Green
+}
+
+#endregion
+
 #region ===== Stage 1: Build Installer =====
 
 # Check Stage 1 dependencies (cargo only)
@@ -339,6 +384,9 @@ function Test-BundleContract {
 #region ===== Main Execution =====
 
 $InstallerPath = $null
+
+# Generate icons before build
+Build-Icons
 
 # Stage 1: Build Installer
 if ($Target -in @('Installer', 'All')) {

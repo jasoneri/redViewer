@@ -66,6 +66,7 @@ docs/.vitepress/dist
 docs/.vitepress/cache
 *.lock
 deploy/stage/src/
+deploy/assets/icons
 # self/conf
 conf.yml
 # self/bug-report

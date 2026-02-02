@@ -17,3 +17,4 @@ tracing-appender = { workspace = true }
 dirs = { workspace = true }
 toml = { workspace = true }
 ureq = "3"
+parking_lot = { workspace = true }

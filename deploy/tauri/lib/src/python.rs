@@ -4,9 +4,10 @@
 //! the Python backend process.
 
 use anyhow::{anyhow, Context};
+use parking_lot::Mutex;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -57,7 +58,7 @@ impl PythonManager {
 
     /// Start the Python backend process
     pub fn start(&self) -> anyhow::Result<()> {
-        let mut g = self.inner.lock().map_err(|e| anyhow::anyhow!("Mutex poisoned: {}", e))?;
+        let mut g = self.inner.lock();
         if g.child.is_some() {
             tracing::info!("Backend already running");
             return Ok(());
@@ -103,7 +104,7 @@ impl PythonManager {
     /// Stop the Python backend process
     pub fn stop(&self) -> anyhow::Result<()> {
         let pid = {
-            let mut g = self.inner.lock().map_err(|e| anyhow::anyhow!("Mutex poisoned: {}", e))?;
+            let mut g = self.inner.lock();
             match g.child.take() {
                 Some(c) => c.id(),
                 None => {
@@ -129,7 +130,7 @@ impl PythonManager {
     /// Wait until the backend is healthy (responding to HTTP requests)
     pub fn wait_until_healthy(&self, timeout: Duration) -> anyhow::Result<()> {
         let port = {
-            let g = self.inner.lock().map_err(|e| anyhow::anyhow!("Mutex poisoned: {}", e))?;
+            let g = self.inner.lock();
             g.cfg.port
         };
 
@@ -153,21 +154,13 @@ impl PythonManager {
 
     /// Get the backend URL (for proxy configuration, use 127.0.0.1 for local access)
     pub fn backend_url(&self) -> String {
-        let g = self.inner.lock().map_err(|e| anyhow::anyhow!("Mutex poisoned: {}", e))
-            .unwrap_or_else(|e| {
-                tracing::error!("Failed to lock mutex: {}", e);
-                std::process::exit(1);
-            });
+        let g = self.inner.lock();
         format!("http://127.0.0.1:{}/", g.cfg.port)
     }
 
     /// Get the log directory path
     pub fn log_dir(&self) -> PathBuf {
-        let g = self.inner.lock().map_err(|e| anyhow::anyhow!("Mutex poisoned: {}", e))
-            .unwrap_or_else(|e| {
-                tracing::error!("Failed to lock mutex: {}", e);
-                std::process::exit(1);
-            });
+        let g = self.inner.lock();
         g.paths.log_dir.clone()
     }
 }
@@ -192,7 +185,11 @@ fn is_healthy(url: &str) -> bool {
 fn kill_process_tree(pid: u32) -> anyhow::Result<()> {
     #[cfg(target_os = "windows")]
     {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+
         let status = Command::new("taskkill")
+            .creation_flags(CREATE_NO_WINDOW)
             .args(["/PID", &pid.to_string(), "/T", "/F"])
             .stdout(Stdio::null())
             .stderr(Stdio::null())

@@ -4,6 +4,37 @@
 //! src-tauri (main application) and installer (installer utility).
 
 use anyhow::Context;
+
+/// Extension trait for Result to simplify error logging
+pub trait ResultExt<T> {
+    /// Log error and return Option<T>
+    fn log_err(self, context: &str) -> Option<T>;
+
+    /// Log error with formatted context and return Option<T>
+    fn log_err_with<F: FnOnce() -> String>(self, context: F) -> Option<T>;
+}
+
+impl<T, E: std::fmt::Display> ResultExt<T> for Result<T, E> {
+    fn log_err(self, context: &str) -> Option<T> {
+        match self {
+            Ok(v) => Some(v),
+            Err(e) => {
+                tracing::warn!("{}: {}", context, e);
+                None
+            }
+        }
+    }
+
+    fn log_err_with<F: FnOnce() -> String>(self, context: F) -> Option<T> {
+        match self {
+            Ok(v) => Some(v),
+            Err(e) => {
+                tracing::warn!("{}: {}", context(), e);
+                None
+            }
+        }
+    }
+}
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tracing_subscriber::prelude::*;

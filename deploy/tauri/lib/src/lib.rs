@@ -10,6 +10,7 @@ pub mod python;
 pub use config::{
     AppPaths,
     AppConfig,
+    ResultExt,
     resolve_paths,
     ensure_dirs,
     init_logging,
