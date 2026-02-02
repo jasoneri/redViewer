@@ -1,15 +1,6 @@
-# redViewer PyEnv Configuration - China Mirrors
+python-install-mirror = "https://mirror.nju.edu.cn/github-release/astral-sh/python-build-standalone"
 
-[pypi]
-# Primary mirror - Huawei Cloud
-index_url = "https://repo.huaweicloud.com/repository/pypi/simple"
-# Fallback mirrors
-extra_index_urls = [
-    "https://pypi.tuna.tsinghua.edu.cn/simple",
-    "https://mirrors.aliyun.com/pypi/simple/"
-]
-
-[python]
-# python-build-standalone mirror for uv (NJU mirror)
-install_mirror = "https://mirror.nju.edu.cn/github-release/astral-sh/python-build-standalone"
+[[index]]
+url = "https://repo.huaweicloud.com/repository/pypi/simple"
+default = true
 

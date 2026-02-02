@@ -227,14 +227,14 @@ FunctionEnd
 
   ; Determine config file based on mirror choice
   ${If} $MirrorChoice == "cn"
-    StrCpy $1 "$INSTDIR\res\conf\cn.toml"
+    StrCpy $1 "cn.toml"
   ${Else}
-    StrCpy $1 "$INSTDIR\res\conf\global.toml"
+    StrCpy $1 "global.toml"
   ${EndIf}
 
   ; Execute rvInstaller.exe
   DetailPrint "${DEPS_INSTALLING}"
-  nsExec::ExecToLog '"$INSTDIR\rvInstaller.exe" /i /pyenv "$1"'
+  nsExec::ExecToLog '"$INSTDIR\rvInstaller.exe" /i /pyenv $1'
   Pop $0
 
   ; Write install_status.json based on result
