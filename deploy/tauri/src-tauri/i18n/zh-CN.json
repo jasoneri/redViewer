@@ -1,3 +1,7 @@
 {
-  "hiden_to_tray": "已最小化到托盘 ♬"
+  "hiden_to_tray": "已最小化到托盘 ♬",
+  "tray_open": "进入阅读",
+  "tray_logs": "查看日志",
+  "tray_restart": "重启后端",
+  "tray_quit": "退出"
 }

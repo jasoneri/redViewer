@@ -8,6 +8,7 @@ use tauri::{
 };
 use tauri_plugin_opener::OpenerExt;
 
+use crate::i18n;
 use crate::main_window;
 use crate::python::PythonManager;
 use crate::webserver::WebServer;
@@ -21,14 +22,14 @@ pub const MENU_QUIT: &str = "quit";
 
 /// Build the system tray with menu
 pub fn build_tray(app: &tauri::AppHandle) -> tauri::Result<TrayIcon> {
-    let open = MenuItem::with_id(app, MENU_OPEN, "Open redViewer", true, None::<&str>)?;
-    let logs = MenuItem::with_id(app, MENU_LOGS, "View Logs", true, None::<&str>)?;
-    let restart = MenuItem::with_id(app, MENU_RESTART, "Restart Backend", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, MENU_QUIT, "Quit", true, None::<&str>)?;
+    let open = MenuItem::with_id(app, MENU_OPEN, i18n::get_i18n_text("tray_open"), true, None::<&str>)?;
+    let logs = MenuItem::with_id(app, MENU_LOGS, i18n::get_i18n_text("tray_logs"), true, None::<&str>)?;
+    let restart = MenuItem::with_id(app, MENU_RESTART, i18n::get_i18n_text("tray_restart"), true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, MENU_QUIT, i18n::get_i18n_text("tray_quit"), true, None::<&str>)?;
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
 
-    let menu = Menu::with_items(app, &[&open, &restart, &sep1, &logs, &sep2, &quit])?;
+    let menu = Menu::with_items(app, &[&open, &sep1, &restart, &logs, &sep2, &quit])?;
     let app_handle = app.clone();
 
     let tray = TrayIconBuilder::new()

@@ -13,6 +13,7 @@
 )]
 
 mod args;
+mod i18n;
 mod main_window;
 mod python;
 mod toast;
