@@ -1,0 +1,64 @@
+[workspace]
+members = ["lib", "src-tauri", "installer"]
+resolver = "2"
+
+[workspace.package]
+version = "1.6.0"
+edition = "2024"
+rust-version = "1.92"
+authors = ["jasoneri"]
+license = "Apache-2.0"
+
+[workspace.lints.rust]
+warnings = "warn"
+
+[workspace.lints.clippy]
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+indexing_slicing = "warn"
+
+[workspace.dependencies]
+# Shared dependencies
+anyhow = "1"
+color-eyre = "0.6"
+thiserror = "1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+tracing-appender = "0.2"
+dirs = "5"
+toml = "0.8"
+parking_lot = "0.12"
+
+# Tauri dependencies (src-tauri only)
+tauri = { version = "2.9.5", features = ["tray-icon"] }
+tauri-plugin-opener = "2"
+tauri-plugin-single-instance = "2"
+notify-rust = "4"
+tauri-build = { version = "2.5", features = [] }
+
+# HTTP server dependencies (src-tauri only)
+axum = { version = "0.8.8", default-features = false, features = ["http1", "tokio"] }
+hyper = { version = "1.8.1", default-features = false, features = ["client", "http1", "server"] }
+hyper-util = { version = "0.1", features = ["client", "client-legacy", "http1", "tokio"] }
+http-body-util = "0.1"
+tokio = { version = "1", features = ["sync", "net", "rt"] }
+tower-http = { version = "0.5.2", default-features = false, features = ["fs"] }
+
+# Network utilities
+local-ip-address = "0.6.10"
+
+# Installer dependencies (installer only)
+sha2 = "0.10"
+hex = "0.4"
+time = { version = "0.3", features = ["formatting"] }
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "native-tls"] }
+
+# Enable debug info in release builds for better backtraces
+[profile.release]
+debug = 1
+strip = false

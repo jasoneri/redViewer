@@ -11,9 +11,15 @@
 - 激活 win 系统
 - 控制面板 > 时钟与区域 > 区域 > 更改系统区域设置 > 勾选beta版 unicode UTF-8 > 重启
 
-### `npm i` / `安装前端依赖` 一直转圈无法启动
+### `nodjs` 相关 / 无法执行 `npm`
 
-在 `frontend` 目录开终端，然后参照 [此文章](https://blog.csdn.net/qq_43940789/article/details/131449710) 里的代码指令进行换源，重启程序。
+::: warning 在装 `rV` 之前电脑上就安装了 `nodejs` 的话
+去应用里卸载 `nodejs`，使用 `rV` 多合一脚本，脚本已设最优策略安装和刷新环境变量
+:::
+
+### `npm i` 一直转圈 / `安装前端依赖`
+
+在 `frontend` 目录开终端，然后参照 [此文章](https://www.cnblogs.com/alannxu/p/18583348) 里的代码指令进行换源，重启程序。
 
 **参考解决方案**：
 ```bash

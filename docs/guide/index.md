@@ -1,6 +1,6 @@
 # 🎸功能详细预览
 
-**建议边开 首页的 `在线体验` 边看此文档，直观功能演示**
+建议新窗口开 [![demo](https://img.comicguispider.nyc.mn/file/rv/1769934434211_btn-demo.svg)](https://demo.redviewer.nyc.mn/) 边看此文档，直观功能演示
 
 ## 📚 列表/网格预览
 

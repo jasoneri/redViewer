@@ -1,0 +1,6 @@
+python-install-mirror = "https://mirror.nju.edu.cn/github-release/astral-sh/python-build-standalone"
+
+[[index]]
+url = "https://repo.huaweicloud.com/repository/pypi/simple"
+default = true
+
