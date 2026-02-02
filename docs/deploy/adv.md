@@ -49,7 +49,7 @@
 
 ### 🎿 Step-1：Fork 项目
 
-[![Fork this repo](https://img.shields.io/badge/Fork-GitHub-181717?logo=github)](https://github.com/jasoneri/redViewer/fork)  
+[![Fork this repo](https://img.shields.io/badge/Fork-redViewer-ff3333?logo=github)](https://github.com/jasoneri/redViewer/fork)  
 
 1. ☝️ 点上面图标进行Fork
 2. 点击 `Create fork` 按钮
@@ -61,8 +61,8 @@
 [![Deploy on Cloudflare Pages](https://deploy.workers.cloudflare.com/button)](https://dash.cloudflare.com/?to=/:account/pages/new/provider/github)
 
 1. ☝️ 点上面图标，登陆你的 cf 账户
-2. cf 部署站点页面上，需要按操作进入 `github.com/settings/installations/12345`  
-这种返回到 github 上，access 权限增加 redViewer 或 All 完事
+2. cf 部署站点页面上，需要按cf指示操作（会进入 `github.com/settings/installations/12345`  
+这种的返回到 github 上），access 权限增加 redViewer 或 All 
 3. 返回 cf 选 redViewer 点击 "开始设置"
 
 #### 2.2 配置项目设置

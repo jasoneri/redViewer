@@ -17,6 +17,5 @@ hero:
       link: /guide/
     - theme: brand
       text: 📦下载
-      link: /deploy/
-
+      link: https://github.com/jasoneri/redViewer/releases
 ---

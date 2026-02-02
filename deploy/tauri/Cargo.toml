@@ -3,7 +3,7 @@ members = ["lib", "src-tauri", "installer"]
 resolver = "2"
 
 [workspace.package]
-version = "1.5.2"
+version = "1.6.0"
 edition = "2024"
 rust-version = "1.92"
 authors = ["jasoneri"]

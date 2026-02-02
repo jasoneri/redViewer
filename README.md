@@ -9,13 +9,13 @@
   <br>
   <img src="https://img.shields.io/badge/-👉-red.svg" alt="tag">
   <img src="https://img.shields.io/github/stars/jasoneri/redViewer?style=social&logo=github" alt="tag">
-  <img src="https://img.shields.io/badge/-👈%20CGS过来的支持一下吧%20-red.svg" alt="tag">
+  <img src="https://img.shields.io/badge/-👈-red.svg" alt="tag">
 
 </div>
 
 ## 📑介绍
 
-轻简风漫画阅读器。  
+轻简风格的漫画阅读器。  
 
 <p>
   <a href="https://doc.redviewer.nyc.mn/">
@@ -28,7 +28,6 @@
     <img src="https://img.comicguispider.nyc.mn/file/rv/1769934610180_btn-dl.svg" alt="下载" height="48">
   </a>
 </p>
-
 
 ## 🎉 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/jasoneri/redViewer?color=blue&label=Ver&sort=semver)](https://github.com/jasoneri/redViewer/releases/latest)
 
