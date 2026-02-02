@@ -398,6 +398,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             main_window::main_window_open_browser,
             main_window::main_window_close,
+            main_window::get_lan_url,
             get_system_theme,
             toast::show_toast,
         ])

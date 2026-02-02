@@ -15,6 +15,7 @@ function App() {
   const [closing, setClosing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lanUrl, setLanUrl] = useState<string | null>(null);
 
   const dragStartPos = useRef<{ x: number; y: number } | null>(null);
   const isDragInitiated = useRef(false);
@@ -22,6 +23,12 @@ function App() {
   const resetDragState = useCallback(() => {
     dragStartPos.current = null;
     isDragInitiated.current = false;
+  }, []);
+
+  useEffect(() => {
+    invoke<string | null>('get_lan_url')
+      .then(setLanUrl)
+      .catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -101,6 +108,8 @@ function App() {
       onPointerCancel={handlePointerCancel}
       className={cn('main-window-container', closing && 'closing')}
     >
+      {lanUrl && <div className="show-lan">{lanUrl}</div>}
+
       <button
         className="main-action-btn"
         onClick={handleOpenBrowser}

@@ -20,6 +20,7 @@ use hyper_util::{
     client::legacy::{connect::HttpConnector, Client},
     rt::TokioExecutor,
 };
+use local_ip_address::list_afinet_netifas;
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
@@ -50,6 +51,31 @@ impl Default for WebServerConfig {
     }
 }
 
+fn get_lan_ip() -> Option<IpAddr> {
+    let interfaces = list_afinet_netifas().ok()?;
+
+    // Priority 1: 192.168.* not ending with .1 (gateway)
+    for (_, ip) in &interfaces {
+        if let IpAddr::V4(v4) = ip {
+            let octets = v4.octets();
+            if octets[0] == 192 && octets[1] == 168 && octets[3] != 1 {
+                return Some(*ip);
+            }
+        }
+    }
+
+    // Priority 2: Any non-loopback IPv4
+    for (_, ip) in &interfaces {
+        if let IpAddr::V4(v4) = ip {
+            if !v4.is_loopback() {
+                return Some(*ip);
+            }
+        }
+    }
+
+    None
+}
+
 /// Embedded web server that serves frontend assets and proxies API requests
 #[derive(Clone)]
 pub struct WebServer {
@@ -58,6 +84,7 @@ pub struct WebServer {
 
 struct Inner {
     url: String,
+    lan_url: Option<String>,
     shutdown_tx: Mutex<Option<oneshot::Sender<()>>>,
 }
 
@@ -147,6 +174,7 @@ impl WebServer {
 
         // Use localhost for browser access (0.0.0.0 is not valid in browsers)
         let url = format!("http://localhost:{}/", cfg.listen.port());
+        let lan_url = get_lan_ip().map(|ip| format!("{}:{}", ip, cfg.listen.port()));
         let task_url = url.clone();
 
         // Spawn server in Tauri's async runtime
@@ -170,6 +198,7 @@ impl WebServer {
         Ok(Self {
             inner: Arc::new(Inner {
                 url,
+                lan_url,
                 shutdown_tx: Mutex::new(Some(shutdown_tx)),
             }),
         })
@@ -178,6 +207,11 @@ impl WebServer {
     /// Get the URL where the server is listening
     pub fn url(&self) -> &str {
         &self.inner.url
+    }
+
+    /// Get the LAN URL where the server is accessible from other devices
+    pub fn lan_url(&self) -> Option<&str> {
+        self.inner.lan_url.as_deref()
     }
 
     /// Stop the web server

@@ -35,6 +35,23 @@ html, body, #root {
   cursor: grabbing;
 }
 
+/* LAN address display */
+.show-lan {
+  position: absolute;
+  top: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.1);
+  color: #f11c1c;
+  padding: 4px 6px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  user-select: none;
+}
+
 /* Main action button - rV.png icon, height fill */
 .main-action-btn {
   height: 25%;

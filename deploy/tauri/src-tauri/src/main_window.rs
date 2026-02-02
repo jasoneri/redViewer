@@ -174,3 +174,9 @@ pub async fn main_window_close(app: tauri::AppHandle) {
 
     hide_main_win(&app);
 }
+
+#[tauri::command]
+pub fn get_lan_url(app: tauri::AppHandle) -> Option<String> {
+    app.try_state::<WebServer>()
+        .and_then(|ws| ws.lan_url().map(String::from))
+}
