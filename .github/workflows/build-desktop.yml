@@ -23,12 +23,9 @@ jobs:
           # - os: windows-latest
           #   target: x86_64-pc-windows-msvc
           #   ext: .exe
-          - os: macos-latest
-            target: x86_64-apple-darwin
+          - os: macos-14
+            target: universal-apple-darwin
             ext: ''
-          # - os: macos-latest
-          #   target: aarch64-apple-darwin
-          #   ext: ''
           # - os: ubuntu-22.04
           #   target: x86_64-unknown-linux-gnu
           #   ext: ''
@@ -42,7 +39,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: x86_64-apple-darwin,aarch64-apple-darwin
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
@@ -61,8 +58,10 @@ jobs:
         with:
           version: "latest"
 
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli --locked
+      - name: Install Tauri CLI (cached)
+        uses: taiki-e/cache-cargo-install-action@v3.0.1
+        with:
+          tool: tauri-cli@2.10.0
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
@@ -86,6 +85,10 @@ jobs:
           # Full build: Stage 1 (rvInstaller) + Stage 2 (NSIS bundle)
           .\build-desktop.ps1
 
+      - name: Debug with tmate
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 120  # 会话最长保持时间
+
       - name: Build (macOS/Linux)
         if: runner.os != 'Windows'
         shell: bash
@@ -104,9 +107,6 @@ jobs:
           path: |
             __temp/tauri_dist/release/bundle/nsis/*.exe
 
-      - name: Debug with tmate
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 120  # 会话最长保持时间
 
       - name: Upload artifacts (macOS)
         if: runner.os == 'macOS'

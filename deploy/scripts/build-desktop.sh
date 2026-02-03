@@ -139,7 +139,21 @@ build_installer() {
     cd "$TAURI_DIR"
 
     echo "Building rvInstaller (release)..."
-    if [ -n "$CROSS_TARGET" ]; then
+    if [ "$CROSS_TARGET" = "universal-apple-darwin" ]; then
+        # Universal Binary: build both architectures and lipo merge
+        echo "Building universal binary (x86_64 + arm64)..."
+        cargo build -p installer --release --target x86_64-apple-darwin
+        cargo build -p installer --release --target aarch64-apple-darwin
+
+        local x86_path="$TAURI_DIR/target/x86_64-apple-darwin/release/rvInstaller"
+        local arm_path="$TAURI_DIR/target/aarch64-apple-darwin/release/rvInstaller"
+        local universal_dir="$TAURI_DIR/target/universal-apple-darwin/release"
+        mkdir -p "$universal_dir"
+        INSTALLER_PATH="$universal_dir/rvInstaller"
+
+        lipo -create "$x86_path" "$arm_path" -output "$INSTALLER_PATH"
+        echo "Created universal binary: $INSTALLER_PATH"
+    elif [ -n "$CROSS_TARGET" ]; then
         cargo build -p installer --release --target "$CROSS_TARGET"
         INSTALLER_PATH="$TAURI_DIR/target/$CROSS_TARGET/release/rvInstaller"
     else
@@ -261,12 +275,63 @@ copy_uv_binary() {
 
     local uv_path
     uv_path=$(command -v uv)
-
-    # Detect target triple for Sidecar naming
-    local target_triple=""
     local os_type="$(uname -s)"
     local arch="$(uname -m)"
 
+    if [ "$CROSS_TARGET" = "universal-apple-darwin" ] && [ "$os_type" = "Darwin" ]; then
+        # Universal Binary: need both architectures
+        echo "Staging uv for universal binary..."
+
+        # Get uv version (handle prerelease versions)
+        local uv_version
+        uv_version=$(uv --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+([a-z0-9.-]*)?')
+
+        local base_url="https://github.com/astral-sh/uv/releases/download/${uv_version}"
+        local x86_archive="uv-x86_64-apple-darwin.tar.gz"
+        local arm_archive="uv-aarch64-apple-darwin.tar.gz"
+
+        local temp_dir="$PROJECT_ROOT/__temp/uv_download_$$"
+        mkdir -p "$temp_dir"
+
+        echo "Downloading uv binaries (version $uv_version)..."
+
+        # Download both archives with fallback
+        local download_success=true
+        if ! curl -sfL "$base_url/$x86_archive" | tar -xz -C "$temp_dir" 2>/dev/null; then
+            echo "Warning: Failed to download x86_64 uv binary"
+            download_success=false
+        fi
+        if ! curl -sfL "$base_url/$arm_archive" | tar -xz -C "$temp_dir" 2>/dev/null; then
+            echo "Warning: Failed to download arm64 uv binary"
+            download_success=false
+        fi
+
+        if [ "$download_success" = false ]; then
+            # Fallback: use host uv for host arch only
+            echo "Warning: Download failed, using host binary (single arch)"
+            if [ "$arch" = "arm64" ] || [ "$arch" = "aarch64" ]; then
+                cp "$uv_path" "$STAGE_DIR/uv-aarch64-apple-darwin"
+                chmod +x "$STAGE_DIR/uv-aarch64-apple-darwin"
+            else
+                cp "$uv_path" "$STAGE_DIR/uv-x86_64-apple-darwin"
+                chmod +x "$STAGE_DIR/uv-x86_64-apple-darwin"
+            fi
+            rm -rf "$temp_dir"
+            return
+        fi
+
+        # Stage both binaries
+        cp "$temp_dir/uv-x86_64-apple-darwin/uv" "$STAGE_DIR/uv-x86_64-apple-darwin"
+        cp "$temp_dir/uv-aarch64-apple-darwin/uv" "$STAGE_DIR/uv-aarch64-apple-darwin"
+        chmod +x "$STAGE_DIR/uv-x86_64-apple-darwin" "$STAGE_DIR/uv-aarch64-apple-darwin"
+
+        rm -rf "$temp_dir"
+        echo "Staged uv sidecars: uv-x86_64-apple-darwin, uv-aarch64-apple-darwin"
+        return
+    fi
+
+    # Single architecture: detect target triple
+    local target_triple=""
     case "$os_type" in
         Linux)
             target_triple="x86_64-unknown-linux-gnu"
