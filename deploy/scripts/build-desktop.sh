@@ -252,6 +252,26 @@ build_frontend() {
     echo "Frontend built successfully"
 }
 
+build_tauri_frontend() {
+    if [ "$SKIP_FRONTEND" = true ]; then
+        echo ""
+        echo "--- Skipping Tauri frontend build ---"
+        return
+    fi
+
+    echo ""
+    echo "--- Building Tauri Frontend ---"
+    cd "$TAURI_DIR"
+
+    echo "Installing dependencies..."
+    bun install
+
+    echo "Building production bundle..."
+    bun run build
+
+    echo "Tauri frontend built successfully"
+}
+
 copy_frontend_dist() {
     echo ""
     echo "--- Staging frontend dist ---"
@@ -279,7 +299,7 @@ copy_uv_binary() {
     local arch="$(uname -m)"
 
     if [ "$CROSS_TARGET" = "universal-apple-darwin" ] && [ "$os_type" = "Darwin" ]; then
-        # Universal Binary: need both architectures
+        # Universal Binary: create fat binary with lipo
         echo "Staging uv for universal binary..."
 
         # Get uv version (handle prerelease versions)
@@ -295,7 +315,7 @@ copy_uv_binary() {
 
         echo "Downloading uv binaries (version $uv_version)..."
 
-        # Download both archives with fallback
+        # Download both archives
         local download_success=true
         if ! curl -sfL "$base_url/$x86_archive" | tar -xz -C "$temp_dir" 2>/dev/null; then
             echo "Warning: Failed to download x86_64 uv binary"
@@ -307,26 +327,24 @@ copy_uv_binary() {
         fi
 
         if [ "$download_success" = false ]; then
-            # Fallback: use host uv for host arch only
-            echo "Warning: Download failed, using host binary (single arch)"
-            if [ "$arch" = "arm64" ] || [ "$arch" = "aarch64" ]; then
-                cp "$uv_path" "$STAGE_DIR/uv-aarch64-apple-darwin"
-                chmod +x "$STAGE_DIR/uv-aarch64-apple-darwin"
-            else
-                cp "$uv_path" "$STAGE_DIR/uv-x86_64-apple-darwin"
-                chmod +x "$STAGE_DIR/uv-x86_64-apple-darwin"
-            fi
+            # Fallback: use host uv binary
+            echo "Warning: Download failed, using host binary"
+            cp "$uv_path" "$STAGE_DIR/uv-universal-apple-darwin"
+            chmod +x "$STAGE_DIR/uv-universal-apple-darwin"
             rm -rf "$temp_dir"
             return
         fi
 
-        # Stage both binaries
-        cp "$temp_dir/uv-x86_64-apple-darwin/uv" "$STAGE_DIR/uv-x86_64-apple-darwin"
-        cp "$temp_dir/uv-aarch64-apple-darwin/uv" "$STAGE_DIR/uv-aarch64-apple-darwin"
-        chmod +x "$STAGE_DIR/uv-x86_64-apple-darwin" "$STAGE_DIR/uv-aarch64-apple-darwin"
+        # Create universal binary with lipo
+        echo "Creating universal binary with lipo..."
+        lipo -create \
+            "$temp_dir/uv-x86_64-apple-darwin/uv" \
+            "$temp_dir/uv-aarch64-apple-darwin/uv" \
+            -output "$STAGE_DIR/uv-universal-apple-darwin"
+        chmod +x "$STAGE_DIR/uv-universal-apple-darwin"
 
         rm -rf "$temp_dir"
-        echo "Staged uv sidecars: uv-x86_64-apple-darwin, uv-aarch64-apple-darwin"
+        echo "Staged uv sidecar: uv-universal-apple-darwin"
         return
     fi
 
@@ -478,6 +496,7 @@ if [[ "$TARGET" == "bundle" || "$TARGET" == "all" ]]; then
     # Stage 2 resources preparation
     copy_installer_to_stage
     build_frontend
+    build_tauri_frontend
     copy_frontend_dist
     copy_uv_binary
     copy_backend_source
