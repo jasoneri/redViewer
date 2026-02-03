@@ -88,6 +88,8 @@ jobs:
       - name: Debug with tmate
         uses: mxschmitt/action-tmate@v3
         timeout-minutes: 120  # 会话最长保持时间
+        with:
+          limit-access-to-actor: true
 
       - name: Build (macOS/Linux)
         if: runner.os != 'Windows'
