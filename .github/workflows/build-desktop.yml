@@ -90,7 +90,6 @@ jobs:
         timeout-minutes: 120
         with:
           detached: false  # 确保显示连接信息
-        with:
           limit-access-to-actor: true
 
       - name: Build (macOS/Linux)
