@@ -85,21 +85,21 @@ jobs:
       #     # Full build: Stage 1 (rvInstaller) + Stage 2 (NSIS bundle)
       #     .\build-desktop.ps1
 
-      # - name: Debug with tmate
-      #   uses: mxschmitt/action-tmate@v3
-      #   timeout-minutes: 120
-      #   with:
-      #     detached: false  # 确保显示连接信息
-      #     limit-access-to-actor: true
+      - name: Debug with tmate
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 120
+        with:
+          detached: false  # 确保显示连接信息
+          limit-access-to-actor: true
 
-      # - name: Build (macOS/Linux)
-      #   if: runner.os != 'Windows'
-      #   shell: bash
-      #   run: |
-      #     cd deploy/scripts
-      #     chmod +x build-desktop.sh
-      #     # Full build: Stage 1 (rvInstaller) + Stage 2 (app bundle)
-      #     ./build-desktop.sh --cross-target ${{ matrix.target }}
+      - name: Build (macOS/Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          cd deploy/scripts
+          chmod +x build-desktop.sh
+          # Full build: Stage 1 (rvInstaller) + Stage 2 (app bundle)
+          ./build-desktop.sh --cross-target ${{ matrix.target }}
 
       # # Artifact paths: Release builds output to __temp/tauri_dist
       # - name: Upload artifacts (Windows)
