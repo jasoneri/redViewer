@@ -20,9 +20,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            ext: .exe
+          # - os: windows-latest
+          #   target: x86_64-pc-windows-msvc
+          #   ext: .exe
           - os: macos-14
             target: universal-apple-darwin
             ext: ''
