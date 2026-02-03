@@ -87,7 +87,9 @@ jobs:
 
       - name: Debug with tmate
         uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 120  # 会话最长保持时间
+        timeout-minutes: 120
+        with:
+          detached: false  # 确保显示连接信息
         with:
           limit-access-to-actor: true
 
