@@ -20,12 +20,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            ext: .exe
-          # - os: macos-latest
-          #   target: x86_64-apple-darwin
-          #   ext: ''
+          # - os: windows-latest
+          #   target: x86_64-pc-windows-msvc
+          #   ext: .exe
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            ext: ''
           # - os: macos-latest
           #   target: aarch64-apple-darwin
           #   ext: ''
@@ -103,6 +103,10 @@ jobs:
           name: rv-windows-${{ matrix.target }}
           path: |
             __temp/tauri_dist/release/bundle/nsis/*.exe
+
+      - name: Debug with tmate
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 120  # 会话最长保持时间
 
       - name: Upload artifacts (macOS)
         if: runner.os == 'macOS'
