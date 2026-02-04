@@ -9,7 +9,11 @@ on:
       version:
         description: 'Version tag (e.g., v1.0.0)'
         required: false
-        default: ''
+        default: 'v1.0.0-beta'
+      debug_tmate:
+        type: boolean
+        required: false
+        default: true
 
 permissions:
   contents: read
@@ -76,32 +80,30 @@ jobs:
       #       libjavascriptcoregtk-4.1-dev \
       #       rsync
 
-      # # Two-Stage Build: Stage 1 (Installer) + Stage 2 (Bundle)
       # - name: Build (Windows)
       #   if: runner.os == 'Windows'
       #   shell: pwsh
       #   run: |
       #     cd deploy/scripts
-      #     # Full build: Stage 1 (rvInstaller) + Stage 2 (NSIS bundle)
       #     .\build-desktop.ps1
 
-      - name: Debug with tmate
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 120
-        with:
-          detached: false  # 确保显示连接信息
-          limit-access-to-actor: true
-
       - name: Build (macOS/Linux)
+        id: build_unix
         if: runner.os != 'Windows'
         shell: bash
         run: |
           cd deploy/scripts
           chmod +x build-desktop.sh
-          # Full build: Stage 1 (rvInstaller) + Stage 2 (app bundle)
           ./build-desktop.sh --cross-target ${{ matrix.target }}
 
-      # # Artifact paths: Release builds output to __temp/tauri_dist
+      - name: Debug with tmate (macOS/Linux, after failure)
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.debug_tmate && steps.build_unix.outcome == 'failure' }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 120
+        with:
+          detached: false
+          limit-access-to-actor: true
+
       # - name: Upload artifacts (Windows)
       #   if: runner.os == 'Windows'
       #   uses: actions/upload-artifact@v4
@@ -110,14 +112,14 @@ jobs:
       #     path: |
       #       __temp/tauri_dist/release/bundle/nsis/*.exe
 
-
-      # - name: Upload artifacts (macOS)
-      #   if: runner.os == 'macOS'
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: rv-macos-${{ matrix.target }}
-      #     path: |
-      #       __temp/tauri_dist/release/bundle/dmg/*.dmg
+      - name: Upload artifacts (macOS)
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: rv-macos-${{ matrix.target }}
+          path: |
+            __temp/tauri_dist/universal-apple-darwin/release/bundle/macos/rV.app
+            __temp/tauri_dist/universal-apple-darwin/release/bundle/dmg/*.dmg
 
       # - name: Upload artifacts (Linux)
       #   if: runner.os == 'Linux'
