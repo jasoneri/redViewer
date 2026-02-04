@@ -327,13 +327,37 @@ copy_uv_binary() {
         fi
 
         if [ "$download_success" = false ]; then
-            # Fallback: use host uv binary
-            echo "Warning: Download failed, using host binary"
-            cp "$uv_path" "$STAGE_DIR/uv-universal-apple-darwin"
-            chmod +x "$STAGE_DIR/uv-universal-apple-darwin"
+            # Fallback: use host uv binary only if it's universal
+            echo "Warning: Download failed, attempting to use host binary"
+            if ! command -v lipo >/dev/null 2>&1; then
+                echo "Error: lipo not available; cannot validate host uv architecture"
+                exit 1
+            fi
+            local host_archs
+            host_archs=$(lipo -archs "$uv_path" 2>/dev/null || echo "")
+            if [[ "$host_archs" == *"x86_64"* ]] && [[ "$host_archs" == *"arm64"* ]]; then
+                echo "Host uv is universal, extracting per-architecture binaries..."
+                cp "$uv_path" "$STAGE_DIR/uv-universal-apple-darwin"
+                lipo -extract x86_64 "$uv_path" -output "$STAGE_DIR/uv-x86_64-apple-darwin"
+                lipo -extract arm64 "$uv_path" -output "$STAGE_DIR/uv-aarch64-apple-darwin"
+                chmod +x "$STAGE_DIR/uv-universal-apple-darwin"
+                chmod +x "$STAGE_DIR/uv-aarch64-apple-darwin"
+                chmod +x "$STAGE_DIR/uv-x86_64-apple-darwin"
+            else
+                echo "Error: host uv is not universal (archs: $host_archs); cannot satisfy both architectures"
+                echo "Please ensure uv download succeeds or install a universal uv binary"
+                exit 1
+            fi
             rm -rf "$temp_dir"
             return
         fi
+
+        # Stage individual architecture binaries (required for Tauri's two-stage universal build)
+        echo "Staging individual architecture binaries..."
+        cp "$temp_dir/uv-x86_64-apple-darwin/uv" "$STAGE_DIR/uv-x86_64-apple-darwin"
+        cp "$temp_dir/uv-aarch64-apple-darwin/uv" "$STAGE_DIR/uv-aarch64-apple-darwin"
+        chmod +x "$STAGE_DIR/uv-x86_64-apple-darwin"
+        chmod +x "$STAGE_DIR/uv-aarch64-apple-darwin"
 
         # Create universal binary with lipo
         echo "Creating universal binary with lipo..."
@@ -344,7 +368,7 @@ copy_uv_binary() {
         chmod +x "$STAGE_DIR/uv-universal-apple-darwin"
 
         rm -rf "$temp_dir"
-        echo "Staged uv sidecar: uv-universal-apple-darwin"
+        echo "Staged uv sidecars: uv-x86_64-apple-darwin, uv-aarch64-apple-darwin, uv-universal-apple-darwin"
         return
     fi
 
