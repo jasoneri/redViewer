@@ -43,12 +43,9 @@ pub fn resolve_uv() -> anyhow::Result<PathBuf> {
 
     #[cfg(target_os = "macos")]
     {
-        // On macOS, uv is bundled in Contents/Resources alongside other resources
-        let uv_path = exe_dir
-            .parent() // Contents
-            .map(|p| p.join("Resources").join("uv"))
-            .ok_or_else(|| anyhow::anyhow!("cannot resolve macOS resources path"))?;
-        return Ok(uv_path);
+        // externalBin 打包后位于 Contents/MacOS/ 目录（与主程序同目录）
+        // 见: https://v2.tauri.app/distribute/macos-application-bundle
+        Ok(exe_dir.join("uv"))
     }
 
     #[cfg(target_os = "linux")]
