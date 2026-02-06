@@ -5,7 +5,7 @@
 
 use anyhow::Context;
 
-/// Extension trait for Result to simplify error logging
+/// Extension trait for Result/Option to simplify error logging
 pub trait ResultExt<T> {
     /// Log error and return Option<T>
     fn log_err(self, context: &str) -> Option<T>;
@@ -35,6 +35,29 @@ impl<T, E: std::fmt::Display> ResultExt<T> for Result<T, E> {
         }
     }
 }
+
+impl<T> ResultExt<T> for Option<T> {
+    fn log_err(self, context: &str) -> Option<T> {
+        match self {
+            Some(v) => Some(v),
+            None => {
+                tracing::warn!("{}: None", context);
+                None
+            }
+        }
+    }
+
+    fn log_err_with<F: FnOnce() -> String>(self, context: F) -> Option<T> {
+        match self {
+            Some(v) => Some(v),
+            None => {
+                tracing::warn!("{}: None", context());
+                None
+            }
+        }
+    }
+}
+
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tracing_subscriber::prelude::*;

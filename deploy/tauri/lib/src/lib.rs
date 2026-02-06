@@ -4,6 +4,7 @@
 //! and installer (installer utility).
 
 pub mod config;
+pub mod downloader;
 pub mod paths;
 pub mod python;
 
@@ -24,9 +25,21 @@ pub use paths::{
     resolve_uv,
     resolve_uv_paths,
     resolve_install_src_dir,
+    is_uv_ready,
 };
 
 pub use python::{
     BackendConfig,
     PythonManager,
+};
+
+pub use downloader::{
+    UvMirror,
+    UvDownloadConfig,
+    DownloadProgress,
+    download_uv,
+    resolve_asset_name,
+    resolve_download_url,
+    parse_uv_config,
+    load_uv_config_from_resource,
 };

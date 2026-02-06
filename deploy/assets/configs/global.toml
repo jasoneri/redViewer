@@ -1,3 +1,8 @@
 [[index]]
 url = "https://pypi.org/simple"
 default = true
+
+[uv]
+mirrors = [
+  { name = "github", url = "https://github.com/astral-sh/uv/releases/latest/download/" }
+]

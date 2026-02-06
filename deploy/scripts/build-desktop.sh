@@ -259,12 +259,19 @@ copy_uv_binary() {
     echo ""
     echo "--- Staging uv binary (Sidecar) ---"
 
+    local os_type="$(uname -s)"
+
+    # Skip uv staging for macOS/Linux (runtime download)
+    if [ "$os_type" = "Darwin" ] || [ "$os_type" = "Linux" ]; then
+        echo "--- Skipping uv staging (runtime download) ---"
+        return
+    fi
+
     local uv_path
     uv_path=$(command -v uv)
 
     # Detect target triple for Sidecar naming
     local target_triple=""
-    local os_type="$(uname -s)"
     local arch="$(uname -m)"
 
     case "$os_type" in
@@ -345,6 +352,65 @@ verify_resources_contract() {
     fi
 }
 
+# Patch tauri.conf.json for macOS/Linux to remove externalBin
+# since uv is downloaded at runtime
+patch_tauri_conf() {
+    local conf_file="$TAURI_DIR/src-tauri/tauri.conf.json"
+    local backup_file="${conf_file}.backup"
+
+    # Only patch on macOS/Linux
+    local os_type="$(uname -s)"
+    if [ "$os_type" != "Darwin" ] && [ "$os_type" != "Linux" ]; then
+        return
+    fi
+
+    echo ""
+    echo "--- Patching tauri.conf.json for runtime download ---"
+
+    # Backup original file
+    if [ ! -f "$backup_file" ]; then
+        cp "$conf_file" "$backup_file"
+        echo "Backed up tauri.conf.json"
+    fi
+
+    # Remove externalBin using Python (more reliable than jq)
+    python3 -c "
+import json
+import sys
+
+with open('$conf_file', 'r') as f:
+    data = json.load(f)
+
+if 'bundle' in data and 'externalBin' in data['bundle']:
+    del data['bundle']['externalBin']
+    print('Removed externalBin from tauri.conf.json')
+
+with open('$conf_file', 'w') as f:
+    json.dump(data, f, indent=2)
+    f.write('\n')
+" || {
+        echo "Failed to patch tauri.conf.json"
+        return 1
+    }
+
+    echo "tauri.conf.json patched"
+}
+
+# Restore original tauri.conf.json after build
+restore_tauri_conf() {
+    local conf_file="$TAURI_DIR/src-tauri/tauri.conf.json"
+    local backup_file="${conf_file}.backup"
+
+    if [ -f "$backup_file" ]; then
+        cp "$backup_file" "$conf_file"
+        rm "$backup_file"
+        echo "Restored tauri.conf.json"
+    fi
+}
+
+# Trap to ensure restoration even on error
+trap 'restore_tauri_conf' EXIT
+
 build_tauri() {
     echo ""
     echo "--- Building Tauri Application ---"
@@ -420,6 +486,7 @@ if [[ "$TARGET" == "bundle" || "$TARGET" == "all" ]]; then
 
     # Verify and build
     verify_resources_contract
+    patch_tauri_conf
     build_tauri
 
     # Release verification

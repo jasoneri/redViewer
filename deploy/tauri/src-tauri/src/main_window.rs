@@ -106,6 +106,36 @@ pub fn create_main_win(app: &tauri::AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
+/// Create main window but keep it hidden (for splash flow)
+pub fn create_main_win_hidden(app: &tauri::AppHandle) -> tauri::Result<()> {
+    // Manage window state only on first creation
+    if app.try_state::<MainWindowState>().is_none() {
+        app.manage(MainWindowState::new());
+    }
+
+    // Build initialization script with i18n
+    let i18n_script = i18n::get_i18n_script();
+
+    // Create the main window (stays hidden)
+    let _window = WebviewWindowBuilder::new(
+        app,
+        MAIN_WIN_LABEL,
+        WebviewUrl::App("index.html".into()),
+    )
+    .title("redViewer")
+    .inner_size(450.0, 300.0)
+    .resizable(false)
+    .decorations(false)
+    .transparent(true)
+    .center()
+    .visible(false)
+    .initialization_script(&i18n_script)
+    .build()?;
+
+    tracing::info!("Main window created (hidden)");
+    Ok(())
+}
+
 /// Show the main window (e.g., from tray menu)
 pub fn show_main_win(app: &tauri::AppHandle) {
     tracing::info!("show_main_win called");

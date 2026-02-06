@@ -4,3 +4,9 @@ python-install-mirror = "https://mirror.nju.edu.cn/github-release/astral-sh/pyth
 url = "https://repo.huaweicloud.com/repository/pypi/simple"
 default = true
 
+[uv]
+mirrors = [
+  { name = "ustc", url = "https://mirrors.ustc.edu.cn/github-release/astral-sh/uv/LatestRelease/" },
+  { name = "github", url = "https://github.com/astral-sh/uv/releases/latest/download/" }
+]
+

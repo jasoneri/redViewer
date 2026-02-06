@@ -16,6 +16,7 @@ mod args;
 mod i18n;
 mod main_window;
 mod python;
+mod splash;
 mod toast;
 mod tray;
 mod webserver;
@@ -26,7 +27,7 @@ use std::sync::{
     atomic::{AtomicBool, AtomicU8, Ordering},
     Mutex,
 };
-use tauri::{Emitter, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::python::PythonManager;
 use crate::webserver::{WebServer, WebServerConfig};
@@ -117,6 +118,101 @@ fn get_system_theme(_app_handle: tauri::AppHandle) -> Result<String, String> {
     // Return "auto" - frontend should use CSS `prefers-color-scheme` or Tauri's JS API
     // for actual theme detection and control
     Ok("auto".to_string())
+}
+
+/// Start backend after splash setup completes (macOS/Linux)
+#[tauri::command]
+async fn start_backend_after_splash(app: AppHandle) -> tauri::Result<()> {
+    use anyhow::Context;
+
+    // Get PythonManager from app state (clone immediately to release borrow)
+    let pm = app.try_state::<PythonManager>()
+        .context("PythonManager not found in app state")?
+        .inner()
+        .clone();
+
+    // First, ensure backend is initialized (copy source + uv sync)
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    ensure_backend_initialized()
+        .context("initialize backend")?;
+
+    // Now start the backend
+    set_backend_status(BackendStatus::Starting, None);
+    let result = tokio::task::spawn_blocking(move || {
+        let mut ok = true;
+        let mut err_msg: Option<String> = None;
+
+        tracing::info!("Starting Python backend...");
+        if let Err(e) = pm.start() {
+            tracing::error!("Failed to start backend: {:#}", e);
+            ok = false;
+            err_msg = Some(format!("{:#}", e));
+        }
+
+        let backend_url = if ok {
+            tracing::info!("Waiting for backend to be ready...");
+            if let Err(e) = pm.wait_until_healthy(std::time::Duration::from_secs(30)) {
+                tracing::error!("Backend health check failed: {:#}", e);
+                ok = false;
+                err_msg = Some(format!("{:#}", e));
+                None
+            } else {
+                tracing::info!("Backend is ready at {}", pm.backend_url());
+                Some(pm.backend_url())
+            }
+        } else {
+            None
+        };
+
+        let ws = if ok {
+            tracing::info!("Starting embedded web server on http://0.0.0.0:8080...");
+            match WebServer::start(WebServerConfig {
+                backend_base: backend_url.unwrap(),
+                ..Default::default()
+            }) {
+                Ok(ws) => {
+                    tracing::info!("Embedded web server ready at {}", ws.url());
+                    Some(ws)
+                }
+                Err(e) => {
+                    tracing::error!("Failed to start embedded web server: {:#}", e);
+                    ok = false;
+                    err_msg = Some(format!("{:#}", e));
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        (ok, err_msg, ws)
+    })
+    .await;
+
+    let (ok, err_msg, ws) = result.context("backend task failed")?;
+
+    if let Some(ws) = ws {
+        app.manage(ws);
+    }
+    let status = if ok { BackendStatus::Running } else { BackendStatus::Error };
+    set_backend_status(status, err_msg.clone());
+
+    if ok {
+        let payload = build_backend_status_payload();
+        let _ = app.emit("backend-ready", payload)
+            .map_err(|e| tracing::warn!("emit backend-ready: {}", e));
+        // Also show main window
+        if let Some(w) = app.get_webview_window(main_window::MAIN_WIN_LABEL) {
+            let _ = w.show()
+                .map_err(|e| tracing::warn!("show main window: {}", e));
+        }
+    }
+
+    if ok {
+        Ok(())
+    } else {
+        Err(anyhow::anyhow!(err_msg.unwrap_or_default()).into())
+    }
 }
 
 /// Install color-eyre error hooks with comprehensive reporting in dev mode
@@ -292,12 +388,6 @@ fn main() {
     tracing::info!("redViewer tray starting (version {})", env!("CARGO_PKG_VERSION"));
     tracing::info!("Config dir: {}", paths.config_dir.display());
 
-    // On macOS/Linux, ensure backend is initialized on first run
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
-    if let Err(e) = ensure_backend_initialized() {
-        fatal_error("Failed to initialize backend", &e);
-    }
-
     // Backend-only mode: no Tauri, just Python backend
     if args.backend_only {
         tracing::info!("Backend-only mode requested");
@@ -334,7 +424,8 @@ fn main() {
                 python::BackendConfig::default(),
             );
 
-            // Store PythonManager early so other handlers can access it
+            // Store paths and PythonManager for access from commands
+            app.manage(paths.clone());
             app.manage(pm.clone());
 
             // Resolve frontend dist directory
@@ -379,7 +470,45 @@ fn main() {
             if !args.no_tray {
                 let _tray = tray::build_tray(&app.handle())?;
             }
-            // Create and show main window (will show Loader until backend ready)
+
+            // On macOS/Linux, check if uv needs to be downloaded
+            #[cfg(any(target_os = "macos", target_os = "linux"))]
+            {
+                if !rv_lib::is_uv_ready() {
+                    tracing::info!("uv not ready, starting setup flow");
+
+                    // Create splash window for download
+                    if let Err(e) = splash::create_splash_window(&app.handle()) {
+                        tracing::warn!("Failed to create splash window: {}", e);
+                    }
+
+                    // Create main window but keep it hidden
+                    if let Err(e) = main_window::create_main_win_hidden(&app.handle()) {
+                        tracing::warn!("Failed to create main window: {}", e);
+                    }
+
+                    // Create toast window
+                    if let Err(e) = toast::create_toast_win(&app.handle()) {
+                        tracing::warn!("Failed to create toast window: {}", e);
+                    }
+
+                    // Start splash setup flow
+                    let bin_dir = dirs::data_local_dir()
+                        .map(|d| d.join("redViewer").join("bin"))
+                        .ok_or_else(|| tauri::Error::FailedToReceiveMessage)?;
+                    let app_clone = app.handle().clone();
+                    tauri::async_runtime::spawn(async move {
+                        if let Err(e) = splash::run_setup_flow(app_clone, bin_dir).await {
+                            tracing::error!("Setup flow failed: {}", e);
+                            // On error, try to continue anyway
+                        }
+                    });
+
+                    return Ok(());
+                }
+            }
+
+            // Normal flow: create and show main window
             if let Err(e) = main_window::create_main_win(&app.handle()) {
                 tracing::warn!("Failed to create main window: {}", e);
             }
@@ -472,6 +601,9 @@ fn main() {
             get_backend_status,
             get_system_theme,
             toast::show_toast,
+            splash::select_region,
+            splash::retry_download,
+            start_backend_after_splash,
         ])
         .build(ctx);
 

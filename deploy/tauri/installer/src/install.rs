@@ -7,6 +7,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::process::Command;
+use toml::Value;
 
 use lib::{AppPaths, resolve_uv};
 
@@ -160,11 +161,22 @@ fn copy_uv_config(pyproject_dir: &Path, profile: &str) -> anyhow::Result<()> {
         }
     };
 
-    // Copy profile to uv.toml
-    std::fs::copy(&source, &target)
-        .with_context(|| format!("copy {} -> {}", source.display(), target.display()))?;
+    // Read and parse TOML, strip the custom [uv] section (used by downloader.rs only)
+    // before writing to uv.toml, since uv CLI rejects unknown fields.
+    let content = std::fs::read_to_string(&source)
+        .with_context(|| format!("read {}", source.display()))?;
+    let mut table: Value = content.parse::<Value>()
+        .with_context(|| format!("parse TOML from {}", source.display()))?;
 
-    tracing::info!("Copied {} to {}", source.display(), target.display());
+    if let Some(tbl) = table.as_table_mut() {
+        tbl.remove("uv");
+    }
+
+    let cleaned = toml::to_string(&table).context("serialize cleaned uv.toml")?;
+    std::fs::write(&target, cleaned)
+        .with_context(|| format!("write {}", target.display()))?;
+
+    tracing::info!("Wrote cleaned uv.toml to {} (from {})", target.display(), source.display());
     Ok(())
 }
 

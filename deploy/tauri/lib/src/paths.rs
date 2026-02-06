@@ -21,8 +21,7 @@ pub struct UvPaths {
 /// In debug builds with DEV_ENV set, uses uv from PATH.
 /// In production:
 /// - Windows: uv.exe next to the executable
-/// - macOS: uv in Contents/Resources (same as other bundled resources)
-/// - Linux: uv next to the executable
+/// - macOS/Linux: uv in data_local_dir/redViewer/bin (runtime download)
 pub fn resolve_uv() -> anyhow::Result<PathBuf> {
     #[cfg(debug_assertions)]
     if std::env::var("DEV_ENV").is_ok() {
@@ -32,24 +31,52 @@ pub fn resolve_uv() -> anyhow::Result<PathBuf> {
         return Ok(PathBuf::from("uv"));
     }
 
-    let exe_dir = std::env::current_exe()
-        .context("get exe path")?
-        .parent()
-        .ok_or_else(|| anyhow::anyhow!("cannot get exe dir"))?
-        .to_path_buf();
-
     #[cfg(target_os = "windows")]
-    return Ok(exe_dir.join("uv.exe"));
-
-    #[cfg(target_os = "macos")]
     {
-        // externalBin 打包后位于 Contents/MacOS/ 目录（与主程序同目录）
-        // 见: https://v2.tauri.app/distribute/macos-application-bundle
-        Ok(exe_dir.join("uv"))
+        let exe_dir = std::env::current_exe()
+            .context("get exe path")?
+            .parent()
+            .ok_or_else(|| anyhow::anyhow!("cannot get exe dir"))?
+            .to_path_buf();
+        return Ok(exe_dir.join("uv.exe"));
     }
 
-    #[cfg(target_os = "linux")]
-    return Ok(exe_dir.join("uv"));
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    {
+        let base = dirs::data_local_dir().context("failed to resolve data_local_dir")?;
+        Ok(base.join("redViewer").join("bin").join("uv"))
+    }
+}
+
+/// Check if uv is ready to use (exists and executable).
+///
+/// Returns true if:
+/// - uv binary exists at the resolved path
+/// - running `uv --version` succeeds
+pub fn is_uv_ready() -> bool {
+    let uv_path = match resolve_uv() {
+        Ok(p) => p,
+        Err(_) => return false,
+    };
+
+    if !uv_path.exists() {
+        return false;
+    }
+
+    #[cfg(target_os = "windows")]
+    let result = std::process::Command::new(uv_path)
+        .arg("--version")
+        .output();
+
+    #[cfg(not(target_os = "windows"))]
+    let result = std::process::Command::new(uv_path)
+        .arg("--version")
+        .output();
+
+    match result {
+        Ok(output) => output.status.success(),
+        Err(_) => false,
+    }
 }
 
 /// Resolve uv paths for backend execution.

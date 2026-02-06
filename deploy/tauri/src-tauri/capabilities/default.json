@@ -1,6 +1,6 @@
 {
   "identifier": "default",
-  "windows": ["main", "toast"],
+  "windows": ["main", "toast", "splash"],
   "permissions": [
     "core:default",
     "core:event:default",
