@@ -139,7 +139,21 @@ build_installer() {
     cd "$TAURI_DIR"
 
     echo "Building rvInstaller (release)..."
-    if [ -n "$CROSS_TARGET" ]; then
+    if [ "$CROSS_TARGET" = "universal-apple-darwin" ]; then
+        # Universal Binary: build both architectures and lipo merge
+        echo "Building universal binary (x86_64 + arm64)..."
+        cargo build -p installer --release --target x86_64-apple-darwin
+        cargo build -p installer --release --target aarch64-apple-darwin
+
+        local x86_path="$TAURI_DIR/target/x86_64-apple-darwin/release/rvInstaller"
+        local arm_path="$TAURI_DIR/target/aarch64-apple-darwin/release/rvInstaller"
+        local universal_dir="$TAURI_DIR/target/universal-apple-darwin/release"
+        mkdir -p "$universal_dir"
+        INSTALLER_PATH="$universal_dir/rvInstaller"
+
+        lipo -create "$x86_path" "$arm_path" -output "$INSTALLER_PATH"
+        echo "Created universal binary: $INSTALLER_PATH"
+    elif [ -n "$CROSS_TARGET" ]; then
         cargo build -p installer --release --target "$CROSS_TARGET"
         INSTALLER_PATH="$TAURI_DIR/target/$CROSS_TARGET/release/rvInstaller"
     else
@@ -238,6 +252,26 @@ build_frontend() {
     echo "Frontend built successfully"
 }
 
+build_tauri_frontend() {
+    if [ "$SKIP_FRONTEND" = true ]; then
+        echo ""
+        echo "--- Skipping Tauri frontend build ---"
+        return
+    fi
+
+    echo ""
+    echo "--- Building Tauri Frontend ---"
+    cd "$TAURI_DIR"
+
+    echo "Installing dependencies..."
+    bun install
+
+    echo "Building production bundle..."
+    bun run build
+
+    echo "Tauri frontend built successfully"
+}
+
 copy_frontend_dist() {
     echo ""
     echo "--- Staging frontend dist ---"
@@ -259,21 +293,87 @@ copy_uv_binary() {
     echo ""
     echo "--- Staging uv binary (Sidecar) ---"
 
+    local uv_path
+    uv_path=$(command -v uv)
     local os_type="$(uname -s)"
+    local arch="$(uname -m)"
 
-    # Skip uv staging for macOS/Linux (runtime download)
-    if [ "$os_type" = "Darwin" ] || [ "$os_type" = "Linux" ]; then
-        echo "--- Skipping uv staging (runtime download) ---"
+    if [ "$CROSS_TARGET" = "universal-apple-darwin" ] && [ "$os_type" = "Darwin" ]; then
+        # Universal Binary: create fat binary with lipo
+        echo "Staging uv for universal binary..."
+
+        # Get uv version (handle prerelease versions)
+        local uv_version
+        uv_version=$(uv --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+([a-z0-9.-]*)?')
+
+        local base_url="https://github.com/astral-sh/uv/releases/download/${uv_version}"
+        local x86_archive="uv-x86_64-apple-darwin.tar.gz"
+        local arm_archive="uv-aarch64-apple-darwin.tar.gz"
+
+        local temp_dir="$PROJECT_ROOT/__temp/uv_download_$$"
+        mkdir -p "$temp_dir"
+
+        echo "Downloading uv binaries (version $uv_version)..."
+
+        # Download both archives
+        local download_success=true
+        if ! curl -sfL "$base_url/$x86_archive" | tar -xz -C "$temp_dir" 2>/dev/null; then
+            echo "Warning: Failed to download x86_64 uv binary"
+            download_success=false
+        fi
+        if ! curl -sfL "$base_url/$arm_archive" | tar -xz -C "$temp_dir" 2>/dev/null; then
+            echo "Warning: Failed to download arm64 uv binary"
+            download_success=false
+        fi
+
+        if [ "$download_success" = false ]; then
+            # Fallback: use host uv binary only if it's universal
+            echo "Warning: Download failed, attempting to use host binary"
+            if ! command -v lipo >/dev/null 2>&1; then
+                echo "Error: lipo not available; cannot validate host uv architecture"
+                exit 1
+            fi
+            local host_archs
+            host_archs=$(lipo -archs "$uv_path" 2>/dev/null || echo "")
+            if [[ "$host_archs" == *"x86_64"* ]] && [[ "$host_archs" == *"arm64"* ]]; then
+                echo "Host uv is universal, extracting per-architecture binaries..."
+                cp "$uv_path" "$STAGE_DIR/uv-universal-apple-darwin"
+                lipo -extract x86_64 "$uv_path" -output "$STAGE_DIR/uv-x86_64-apple-darwin"
+                lipo -extract arm64 "$uv_path" -output "$STAGE_DIR/uv-aarch64-apple-darwin"
+                chmod +x "$STAGE_DIR/uv-universal-apple-darwin"
+                chmod +x "$STAGE_DIR/uv-aarch64-apple-darwin"
+                chmod +x "$STAGE_DIR/uv-x86_64-apple-darwin"
+            else
+                echo "Error: host uv is not universal (archs: $host_archs); cannot satisfy both architectures"
+                echo "Please ensure uv download succeeds or install a universal uv binary"
+                exit 1
+            fi
+            rm -rf "$temp_dir"
+            return
+        fi
+
+        # Stage individual architecture binaries (required for Tauri's two-stage universal build)
+        echo "Staging individual architecture binaries..."
+        cp "$temp_dir/uv-x86_64-apple-darwin/uv" "$STAGE_DIR/uv-x86_64-apple-darwin"
+        cp "$temp_dir/uv-aarch64-apple-darwin/uv" "$STAGE_DIR/uv-aarch64-apple-darwin"
+        chmod +x "$STAGE_DIR/uv-x86_64-apple-darwin"
+        chmod +x "$STAGE_DIR/uv-aarch64-apple-darwin"
+
+        # Create universal binary with lipo
+        echo "Creating universal binary with lipo..."
+        lipo -create \
+            "$temp_dir/uv-x86_64-apple-darwin/uv" \
+            "$temp_dir/uv-aarch64-apple-darwin/uv" \
+            -output "$STAGE_DIR/uv-universal-apple-darwin"
+        chmod +x "$STAGE_DIR/uv-universal-apple-darwin"
+
+        rm -rf "$temp_dir"
+        echo "Staged uv sidecars: uv-x86_64-apple-darwin, uv-aarch64-apple-darwin, uv-universal-apple-darwin"
         return
     fi
 
-    local uv_path
-    uv_path=$(command -v uv)
-
-    # Detect target triple for Sidecar naming
+    # Single architecture: detect target triple
     local target_triple=""
-    local arch="$(uname -m)"
-
     case "$os_type" in
         Linux)
             target_triple="x86_64-unknown-linux-gnu"
@@ -352,65 +452,6 @@ verify_resources_contract() {
     fi
 }
 
-# Patch tauri.conf.json for macOS/Linux to remove externalBin
-# since uv is downloaded at runtime
-patch_tauri_conf() {
-    local conf_file="$TAURI_DIR/src-tauri/tauri.conf.json"
-    local backup_file="${conf_file}.backup"
-
-    # Only patch on macOS/Linux
-    local os_type="$(uname -s)"
-    if [ "$os_type" != "Darwin" ] && [ "$os_type" != "Linux" ]; then
-        return
-    fi
-
-    echo ""
-    echo "--- Patching tauri.conf.json for runtime download ---"
-
-    # Backup original file
-    if [ ! -f "$backup_file" ]; then
-        cp "$conf_file" "$backup_file"
-        echo "Backed up tauri.conf.json"
-    fi
-
-    # Remove externalBin using Python (more reliable than jq)
-    python3 -c "
-import json
-import sys
-
-with open('$conf_file', 'r') as f:
-    data = json.load(f)
-
-if 'bundle' in data and 'externalBin' in data['bundle']:
-    del data['bundle']['externalBin']
-    print('Removed externalBin from tauri.conf.json')
-
-with open('$conf_file', 'w') as f:
-    json.dump(data, f, indent=2)
-    f.write('\n')
-" || {
-        echo "Failed to patch tauri.conf.json"
-        return 1
-    }
-
-    echo "tauri.conf.json patched"
-}
-
-# Restore original tauri.conf.json after build
-restore_tauri_conf() {
-    local conf_file="$TAURI_DIR/src-tauri/tauri.conf.json"
-    local backup_file="${conf_file}.backup"
-
-    if [ -f "$backup_file" ]; then
-        cp "$backup_file" "$conf_file"
-        rm "$backup_file"
-        echo "Restored tauri.conf.json"
-    fi
-}
-
-# Trap to ensure restoration even on error
-trap 'restore_tauri_conf' EXIT
-
 build_tauri() {
     echo ""
     echo "--- Building Tauri Application ---"
@@ -479,6 +520,7 @@ if [[ "$TARGET" == "bundle" || "$TARGET" == "all" ]]; then
     # Stage 2 resources preparation
     copy_installer_to_stage
     build_frontend
+    build_tauri_frontend
     copy_frontend_dist
     copy_uv_binary
     copy_backend_source
@@ -486,7 +528,6 @@ if [[ "$TARGET" == "bundle" || "$TARGET" == "all" ]]; then
 
     # Verify and build
     verify_resources_contract
-    patch_tauri_conf
     build_tauri
 
     # Release verification

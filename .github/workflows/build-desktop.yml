@@ -9,7 +9,11 @@ on:
       version:
         description: 'Version tag (e.g., v1.0.0)'
         required: false
-        default: ''
+        default: 'v1.0.0-beta'
+      debug_tmate:
+        type: boolean
+        required: false
+        default: true
 
 permissions:
   contents: read
@@ -20,15 +24,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            ext: .exe
-          # - os: macos-latest
-          #   target: x86_64-apple-darwin
-          #   ext: ''
-          # - os: macos-latest
-          #   target: aarch64-apple-darwin
-          #   ext: ''
+          # - os: windows-latest
+          #   target: x86_64-pc-windows-msvc
+          #   ext: .exe
+          - os: macos-14
+            target: universal-apple-darwin
+            ext: ''
           # - os: ubuntu-22.04
           #   target: x86_64-unknown-linux-gnu
           #   ext: ''
@@ -42,7 +43,7 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: x86_64-apple-darwin,aarch64-apple-darwin
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
@@ -61,48 +62,47 @@ jobs:
         with:
           version: "latest"
 
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli --locked
+      - name: Install Tauri CLI (cached)
+        uses: taiki-e/cache-cargo-install-action@v3.0.1
+        with:
+          tool: tauri-cli@2.10.0
 
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libgtk-3-dev \
-            libayatana-appindicator3-dev \
-            librsvg2-dev \
-            libsoup-3.0-dev \
-            libjavascriptcoregtk-4.1-dev \
-            rsync
+      # - name: Install Linux dependencies
+      #   if: runner.os == 'Linux'
+      #   run: |
+      #     sudo apt-get update
+      #     sudo apt-get install -y \
+      #       libwebkit2gtk-4.1-dev \
+      #       libgtk-3-dev \
+      #       libayatana-appindicator3-dev \
+      #       librsvg2-dev \
+      #       libsoup-3.0-dev \
+      #       libjavascriptcoregtk-4.1-dev \
+      #       rsync
 
-      # Two-Stage Build: Stage 1 (Installer) + Stage 2 (Bundle)
-      - name: Build (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          cd deploy/scripts
-          # Full build: Stage 1 (rvInstaller) + Stage 2 (NSIS bundle)
-          .\build-desktop.ps1
+      # - name: Build (Windows)
+      #   if: runner.os == 'Windows'
+      #   shell: pwsh
+      #   run: |
+      #     cd deploy/scripts
+      #     .\build-desktop.ps1
 
       - name: Build (macOS/Linux)
+        id: build_unix
         if: runner.os != 'Windows'
         shell: bash
         run: |
           cd deploy/scripts
           chmod +x build-desktop.sh
-          # Full build: Stage 1 (rvInstaller) + Stage 2 (app bundle)
           ./build-desktop.sh --cross-target ${{ matrix.target }}
 
-      # Artifact paths: Release builds output to __temp/tauri_dist
-      - name: Upload artifacts (Windows)
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: rv-windows-${{ matrix.target }}
-          path: |
-            __temp/tauri_dist/release/bundle/nsis/*.exe
+      # - name: Upload artifacts (Windows)
+      #   if: runner.os == 'Windows'
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: rv-windows-${{ matrix.target }}
+      #     path: |
+      #       __temp/tauri_dist/release/bundle/nsis/*.exe
 
       - name: Upload artifacts (macOS)
         if: runner.os == 'macOS'
@@ -110,13 +110,14 @@ jobs:
         with:
           name: rv-macos-${{ matrix.target }}
           path: |
-            __temp/tauri_dist/release/bundle/dmg/*.dmg
+            __temp/tauri_dist/universal-apple-darwin/release/bundle/macos/*.app
+            __temp/tauri_dist/universal-apple-darwin/release/bundle/dmg/*.dmg
 
-      - name: Upload artifacts (Linux)
-        if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
-        with:
-          name: rv-linux-${{ matrix.target }}
-          path: |
-            __temp/tauri_dist/release/bundle/appimage/*.AppImage
-            __temp/tauri_dist/release/bundle/deb/*.deb
+      # - name: Upload artifacts (Linux)
+      #   if: runner.os == 'Linux'
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: rv-linux-${{ matrix.target }}
+      #     path: |
+      #       __temp/tauri_dist/release/bundle/appimage/*.AppImage
+      #       __temp/tauri_dist/release/bundle/deb/*.deb
