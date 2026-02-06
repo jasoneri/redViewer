@@ -112,6 +112,16 @@ jobs:
       #     path: |
       #       __temp/tauri_dist/release/bundle/nsis/*.exe
 
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: deploy/tauri
+          cache-targets: true
+          cache-all-crates: true
+          # 新增：缓存自定义 target 目录
+          cache-directories: |
+            __temp/tauri_dist
+
       - name: Upload artifacts (macOS)
         if: runner.os == 'macOS'
         uses: actions/upload-artifact@v4

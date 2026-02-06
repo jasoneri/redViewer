@@ -7,7 +7,8 @@
 html, body, #root {
   height: 100%;
   width: 100%;
-  background: transparent;
+  /* 兜底背景色：防止资源加载失败时出现纯黑/白屏幕 */
+  background-color: #1a1a2e;
 }
 
 .splash-container {

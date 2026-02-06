@@ -1,6 +1,6 @@
 import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { listen } from '@tauri-apps/api/event'
+import { listen, emit } from '@tauri-apps/api/event'
 import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import './splash.css'
@@ -25,6 +25,45 @@ function Splash() {
   const [progress, setProgress] = useState<ProgressPayload | null>(null)
 
   useEffect(() => {
+    // 前端错误捕获：发送到 Rust 日志
+    const emitError = (message: string, details?: Record<string, unknown>) => {
+      const payload = JSON.stringify({ message, ...details })
+      emit('splash:frontend-error', payload).catch(console.error)
+    }
+
+    // JavaScript 运行时错误
+    const handleJsError = (event: ErrorEvent) => {
+      emitError(`JS Error: ${event.message}`, {
+        filename: event.filename,
+        line: event.lineno,
+        col: event.colno,
+        stack: event.error?.stack,
+      })
+    }
+
+    // 资源加载失败（CSS、JS 等）
+    const handleResourceError = (event: Event) => {
+      const target = event.target as HTMLElement
+      if (target instanceof HTMLScriptElement) {
+        emitError(`Script Load Failed: ${target.src}`)
+      } else if (target instanceof HTMLLinkElement) {
+        emitError(`Stylesheet Load Failed: ${target.href}`)
+      }
+    }
+
+    // 未处理的 Promise 拒绝
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const reason = event.reason
+      const message = reason instanceof Error ? reason.message : String(reason)
+      const stack = reason instanceof Error ? reason.stack : undefined
+      emitError(`Unhandled Rejection: ${message}`, { stack })
+    }
+
+    // 注册全局错误监听
+    window.addEventListener('error', handleJsError)
+    window.addEventListener('error', handleResourceError, true) // 捕获阶段
+    window.addEventListener('unhandledrejection', handleUnhandledRejection)
+
     const unlistenState = listen<StatePayload>('splash:state', (event) => {
       setState(event.payload.state)
       if (event.payload.state === 'error') {
@@ -39,6 +78,9 @@ function Splash() {
     })
 
     return () => {
+      window.removeEventListener('error', handleJsError)
+      window.removeEventListener('error', handleResourceError)
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection)
       unlistenState.then(f => f())
       unlistenProgress.then(f => f())
     }

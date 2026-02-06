@@ -7,7 +7,8 @@ use rv_lib::{download_uv, load_uv_config_from_resource, DownloadProgress, Result
 use serde_json::json;
 use std::sync::Mutex;
 use std::path::PathBuf;
-use tauri::{AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{AppHandle, Emitter, Listener, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::webview::PageLoadEvent;
 use tokio::time::{sleep, Duration};
 
 pub const SPLASH_WIN_LABEL: &str = "splash";
@@ -54,9 +55,17 @@ impl Default for SplashState {
 
 /// Create the splash window
 pub fn create_splash_window(app: &AppHandle) -> tauri::Result<()> {
+    // 验证关键资产存在
+    let resolver = app.asset_resolver();
+    let has_html = resolver.get("splash.html".into()).is_some();
+    tracing::info!("Splash asset check: splash.html={}", has_html);
+    if !has_html {
+        tracing::error!("CRITICAL: splash.html not found in assets!");
+    }
+
     app.manage(SplashState::new());
 
-    let _window = WebviewWindowBuilder::new(
+    let window = WebviewWindowBuilder::new(
         app,
         SPLASH_WIN_LABEL,
         WebviewUrl::App("splash.html".into()),
@@ -67,7 +76,40 @@ pub fn create_splash_window(app: &AppHandle) -> tauri::Result<()> {
     .decorations(false)
     .center()
     .visible(true)
+    .on_page_load(|_window, payload| {
+        match payload.event() {
+            PageLoadEvent::Started => {
+                tracing::info!("Splash page load started: {}", payload.url());
+            }
+            PageLoadEvent::Finished => {
+                tracing::info!("Splash page load finished: {}", payload.url());
+            }
+        }
+    })
     .build()?;
+
+    // 监听窗口事件
+    let _app_clone = app.clone();
+    window.on_window_event(move |event| {
+        match event {
+            tauri::WindowEvent::CloseRequested { .. } => {
+                tracing::info!("Splash window close requested");
+            }
+            tauri::WindowEvent::Destroyed => {
+                tracing::warn!("Splash window destroyed");
+            }
+            tauri::WindowEvent::Focused(focused) => {
+                tracing::debug!("Splash window focused: {}", focused);
+            }
+            _ => {}
+        }
+    });
+
+    // 监听前端发送的错误
+    let _app_for_errors = app.clone();
+    _ = app.listen("splash:frontend-error", move |event| {
+        tracing::error!("Splash frontend error: {}", event.payload());
+    });
 
     tracing::info!("Splash window created");
     Ok(())
