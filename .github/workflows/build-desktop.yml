@@ -96,6 +96,14 @@ jobs:
           chmod +x build-desktop.sh
           ./build-desktop.sh --cross-target ${{ matrix.target }}
 
+      - name: Debug with tmate (macOS/Linux, after failure)
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.debug_tmate && steps.build_unix.outcome == 'failure' }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 120
+        with:
+          detached: false
+          limit-access-to-actor: true
+      # # Artifact paths: Release builds output to __temp/tauri_dist
       # - name: Upload artifacts (Windows)
       #   if: runner.os == 'Windows'
       #   uses: actions/upload-artifact@v4
