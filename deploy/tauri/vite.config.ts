@@ -13,6 +13,7 @@ export default defineConfig({
       input: {
         main: path.resolve(__dirname, 'index.html'),
         toast: path.resolve(__dirname, 'toast.html'),
+        splash: path.resolve(__dirname, 'splash.html'),
       },
     },
   },

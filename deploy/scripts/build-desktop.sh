@@ -293,10 +293,10 @@ copy_uv_binary() {
     echo ""
     echo "--- Staging uv binary (Sidecar) ---"
 
-    local uv_path
-    uv_path=$(command -v uv)
     local os_type="$(uname -s)"
     local arch="$(uname -m)"
+    local uv_path
+    uv_path=$(command -v uv)
 
     if [ "$CROSS_TARGET" = "universal-apple-darwin" ] && [ "$os_type" = "Darwin" ]; then
         # Universal Binary: create fat binary with lipo
@@ -452,6 +452,47 @@ verify_resources_contract() {
     fi
 }
 
+patch_tauri_config_for_platform() {
+    echo ""
+    echo "--- Patching tauri.conf.json for platform ---"
+
+    local os_type="$(uname -s)"
+    local config_file="$TAURI_DIR/src-tauri/tauri.conf.json"
+    local backup_file="$TAURI_DIR/src-tauri/tauri.conf.json.bak"
+
+    # Only patch for macOS/Linux (remove externalBin since uv is downloaded at runtime)
+    if [ "$os_type" = "Darwin" ] || [ "$os_type" = "Linux" ]; then
+        echo "Removing externalBin from tauri.conf.json (uv downloaded at runtime)"
+
+        # Backup original
+        cp "$config_file" "$backup_file"
+
+        # Use jq if available, otherwise use sed
+        if command -v jq &> /dev/null; then
+            jq 'del(.bundle.externalBin)' "$backup_file" > "$config_file"
+        else
+            # Fallback: use sed to remove the externalBin line
+            # This is less robust but works for simple cases
+            sed -i.tmp '/"externalBin"/d' "$config_file"
+            rm -f "$config_file.tmp"
+        fi
+
+        echo "tauri.conf.json patched (backup: $backup_file)"
+    else
+        echo "No patching needed for $os_type"
+    fi
+}
+
+restore_tauri_config() {
+    local backup_file="$TAURI_DIR/src-tauri/tauri.conf.json.bak"
+    local config_file="$TAURI_DIR/src-tauri/tauri.conf.json"
+
+    if [ -f "$backup_file" ]; then
+        mv "$backup_file" "$config_file"
+        echo "Restored original tauri.conf.json"
+    fi
+}
+
 build_tauri() {
     echo ""
     echo "--- Building Tauri Application ---"
@@ -528,7 +569,9 @@ if [[ "$TARGET" == "bundle" || "$TARGET" == "all" ]]; then
 
     # Verify and build
     verify_resources_contract
+    patch_tauri_config_for_platform
     build_tauri
+    restore_tauri_config
 
     # Release verification
     verify_bundle_contract
