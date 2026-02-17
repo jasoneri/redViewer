@@ -1,6 +1,6 @@
 <div align="center">
-  <a href="https://doc.redviewer.nyc.mn" target="_blank">
-    <img src="https://img.comicguispider.nyc.mn/file/rv/1769934512064_logo.png" alt="logo" height="156">
+  <a href="https://rv.101114105.xyz" target="_blank">
+    <img src="https://img-cgs.101114105.xyz/file/rv/1769934512064_logo.png" alt="logo" height="156">
   </a>
   <h1 id="logo">redViewer(rV)</h1>
   <img src="https://img.shields.io/badge/Platform-Win%20|%20macOS%20|%20linux-blue?color=red" alt="tag">
@@ -17,15 +17,17 @@
 
 轻简风格的漫画阅读器。  
 
+> [26/02/18] nyc.mn 旧域名已废弃，新域名后缀 xyz
+
 <p>
-  <a href="https://doc.redviewer.nyc.mn/">
-    <img src="https://img.comicguispider.nyc.mn/file/rv/1769934428726_btn-home.svg" alt="主页" height="48">
+  <a href="https://rv.101114105.xyz/">
+    <img src="https://img-cgs.101114105.xyz/file/rv/1769934428726_btn-home.svg" alt="主页" height="48">
   </a>
-  <a href="https://demo.redviewer.nyc.mn/">
-    <img src="https://img.comicguispider.nyc.mn/file/rv/1769934434211_btn-demo.svg" alt="体验" height="48">
+  <a href="https://demo-rv.101114105.xyz/">
+    <img src="https://img-cgs.101114105.xyz/file/rv/1769934434211_btn-demo.svg" alt="体验" height="48">
   </a>
   <a href="https://github.com/jasoneri/redViewer/releases">
-    <img src="https://img.comicguispider.nyc.mn/file/rv/1769934610180_btn-dl.svg" alt="下载" height="48">
+    <img src="https://img-cgs.101114105.xyz/file/rv/1769934610180_btn-dl.svg" alt="下载" height="48">
   </a>
 </p>
 

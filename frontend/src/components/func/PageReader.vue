@@ -11,7 +11,29 @@
         :src="currentUrl"
         fit="contain"
       />
-      <div v-if="!settingsStore.displaySettings.showSlider" class="page-indicator">{{ currentPage + 1 }} / {{ props.imgUrls.length }}</div>
+      <div v-if="!settingsStore.displaySettings.showSlider && props.imgUrls.length > 0" class="page-indicator" @click.stop="togglePageBtnGroup">
+        <transition name="fade">
+          <button
+            v-show="showPageBtnGroup"
+            class="page-btn page-btn-first"
+            :disabled="currentPage === 0"
+            @click.stop="goToFirstPage"
+          >
+            <FirstPage />
+          </button>
+        </transition>
+        <span class="page-text">{{ currentPage + 1 }} / {{ props.imgUrls.length }}</span>
+        <transition name="fade">
+          <button
+            v-show="showPageBtnGroup"
+            class="page-btn page-btn-last"
+            :disabled="currentPage === props.imgUrls.length - 1"
+            @click.stop="goToLastPage"
+          >
+            <LastPage />
+          </button>
+        </transition>
+      </div>
     </div>
     
     <!-- 进度滑块 -->
@@ -35,6 +57,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { EditPen } from '@element-plus/icons-vue'
+import { FirstPage, LastPage } from '@/icons'
 import { ElMessage } from 'element-plus'
 import { useSettingsStore } from '@/static/store'
 
@@ -49,6 +72,7 @@ const emit = defineEmits(['pageChange', 'showBtnChange'])
 
 const currentPage = ref(0)
 const readerRef = ref(null)
+const showPageBtnGroup = ref(false)
 
 // 触摸相关
 let touchStartX = 0
@@ -82,6 +106,30 @@ const nextPage = () => {
   if (currentPage.value < props.imgUrls.length - 1) {
     currentPage.value++
     emit('pageChange', currentPage.value)
+    emit('showBtnChange', calcShowBtn())
+  }
+}
+
+// 切换按钮组显示
+const togglePageBtnGroup = () => {
+  showPageBtnGroup.value = !showPageBtnGroup.value
+}
+
+// 跳转到首页
+const goToFirstPage = () => {
+  if (currentPage.value > 0) {
+    currentPage.value = 0
+    emit('pageChange', 0)
+    emit('showBtnChange', calcShowBtn())
+  }
+}
+
+// 跳转到末页
+const goToLastPage = () => {
+  const lastPage = props.imgUrls.length - 1
+  if (currentPage.value < lastPage) {
+    currentPage.value = lastPage
+    emit('pageChange', lastPage)
     emit('showBtnChange', calcShowBtn())
   }
 }
@@ -194,6 +242,52 @@ watch(() => props.bookName, () => {
   padding: 4px 12px;
   border-radius: 12px;
   font-size: 14px;
+  cursor: pointer;
+}
+
+.page-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  // padding: 1px;
+  border-radius: 8px;
+  transition: opacity 0.2s, background-color 0.2s;
+
+  &:hover:not(:disabled) {
+    background: rgba(0, 0, 0, 0.8);
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+}
+
+.page-btn-first {
+  right: 100%;
+  margin-right: 8px;
+}
+
+.page-btn-last {
+  left: 100%;
+  margin-left: 8px;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 .slider-container {

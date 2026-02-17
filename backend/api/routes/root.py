@@ -3,8 +3,11 @@
 """Root Router - 认证和配置管理 API"""
 
 import time
+import httpx
 from functools import wraps
+from urllib.parse import urlsplit
 from fastapi import APIRouter, HTTPException, Header
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
 
@@ -12,6 +15,7 @@ from infra import backend
 from core.crypto import decrypt
 
 root_router = APIRouter(prefix='/root')
+api_config_router = APIRouter(prefix='/api')
 
 
 # ===== 鉴权相关 =====
@@ -67,6 +71,12 @@ class LocksUpdate(BaseModel):
 
 class WhitelistUpdate(BaseModel):
     whitelist: list[str]
+
+
+class ApiConfigUpdate(BaseModel):
+    backendUrl: str | None = None
+    currentBackend: str | None = None
+    secret: str | None = None
 
 
 @root_router.get("/")
@@ -131,3 +141,42 @@ async def update_whitelist(req: WhitelistUpdate, x_secret: Optional[str] = Heade
         raise HTTPException(401, "鉴权失败")
     backend.config.set('root_whitelist', req.whitelist)
     return {"success": True}
+
+
+@api_config_router.get('/config')
+async def get_api_config():
+    return {
+        'backendUrl': backend.config.get('frontend_backend_url'),
+        'bgGif': None
+    }
+
+
+@api_config_router.post('/config')
+async def update_api_config(req: ApiConfigUpdate):
+    if not req.secret:
+        return JSONResponse({'error': '需要密钥'}, status_code=401)
+    if not is_auth_required():
+        return JSONResponse({'error': '请先设置密钥'}, status_code=403)
+    if not verify_secret(req.secret):
+        return JSONResponse({'error': '密钥验证失败'}, status_code=401)
+
+    target = (req.backendUrl or '').strip().rstrip('/')
+    if not target:
+        return JSONResponse({'error': '需要目标后端地址'}, status_code=400)
+    try:
+        parts = urlsplit(target)
+    except ValueError:
+        return JSONResponse({'error': '地址格式不正确'}, status_code=400)
+    if parts.scheme not in ('http', 'https') or not parts.netloc:
+        return JSONResponse({'error': '地址必须以 http:// 或 https:// 开头'}, status_code=400)
+
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            r = await client.get(f'{target}/root/')
+        if r.status_code >= 400:
+            return JSONResponse({'error': '无法连接目标后端'}, status_code=502)
+    except httpx.HTTPError:
+        return JSONResponse({'error': '无法连接目标后端'}, status_code=502)
+
+    backend.config.set('frontend_backend_url', target)
+    return {'success': True}

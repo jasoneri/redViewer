@@ -15,7 +15,7 @@ tauri-build = { workspace = true }
 
 [dependencies]
 rv_lib = { path = "../lib", package = "lib" }
-tauri = { workspace = true }
+tauri = { workspace = true, features = ["tray-icon", "macos-private-api"] }
 tauri-plugin-opener = { workspace = true }
 tauri-plugin-single-instance = { workspace = true }
 notify-rust = { workspace = true }

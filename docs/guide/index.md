@@ -1,6 +1,6 @@
 # 🎸功能详细预览
 
-建议新窗口开 [![demo](https://img.comicguispider.nyc.mn/file/rv/1769934434211_btn-demo.svg)](https://demo.redviewer.nyc.mn/) 边看此文档，直观功能演示
+建议新窗口开 [![demo](https://img-cgs.101114105.xyz/file/rv/1769934434211_btn-demo.svg)](https://demo-rv.101114105.xyz/) 边看此文档，直观功能演示
 
 ## 📚 列表/网格预览
 
@@ -17,6 +17,11 @@
 ![book](/book.png)
 
 ## 🎲 其他说明
+
+### 未提及
+
++ 章节页预览 > 点一下系列名，弹出菜单系列列表可跳转
++ 阅读 > 翻页模式点一下下方页数可跳转页首页尾
 
 ### 筛选相关
 

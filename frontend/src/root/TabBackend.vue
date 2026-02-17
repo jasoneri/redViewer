@@ -145,7 +145,8 @@ const saveBackend = async () => {
   }
   
   if (globalSaved) {
-    ElMessage.success('全局配置已更新，所有用户刷新后生效')
+    localStorage.removeItem('backendUrl')
+    ElMessage.success('全局配置已更新，所有设备刷新后生效')
   } else {
     // fallback: 保存到 localStorage
     localStorage.setItem('backendUrl', backendUrl.value)

@@ -1,4 +1,4 @@
 
 ---
 
-[🚀快速开始](https://doc.redviewer.nyc.mn/deploy/) | [❓常见问题](https://doc.redviewer.nyc.mn/faq/)
+[🚀快速开始](https://rv.101114105.xyz/deploy/) | [❓常见问题](https://rv.101114105.xyz/faq/)
