@@ -47,6 +47,13 @@ export default defineConfig({
   server: {
     open: false,  //自动打开浏览器
     port: 8080,
+    allowedHosts: true,
+    proxy: {
+      '/api/config': {
+        target: `http://localhost:${process.env.PORT || 12345}`,
+        changeOrigin: true
+      }
+    }
   },
   resolve: {
     alias: {

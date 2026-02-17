@@ -7,7 +7,7 @@ const { Layout } = DefaultTheme
   <Layout>
     <template #home-hero-info-after>
       <div class="home-demo">
-        <a class="home-demo__btn" href="https://demo.redviewer.nyc.mn" target="_blank" rel="noreferrer">
+        <a class="home-demo__btn" href="https://demo-rv.101114105.xyz" target="_blank" rel="noreferrer">
           🎮 线上体验 Demo
         </a>
       </div>

@@ -18,37 +18,29 @@ function detectDesktopBackendUrl() {
   return null
 }
 
-// 异步初始化后端地址和背景 GIF
 export async function initBackend() {
-  // 优先级：localStorage > KV全局配置 > 桌面模式检测 > 构建时环境变量
+  // 优先级：localStorage > /api/config 服务端配置 > 桌面模式检测 > 构建时环境变量
   const localUrl = localStorage.getItem('backendUrl');
   const localBg = localStorage.getItem('list_bg');
 
-  if (localUrl) {
-    _backendUrl = localUrl;
-  }
+  if (localUrl) _backendUrl = localUrl;
+  if (localBg) _listBg = localBg;
 
-  if (localBg) {
-    _listBg = localBg;
-    return _backendUrl;
-  }
-
+  let serverUrl = null;
   try {
     const res = await fetch('/api/config');
-    const { backendUrl, bgGif } = await res.json();
-    if (backendUrl) {
-      _backendUrl = backendUrl;
+    if (res.ok) {
+      const { backendUrl, bgGif } = await res.json();
+      serverUrl = backendUrl;
+      if (!localUrl && backendUrl) _backendUrl = backendUrl;
+      if (!localBg && bgGif) _listBg = bgGif;
     }
-    if (bgGif) {
-      _listBg = bgGif;
-    }
-  } catch (e) {
+  } catch {
     console.warn('获取全局配置失败，使用默认值');
   }
 
-  if (!localUrl) {
-    // 尝试桌面模式检测，如果失败则使用构建时配置
-    const desktopUrl = detectDesktopBackendUrl()
+  if (!localUrl && !serverUrl) {
+    const desktopUrl = detectDesktopBackendUrl();
     _backendUrl = desktopUrl || import.meta.env.LAN_IP;
   }
 

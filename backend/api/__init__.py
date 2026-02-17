@@ -14,7 +14,7 @@ from infra import backend
 from core import lib_mgr
 from storage import StorageBackendFactory
 from api.routes.comic import index_router
-from api.routes.root import root_router
+from api.routes.root import root_router, api_config_router
 from utils.cbz_cache import close_cbz_cache
 
 staticFiles = None
@@ -60,6 +60,7 @@ def register_router(app: FastAPI) -> None:
     if kemono_path and kemono_path.exists():
         from api.routes.kemono import index_router as kemono_index_router
         app.include_router(kemono_index_router, prefix="", tags=['kemono'])
+    app.include_router(api_config_router, prefix="", tags=['api'])
     app.include_router(root_router, prefix="", tags=['root'])
 
 

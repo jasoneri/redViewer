@@ -197,6 +197,10 @@ FunctionEnd
 ; Handles config saving and dependency installation
 ;------------------------------------------------------------------------------
 !macro NSIS_HOOK_POSTINSTALL
+  ; Add firewall rules for ports 8080 and 12345
+  DetailPrint "Adding firewall rules..."
+  nsExec::ExecToLog 'netsh advfirewall firewall add rule name="rV" dir=in action=allow protocol=TCP localport=8080,12345'
+
   ; Create config directory
   CreateDirectory "${CONFIG_DIR}"
 
@@ -265,6 +269,9 @@ FunctionEnd
 ; POSTUNINSTALL Hook
 ;------------------------------------------------------------------------------
 !macro NSIS_HOOK_POSTUNINSTALL
+  ; Remove firewall rule
+  nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="rV"'
+
   ; Clean up runtime-generated files only on full uninstall (not upgrade)
   ${If} $UpdateMode <> 1
     Delete /REBOOTOK "$INSTDIR\res\src\uv.lock"
