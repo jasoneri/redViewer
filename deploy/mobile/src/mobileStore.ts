@@ -1,0 +1,322 @@
+export type ConnectionState = 'unknown' | 'online' | 'backend_unreachable' | 'offline_cache_only'
+
+export type LibraryItem = {
+  id: string
+  book: string
+  ep: string
+  title: string
+  first_img: string | null
+  mtime: number
+  ero: number
+  meta: LibraryMeta
+}
+
+export type LibraryMeta = {
+  artist: string | null
+  source: string | null
+  preview_url: string | null
+  public_date: string | null
+  tags: string[]
+  pages: number | null
+  btype: string | null
+}
+
+export type ShelfBook = LibraryItem & {
+  kind: 'single' | 'series'
+  episode_count: number
+  episodes: LibraryItem[]
+}
+
+export type LibraryResponse = {
+  items?: LibraryItem[]
+  books?: ShelfBook[]
+  count: number
+  book_count?: number
+  ero: number
+  path_configured?: boolean
+}
+
+export type Manifest = LibraryItem & {
+  page_count: number
+  pages: string[]
+  version: string
+}
+
+export type Progress = {
+  book: string
+  ep: string
+  device_id: string
+  page_index: number
+  scroll_top: number
+  reading_mode: 'scroll' | 'page'
+  status: 'unread' | 'reading' | 'completed'
+  updated_at: number
+}
+
+export type CachedItem = {
+  id: string
+  book: string
+  ep: string
+  title: string
+  first_img: string | null
+  page_count: number
+  cached_pages: number
+  cached_at: number
+  version: string
+  status: 'cached' | 'partial'
+  pages: string[]
+}
+
+export type CgsSite = {
+  site_index?: number
+  index?: number
+  spider_name?: string
+  name?: string
+}
+
+export type CgsBook = {
+  book_key?: string
+  title?: string
+  name?: string
+  supported?: boolean
+  [key: string]: unknown
+}
+
+const DB_NAME = 'redviewer-mobile'
+const DB_VERSION = 1
+const META_STORE = 'items'
+const PAGE_STORE = 'pages'
+const PROGRESS_STORE = 'progress'
+const QUEUE_STORE = 'pendingProgress'
+
+export const DEVICE_ID_KEY = 'rv_mobile_device_id'
+export const BACKEND_URL_KEY = 'rv_mobile_backend_url'
+
+let dbPromise: Promise<IDBDatabase> | null = null
+
+function openDb(): Promise<IDBDatabase> {
+  if (dbPromise) return dbPromise
+  dbPromise = new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION)
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => resolve(request.result)
+    request.onupgradeneeded = () => {
+      const db = request.result
+      if (!db.objectStoreNames.contains(META_STORE)) {
+        db.createObjectStore(META_STORE, { keyPath: 'id' })
+      }
+      if (!db.objectStoreNames.contains(PAGE_STORE)) {
+        db.createObjectStore(PAGE_STORE, { keyPath: 'key' })
+      }
+      if (!db.objectStoreNames.contains(PROGRESS_STORE)) {
+        db.createObjectStore(PROGRESS_STORE, { keyPath: 'key' })
+      }
+      if (!db.objectStoreNames.contains(QUEUE_STORE)) {
+        db.createObjectStore(QUEUE_STORE, { keyPath: 'key' })
+      }
+    }
+  })
+  return dbPromise
+}
+
+function txStore<T>(
+  storeName: string,
+  mode: IDBTransactionMode,
+  run: (store: IDBObjectStore) => IDBRequest<T>,
+): Promise<T> {
+  return openDb().then(
+    (db) =>
+      new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, mode)
+        const store = tx.objectStore(storeName)
+        const request = run(store)
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => reject(request.error)
+        tx.onerror = () => reject(tx.error)
+      }),
+  )
+}
+
+function txStores<T>(
+  storeNames: string[],
+  mode: IDBTransactionMode,
+  run: (stores: Record<string, IDBObjectStore>) => Promise<T>,
+): Promise<T> {
+  return openDb().then(
+    (db) =>
+      new Promise((resolve, reject) => {
+        const tx = db.transaction(storeNames, mode)
+        const stores = Object.fromEntries(storeNames.map((name) => [name, tx.objectStore(name)]))
+        run(stores)
+          .then((result) => {
+            tx.oncomplete = () => resolve(result)
+          })
+          .catch((error) => {
+            tx.abort()
+            reject(error)
+          })
+        tx.onerror = () => reject(tx.error)
+        tx.onabort = () => reject(tx.error)
+      }),
+  )
+}
+
+function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result)
+    request.onerror = () => reject(request.error)
+  })
+}
+
+export function normalizeBackendUrl(value: string): string {
+  return value.trim().replace(/\/+$/, '')
+}
+
+export function buildUrl(backendUrl: string, path: string): string {
+  if (!path) return ''
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('blob:')) return path
+  return `${backendUrl}${path.startsWith('/') ? path : `/${path}`}`
+}
+
+export function ensureDeviceId(): string {
+  const existing = localStorage.getItem(DEVICE_ID_KEY)
+  if (existing) return existing
+  const id = crypto.randomUUID()
+  localStorage.setItem(DEVICE_ID_KEY, id)
+  return id
+}
+
+export async function apiGet<T>(backendUrl: string, path: string): Promise<T> {
+  const response = await fetch(buildUrl(backendUrl, path))
+  if (!response.ok) throw new Error(`${response.status} ${await response.text()}`)
+  return response.json() as Promise<T>
+}
+
+export async function apiPost<T>(backendUrl: string, path: string, body: unknown): Promise<T> {
+  const response = await fetch(buildUrl(backendUrl, path), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!response.ok) throw new Error(`${response.status} ${await response.text()}`)
+  return response.json() as Promise<T>
+}
+
+export async function loadCachedItems(): Promise<CachedItem[]> {
+  const rows = await txStore<CachedItem[]>(META_STORE, 'readonly', (store) => store.getAll())
+  return rows.sort((a, b) => b.cached_at - a.cached_at)
+}
+
+export async function getCachedItem(id: string): Promise<CachedItem | undefined> {
+  return txStore<CachedItem | undefined>(META_STORE, 'readonly', (store) => store.get(id))
+}
+
+export async function getCachedPages(item: CachedItem): Promise<string[]> {
+  const db = await openDb()
+  const tx = db.transaction(PAGE_STORE, 'readonly')
+  const store = tx.objectStore(PAGE_STORE)
+  const blobs = await Promise.all(
+    item.pages.map((_, index) => requestToPromise<{ key: string; blob: Blob }>(store.get(pageKey(item.id, index)))),
+  )
+  return blobs.map((row) => URL.createObjectURL(row.blob))
+}
+
+export async function saveProgress(progress: Progress): Promise<void> {
+  const key = progressKey(progress.book, progress.ep)
+  await txStore(PROGRESS_STORE, 'readwrite', (store) => store.put({ ...progress, key }))
+}
+
+export async function loadProgress(book: string, ep: string): Promise<Progress | undefined> {
+  const row = await txStore<(Progress & { key: string }) | undefined>(PROGRESS_STORE, 'readonly', (store) =>
+    store.get(progressKey(book, ep)),
+  )
+  if (!row) return undefined
+  const { key: _key, ...progress } = row
+  return progress
+}
+
+export async function loadAllProgress(): Promise<Progress[]> {
+  const rows = await txStore<(Progress & { key: string })[]>(PROGRESS_STORE, 'readonly', (store) => store.getAll())
+  return rows.map(({ key: _key, ...progress }) => progress)
+}
+
+export async function queueProgress(progress: Progress): Promise<void> {
+  const key = progressKey(progress.book, progress.ep)
+  await txStore(QUEUE_STORE, 'readwrite', (store) => store.put({ ...progress, key }))
+}
+
+export async function syncProgress(backendUrl: string, progress: Progress): Promise<void> {
+  await apiPost(backendUrl, '/mobile/progress', progress)
+  await txStore(QUEUE_STORE, 'readwrite', (store) => store.delete(progressKey(progress.book, progress.ep)))
+}
+
+export async function syncPendingProgress(backendUrl: string): Promise<{ synced: number; failed: number }> {
+  const rows = await txStore<(Progress & { key: string })[]>(QUEUE_STORE, 'readonly', (store) => store.getAll())
+  let synced = 0
+  let failed = 0
+  for (const row of rows) {
+    const { key: _key, ...progress } = row
+    try {
+      await syncProgress(backendUrl, progress)
+      synced += 1
+    } catch {
+      failed += 1
+    }
+  }
+  return { synced, failed }
+}
+
+export async function cacheManifest(
+  backendUrl: string,
+  manifest: Manifest,
+  onProgress: (done: number, total: number) => void,
+): Promise<CachedItem> {
+  const cached: CachedItem = {
+    id: manifest.id,
+    book: manifest.book,
+    ep: manifest.ep,
+    title: manifest.title,
+    first_img: manifest.first_img,
+    page_count: manifest.page_count,
+    cached_pages: 0,
+    cached_at: Date.now(),
+    version: manifest.version,
+    status: 'partial',
+    pages: manifest.pages,
+  }
+
+  await txStore(META_STORE, 'readwrite', (store) => store.put(cached))
+
+  for (let index = 0; index < manifest.pages.length; index += 1) {
+    const pageUrl = buildUrl(backendUrl, manifest.pages[index])
+    const response = await fetch(pageUrl)
+    if (!response.ok) throw new Error(`page ${index + 1}: ${response.status}`)
+    const blob = await response.blob()
+    await txStore(PAGE_STORE, 'readwrite', (store) => store.put({ key: pageKey(manifest.id, index), blob }))
+    cached.cached_pages = index + 1
+    cached.status = cached.cached_pages === manifest.page_count ? 'cached' : 'partial'
+    await txStore(META_STORE, 'readwrite', (store) => store.put({ ...cached }))
+    onProgress(cached.cached_pages, manifest.page_count)
+  }
+
+  return cached
+}
+
+export async function deleteCachedItem(item: CachedItem): Promise<void> {
+  await txStores([META_STORE, PAGE_STORE, PROGRESS_STORE, QUEUE_STORE], 'readwrite', async (stores) => {
+    stores[META_STORE].delete(item.id)
+    stores[PROGRESS_STORE].delete(progressKey(item.book, item.ep))
+    stores[QUEUE_STORE].delete(progressKey(item.book, item.ep))
+    for (let index = 0; index < item.pages.length; index += 1) {
+      stores[PAGE_STORE].delete(pageKey(item.id, index))
+    }
+  })
+}
+
+function pageKey(itemId: string, index: number): string {
+  return `${itemId}:${index}`
+}
+
+function progressKey(book: string, ep: string): string {
+  return `${book}::${ep || ''}`
+}

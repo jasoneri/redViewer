@@ -40,5 +40,5 @@
 
 设置 `kemono路径`，可观看从 `CGS` 脚本集下的 `kemono` 内容。
 
-- 📖 [查看 kemono 内容目录树参考](https://doc.comicguispider.nyc.mn/feat/script.html#%F0%9F%93%92-%E8%AF%B4%E6%98%8E)
+- 📖 [查看 kemono 内容目录树参考](https://cgs.101114105.xyz/feat/script.html#%F0%9F%93%92-%E8%AF%B4%E6%98%8E)
 - 🌐 观看链接：`你的局域网ip:端口/kemono`

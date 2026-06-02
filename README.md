@@ -17,8 +17,6 @@
 
 轻简风格的漫画阅读器。  
 
-> [26/02/18] nyc.mn 旧域名已废弃，新域名后缀 xyz
-
 <p>
   <a href="https://rv.101114105.xyz/">
     <img src="https://img-cgs.101114105.xyz/file/rv/1769934428726_btn-home.svg" alt="主页" height="48">

@@ -12,7 +12,7 @@ export default defineConfig({
   themeConfig: {
     logo: '/logo.png',
     nav: [
-      { text: 'CGS', link: 'https://doc.comicguispider.nyc.mn/' },
+      { text: 'CGS', link: 'https://cgs.101114105.xyz/' },
     ],
 
     sidebar: [
