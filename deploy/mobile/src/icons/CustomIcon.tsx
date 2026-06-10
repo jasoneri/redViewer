@@ -1,4 +1,26 @@
-type CustomIconName = 'doujin' | 'offline'
+type CustomIconName =
+  | 'about'
+  | 'bookList'
+  | 'cacheAdd'
+  | 'cacheDownload'
+  | 'cacheClean'
+  | 'cached'
+  | 'changelog'
+  | 'cgsLibrary'
+  | 'cgsSearch'
+  | 'cgsSite'
+  | 'cgsSubmit'
+  | 'data'
+  | 'docs'
+  | 'doujin'
+  | 'faq'
+  | 'feedback'
+  | 'mcp'
+  | 'offline'
+  | 'releaseCheck'
+  | 'sourceRefresh'
+  | 'updatePackage'
+  | 'wireError'
 
 type CustomIconProps = {
   name: CustomIconName
@@ -9,8 +31,365 @@ type CustomIconProps = {
 type IconSvgProps = Omit<CustomIconProps, 'name'>
 
 export function CustomIcon({ name, ...props }: CustomIconProps) {
+  if (name === 'about') return <AboutIcon {...props} />
+  if (name === 'bookList') return <BookListIcon {...props} />
+  if (name === 'cacheAdd') return <CacheAddIcon {...props} />
+  if (name === 'cacheDownload') return <CacheDownloadIcon {...props} />
+  if (name === 'cacheClean') return <CacheCleanIcon {...props} />
+  if (name === 'cached') return <CachedIcon {...props} />
+  if (name === 'changelog') return <ChangelogIcon {...props} />
+  if (name === 'cgsLibrary') return <CgsLibraryIcon {...props} />
+  if (name === 'cgsSearch') return <CgsSearchIcon {...props} />
+  if (name === 'cgsSite') return <CgsSiteIcon {...props} />
+  if (name === 'cgsSubmit') return <CgsSubmitIcon {...props} />
+  if (name === 'data') return <DataIcon {...props} />
+  if (name === 'docs') return <DocsIcon {...props} />
+  if (name === 'faq') return <FaqIcon {...props} />
+  if (name === 'feedback') return <FeedbackIcon {...props} />
+  if (name === 'mcp') return <McpIcon {...props} />
   if (name === 'offline') return <OfflineIcon {...props} />
+  if (name === 'releaseCheck') return <ReleaseCheckIcon {...props} />
+  if (name === 'sourceRefresh') return <SourceRefreshIcon {...props} />
+  if (name === 'updatePackage') return <UpdatePackageIcon {...props} />
+  if (name === 'wireError') return <WireErrorIcon {...props} />
   return <DoujinIcon {...props} />
+}
+
+function AboutIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h16v16H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M12.5 2h-9A2.5 2.5 0 0 0 1 4.5v5A2.5 2.5 0 0 0 3.5 12H4v1.942c0 .842.992 1.292 1.625.737l3.063-2.68H12.5a2.5 2.5 0 0 0 2.5-2.5v-5a2.5 2.5 0 0 0-2.5-2.5zM14 9.5a1.5 1.5 0 0 1-1.5 1.5H8.312L5 13.898V11H3.5A1.5 1.5 0 0 1 2 9.5v-5A1.5 1.5 0 0 1 3.5 3h9A1.5 1.5 0 0 1 14 4.5zM7.508 7.09L7.5 7V4.5l.008-.09a.5.5 0 0 1 .984 0l.008.09V7l-.008.09a.5.5 0 0 1-.984 0M8.75 9.25a.75.75 0 1 1-1.5 0a.75.75 0 0 1 1.5 0"
+      />
+    </svg>
+  )
+}
+
+function BookListIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path
+        fill="currentColor"
+        fillRule="evenodd"
+        d="M20 4H4a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1M4 2a3 3 0 0 0-3 3v14a3 3 0 0 0 3 3h16a3 3 0 0 0 3-3V5a3 3 0 0 0-3-3zm2 5h2v2H6zm5 0a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2zm-3 4H6v2h2zm2 1a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2h-6a1 1 0 0 1-1-1m-2 3H6v2h2zm2 1a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2h-6a1 1 0 0 1-1-1"
+        clipRule="evenodd"
+      />
+    </svg>
+  )
+}
+
+function CgsSiteIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path fill="currentColor" d="M16.36 14c.08-.66.14-1.32.14-2s-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2m-5.15 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95a8.03 8.03 0 0 1-4.33 3.56M14.34 14H9.66c-.1-.66-.16-1.32-.16-2s.06-1.35.16-2h4.68c.09.65.16 1.32.16 2s-.07 1.34-.16 2M12 19.96c-.83-1.2-1.5-2.53-1.91-3.96h3.82c-.41 1.43-1.08 2.76-1.91 3.96M8 8H5.08A7.92 7.92 0 0 1 9.4 4.44C8.8 5.55 8.35 6.75 8 8m-2.92 8H8c.35 1.25.8 2.45 1.4 3.56A8 8 0 0 1 5.08 16m-.82-2C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2s.06 1.34.14 2M12 4.03c.83 1.2 1.5 2.54 1.91 3.97h-3.82c.41-1.43 1.08-2.77 1.91-3.97M18.92 8h-2.95a15.7 15.7 0 0 0-1.38-3.56c1.84.63 3.37 1.9 4.33 3.56M12 2C6.47 2 2 6.5 2 12a10 10 0 0 0 10 10a10 10 0 0 0 10-10A10 10 0 0 0 12 2" />
+    </svg>
+  )
+}
+
+function CgsSearchIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path fill="currentColor" d="M15.5 12c2.5 0 4.5 2 4.5 4.5c0 .88-.25 1.71-.69 2.4l3.08 3.1L21 23.39l-3.12-3.07c-.69.43-1.51.68-2.38.68c-2.5 0-4.5-2-4.5-4.5s2-4.5 4.5-4.5m0 2a2.5 2.5 0 0 0-2.5 2.5a2.5 2.5 0 0 0 2.5 2.5a2.5 2.5 0 0 0 2.5-2.5a2.5 2.5 0 0 0-2.5-2.5M13 4v8l-2.5-2.25L8 12V4H6v16h4c.54.81 1.23 1.5 2.03 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v7.81c-.58-.55-1.25-1-2-1.31V4z" />
+    </svg>
+  )
+}
+
+function CgsSubmitIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path fill="currentColor" d="M6.5 20q-2.28 0-3.89-1.57Q1 16.85 1 14.58q0-1.95 1.17-3.48q1.18-1.53 3.08-1.95q.63-2.3 2.5-3.72Q9.63 4 12 4q2.93 0 4.96 2.04Q19 8.07 19 11q1.73.2 2.86 1.5q1.14 1.28 1.14 3q0 1.88-1.31 3.19T18.5 20H13q-.82 0-1.41-.59Q11 18.83 11 18v-5.15L9.4 14.4L8 13l4-4l4 4l-1.4 1.4l-1.6-1.55V18h5.5q1.05 0 1.77-.73q.73-.72.73-1.77t-.73-1.77Q19.55 13 18.5 13H17v-2q0-2.07-1.46-3.54Q14.08 6 12 6Q9.93 6 8.46 7.46Q7 8.93 7 11h-.5q-1.45 0-2.47 1.03Q3 13.05 3 14.5T4.03 17q1.02 1 2.47 1H9v2m3-7" />
+    </svg>
+  )
+}
+
+function CgsLibraryIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path fill="currentColor" d="M9 3v15h3V3zm3 2l4 13l3-1l-4-13zM5 5v13h3V5zM3 19v2h18v-2z" />
+    </svg>
+  )
+}
+
+function McpIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+      <path d="M0 0h16v16H0z" fill="none" />
+      <g fill="currentColor">
+        <path d="M5.85 1.24a3.263 3.263 0 0 1 5.534 2.654a3.262 3.262 0 0 1 2.568 5.574L9.117 14.23l.208.212a.75.75 0 0 1-1.07 1.053l-.734-.746a.75.75 0 0 1 .01-1.061l5.37-5.288a1.762 1.762 0 0 0-2.473-2.51L7.445 8.825a.751.751 0 0 1-1.22-.823a.8.8 0 0 1 .167-.246L9.376 4.82a1.763 1.763 0 0 0-2.473-2.512l-5.37 5.287A.75.75 0 0 1 .48 6.527z" />
+        <path d="M7.22 3.467a.751.751 0 0 1 1.052 1.07L5.6 7.167A1.743 1.743 0 0 0 8.045 9.65l2.673-2.63a.75.75 0 0 1 1.052 1.07l-2.672 2.63a3.243 3.243 0 0 1-4.55-4.622z" />
+      </g>
+    </svg>
+  )
+}
+
+function CacheAddIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M21 7c0 2.21-4.03 4-9 4S3 9.21 3 7m18 0c0-2.21-4.03-4-9-4S3 4.79 3 7m18 0v5M3 7v5m9 4c-4.97 0-9-1.79-9-4m0 0v5c0 2.21 4.03 4 9 4m6-6v3m0 3v-3m0 0h3m-3 0h-3"
+      />
+    </svg>
+  )
+}
+
+function CacheDownloadIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h16v16H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M8 1.75a.75.75 0 0 1 .75.75v5.19l1.72-1.72a.75.75 0 1 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 1 1 1.06-1.06l1.72 1.72V2.5A.75.75 0 0 1 8 1.75m-5 9a.75.75 0 0 1 .75.75c0 .552.448 1 1 1h6.5a1 1 0 0 0 1-1a.75.75 0 0 1 1.5 0A2.5 2.5 0 0 1 11.25 14h-6.5A2.5 2.5 0 0 1 2.25 11.5a.75.75 0 0 1 .75-.75"
+      />
+    </svg>
+  )
+}
+
+function CachedIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h16v16H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M4.75 2.25a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h6.5a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zm4.78 3.22a.75.75 0 1 1 1.06 1.06L7.5 9.62a.75.75 0 0 1-1.06 0L5.16 8.34a.75.75 0 0 1 1.06-1.06l.75.75z"
+      />
+    </svg>
+  )
+}
+
+function CacheCleanIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M12 3c4.97 0 9 1.79 9 4v5c0 1.48-1.8 2.78-4.48 3.47l2.19 2.18a1 1 0 0 1-1.42 1.42L15.1 16.9C14.13 16.97 13.1 17 12 17c-4.97 0-9-1.79-9-4V7c0-2.21 4.03-4 9-4m0 2C7.59 5 5 6.48 5 7s2.59 2 7 2s7-1.48 7-2s-2.59-2-7-2M5 10.09V13c0 .52 2.59 2 7 2c.44 0 .86-.01 1.26-.04L11.8 13.5a1 1 0 0 1 1.41-1.41l1.57 1.56C17.44 13.18 19 12.09 19 11v-.91C17.35 11.23 14.78 12 12 12s-5.35-.77-7-1.91"
+      />
+    </svg>
+  )
+}
+
+function DataIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <ellipse cx="12" cy="5" rx="9" ry="3" />
+      <path d="M3 5V19A9 3 0 0 0 21 19V5" />
+      <path d="M3 12A9 3 0 0 0 21 12" />
+    </svg>
+  )
+}
+
+function DocsIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2m8 1.5V8h4.5zM8 11a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2zm0 4a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2z"
+      />
+    </svg>
+  )
+}
+
+function FaqIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 26 26"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h26v26H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M13 0c-1.7 0-3 1.3-3 3v6c0 1.7 1.3 3 3 3h6l4 4v-4c1.7 0 3-1.3 3-3V3c0-1.7-1.3-3-3-3zm4.188 3h1.718l1.688 6h-1.5l-.407-1.5h-1.5L16.813 9H15.5zM18 4c-.1.4-.212.888-.313 1.188l-.28 1.312h1.187l-.282-1.313C18.113 4.888 18 4.4 18 4M3 10c-1.7 0-3 1.3-3 3v6c0 1.7 1.3 3 3 3v4l4-4h6c1.7 0 3-1.3 3-3v-6h-3c-1.9 0-3.406-1.3-3.906-3zm4.594 2.906c1.7 0 2.5 1.4 2.5 3c0 1.4-.481 2.288-1.281 2.688c.4.2.874.306 1.374.406l-.374 1c-.7-.2-1.426-.512-2.126-.813c-.1-.1-.275-.093-.375-.093C6.112 18.994 5 18 5 16c0-1.7.994-3.094 2.594-3.094m0 1.094c-.8 0-1.188.9-1.188 2c0 1.2.388 2 1.188 2s1.218-.9 1.218-2s-.418-2-1.218-2"
+      />
+    </svg>
+  )
+}
+
+function FeedbackIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 28 28"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h28v28H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M17.75 14c-.13 0-.27-.02-.4-.06a1.25 1.25 0 0 1-.85-1.19v-1.76c-1.4-.13-2.5-1.31-2.5-2.74v-3.5C14 3.23 15.23 2 16.75 2h6.5C24.77 2 26 3.23 26 4.75v3.5C26 9.77 24.77 11 23.25 11h-2.62l-1.88 2.5c-.24.32-.61.5-1 .5M9.5 16.5a4.26 4.26 0 0 1-4.25-4.25A4.26 4.26 0 0 1 9.5 8a4.26 4.26 0 0 1 4.25 4.25A4.26 4.26 0 0 1 9.5 16.5m-6.029 7.42C4.781 25.3 6.811 26 9.501 26s4.72-.7 6.03-2.08c1.522-1.61 1.473-3.553 1.47-3.684v-.006c0-1.23-1-2.23-2.23-2.23H4.231c-1.23 0-2.23 1-2.23 2.19v.013c-.004.19-.042 2.117 1.47 3.717"
+      />
+    </svg>
+  )
+}
+
+function ChangelogIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h16v16H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M5 8.25a.75.75 0 0 1 .75-.75h4a.75.75 0 0 1 0 1.5h-4A.75.75 0 0 1 5 8.25M4 10.5A.75.75 0 0 0 4 12h4a.75.75 0 0 0 0-1.5z"
+      />
+      <path
+        fill="currentColor"
+        d="M13-.005c1.654 0 3 1.328 3 3c0 .982-.338 1.933-.783 2.818c-.443.879-1.028 1.758-1.582 2.588l-.011.017c-.568.853-1.104 1.659-1.501 2.446c-.398.789-.623 1.494-.623 2.136a1.5 1.5 0 1 0 2.333-1.248a.75.75 0 0 1 .834-1.246A3 3 0 0 1 13 16H3a3 3 0 0 1-3-3c0-1.582.891-3.135 1.777-4.506q.315-.483.623-.946c.473-.709.923-1.386 1.287-2.048H2.51c-.576 0-1.381-.133-1.907-.783A2.68 2.68 0 0 1 0 2.995a3 3 0 0 1 3-3Zm0 1.5a1.5 1.5 0 0 0-1.5 1.5c0 .476.223.834.667 1.132A.75.75 0 0 1 11.75 5.5H5.368c-.467 1.003-1.141 2.015-1.773 2.963c-.192.289-.381.571-.558.845C2.13 10.711 1.5 11.916 1.5 13A1.5 1.5 0 0 0 3 14.5h7.401A3 3 0 0 1 10 13c0-.979.338-1.928.784-2.812c.441-.874 1.023-1.748 1.575-2.576l.017-.026c.568-.853 1.103-1.658 1.501-2.448s.623-1.497.623-2.143c0-.838-.669-1.5-1.5-1.5m-10 0a1.5 1.5 0 0 0-1.5 1.5c0 .321.1.569.27.778c.097.12.325.227.74.227h7.674A2.7 2.7 0 0 1 10 2.995c0-.546.146-1.059.401-1.5Z"
+      />
+    </svg>
+  )
+}
+
+function ReleaseCheckIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M21.86 12.5A4.3 4.3 0 0 0 19 11c0-1.95-.68-3.6-2.04-4.96S13.95 4 12 4c-1.58 0-3 .47-4.25 1.43s-2.08 2.19-2.5 3.72c-1.25.28-2.29.93-3.08 1.95S1 13.28 1 14.58c0 1.51.54 2.8 1.61 3.85C3.69 19.5 5 20 6.5 20h12c1.25 0 2.31-.44 3.19-1.31c.87-.88 1.31-1.94 1.31-3.19q0-1.725-1.14-3M16.57 18L14 15.43c-.57.36-1.26.57-2 .57c-2.21 0-4-1.79-4-4s1.79-4 4-4s4 1.79 4 4c0 .74-.21 1.43-.57 2L18 16.57zM14 12c0 1.11-.89 2-2 2s-2-.89-2-2s.9-2 2-2s2 .9 2 2"
+      />
+    </svg>
+  )
+}
+
+function SourceRefreshIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.45 10.92a1 1 0 1 0-1.86-.74A6 6 0 1 1 12 6c1.3 0 2.5.42 3.47 1.13L13 9.6h7V2.6z"
+      />
+    </svg>
+  )
+}
+
+function UpdatePackageIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h32v32H0z" fill="none" />
+      <g fill="currentColor">
+        <path d="M14.5 24.823v1.96c0 .22-.24.35-.43.24l-2.8-1.69a.66.66 0 0 1-.31-.56v-1.96c0-.22.24-.35.43-.24l2.8 1.69c.19.12.31.33.31.56" />
+        <path d="M16.89 1.289h.003l10.921 6.642c.557.343.896.956.896 1.602v12.44c0 .936-.482 1.838-1.314 2.336l-10.543 6.406a1.9 1.9 0 0 1-1.996 0L4.311 24.307A2.73 2.73 0 0 1 3 21.973V9.533c0-.636.332-1.261.908-1.6l10.931-6.65a1.98 1.98 0 0 1 2.052.006m-1.03 1.714L6.083 8.95l3.51 2.145l9.79-5.951zm6.815 4.143l-9.805 5.952l3 1.832l9.905-5.898zM5 21.973c0 .259.137.496.35.625l9.513 5.78V16.659l-3.103-1.895v1.788c0 .24-.26.38-.46.27l-2.68-1.63a.31.31 0 0 1-.14-.26V12.76L5 10.634zm21.36.625l.008-.004a.72.72 0 0 0 .342-.622v-11.17l-9.847 5.865v11.702z" />
+      </g>
+    </svg>
+  )
 }
 
 function OfflineIcon({ className, size = 16 }: IconSvgProps) {
@@ -31,6 +410,10 @@ function OfflineIcon({ className, size = 16 }: IconSvgProps) {
       />
     </svg>
   )
+}
+
+function WireErrorIcon({ className, size = 16 }: IconSvgProps) {
+  return <OfflineIcon className={className} size={size} />
 }
 
 function DoujinIcon({ className, size = 16 }: IconSvgProps) {

@@ -59,12 +59,36 @@ export type CachedItem = {
   ep: string
   title: string
   first_img: string | null
+  meta: LibraryMeta
   page_count: number
   cached_pages: number
   cached_at: number
   version: string
   status: 'cached' | 'partial'
   pages: string[]
+}
+
+type StoredCachedItem = Omit<CachedItem, 'meta'> & {
+  meta?: Partial<LibraryMeta> | null
+}
+
+type StoredPageRow = {
+  key: string
+  blob?: Blob
+}
+
+export type OfflineCacheSummary = {
+  bytes: number | null
+  item_count: number
+  page_count: number
+  exact: boolean
+  source: 'indexeddb' | 'storage_estimate' | 'unavailable'
+}
+
+export type OfflineCacheCleanupSummary = {
+  removed_manifest_count: number
+  removed_page_blob_count: number
+  removed_manifest_ids: string[]
 }
 
 export type CgsSite = {
@@ -78,8 +102,27 @@ export type CgsBook = {
   book_key?: string
   title?: string
   name?: string
+  source?: string
+  artist?: string
+  pages?: number
+  page_count?: number
+  btype?: string
+  category?: string
+  type?: string
+  public_date?: string
+  date?: string
+  tags?: string[]
+  cover_static_url?: string
+  unsupported_reason?: string
   supported?: boolean
   [key: string]: unknown
+}
+
+export type CgsConfig = {
+  downloaded_handle: string
+  downloaded_handle_options?: string[]
+  proxies: string[]
+  sv_path: string
 }
 
 const DB_NAME = 'redviewer-mobile'
@@ -91,6 +134,16 @@ const QUEUE_STORE = 'pendingProgress'
 
 export const DEVICE_ID_KEY = 'rv_mobile_device_id'
 export const BACKEND_URL_KEY = 'rv_mobile_backend_url'
+
+export const EMPTY_LIBRARY_META: LibraryMeta = {
+  artist: null,
+  source: null,
+  preview_url: null,
+  public_date: null,
+  tags: [],
+  pages: null,
+  btype: null,
+}
 
 let dbPromise: Promise<IDBDatabase> | null = null
 
@@ -192,23 +245,64 @@ export async function apiGet<T>(backendUrl: string, path: string): Promise<T> {
   return response.json() as Promise<T>
 }
 
-export async function apiPost<T>(backendUrl: string, path: string, body: unknown): Promise<T> {
+export async function apiPost<T>(
+  backendUrl: string,
+  path: string,
+  body: unknown,
+  headers: Record<string, string> = {},
+): Promise<T> {
   const response = await fetch(buildUrl(backendUrl, path), {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(body),
   })
   if (!response.ok) throw new Error(`${response.status} ${await response.text()}`)
   return response.json() as Promise<T>
 }
 
+function normalizeNullableString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value : null
+}
+
+function normalizeNullableNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+export function normalizeLibraryMeta(meta: Partial<LibraryMeta> | null | undefined): LibraryMeta {
+  return {
+    artist: normalizeNullableString(meta?.artist),
+    source: normalizeNullableString(meta?.source),
+    preview_url: normalizeNullableString(meta?.preview_url),
+    public_date: normalizeNullableString(meta?.public_date),
+    tags: Array.isArray(meta?.tags) ? meta.tags.filter((tag): tag is string => typeof tag === 'string' && Boolean(tag.trim())) : [],
+    pages: normalizeNullableNumber(meta?.pages),
+    btype: normalizeNullableString(meta?.btype),
+  }
+}
+
+function normalizeCachedItem(row: StoredCachedItem): CachedItem {
+  return {
+    ...row,
+    meta: normalizeLibraryMeta(row.meta),
+  }
+}
+
 export async function loadCachedItems(): Promise<CachedItem[]> {
-  const rows = await txStore<CachedItem[]>(META_STORE, 'readonly', (store) => store.getAll())
-  return rows.sort((a, b) => b.cached_at - a.cached_at)
+  const rows = await txStore<StoredCachedItem[]>(META_STORE, 'readonly', (store) => store.getAll())
+  return rows.map(normalizeCachedItem).sort((a, b) => b.cached_at - a.cached_at)
 }
 
 export async function getCachedItem(id: string): Promise<CachedItem | undefined> {
-  return txStore<CachedItem | undefined>(META_STORE, 'readonly', (store) => store.get(id))
+  const row = await txStore<StoredCachedItem | undefined>(META_STORE, 'readonly', (store) => store.get(id))
+  return row ? normalizeCachedItem(row) : undefined
+}
+
+export async function updateCachedItemMeta(id: string, meta: Partial<LibraryMeta>): Promise<CachedItem | undefined> {
+  const row = await txStore<StoredCachedItem | undefined>(META_STORE, 'readonly', (store) => store.get(id))
+  if (!row) return undefined
+  const next = normalizeCachedItem({ ...row, meta: normalizeLibraryMeta(meta) })
+  await txStore(META_STORE, 'readwrite', (store) => store.put(next))
+  return next
 }
 
 export async function getCachedPages(item: CachedItem): Promise<string[]> {
@@ -216,9 +310,20 @@ export async function getCachedPages(item: CachedItem): Promise<string[]> {
   const tx = db.transaction(PAGE_STORE, 'readonly')
   const store = tx.objectStore(PAGE_STORE)
   const blobs = await Promise.all(
-    item.pages.map((_, index) => requestToPromise<{ key: string; blob: Blob }>(store.get(pageKey(item.id, index)))),
+    item.pages.map((_, index) => requestToPromise<StoredPageRow | undefined>(store.get(pageKey(item.id, index)))),
   )
-  return blobs.map((row) => URL.createObjectURL(row.blob))
+  return blobs.map((row, index) => {
+    if (!row?.blob) {
+      throw new Error(`cached page blob missing: ${item.id} page ${index + 1}/${item.pages.length}`)
+    }
+    return URL.createObjectURL(row.blob)
+  })
+}
+
+export async function getCachedCover(item: Pick<CachedItem, 'id' | 'cached_pages'>): Promise<string> {
+  if (item.cached_pages <= 0) return ''
+  const row = await txStore<StoredPageRow | undefined>(PAGE_STORE, 'readonly', (store) => store.get(pageKey(item.id, 0)))
+  return row?.blob ? URL.createObjectURL(row.blob) : ''
 }
 
 export async function saveProgress(progress: Progress): Promise<void> {
@@ -277,6 +382,7 @@ export async function cacheManifest(
     ep: manifest.ep,
     title: manifest.title,
     first_img: manifest.first_img,
+    meta: normalizeLibraryMeta({ ...manifest.meta, pages: manifest.meta?.pages ?? manifest.page_count }),
     page_count: manifest.page_count,
     cached_pages: 0,
     cached_at: Date.now(),
@@ -311,6 +417,146 @@ export async function deleteCachedItem(item: CachedItem): Promise<void> {
       stores[PAGE_STORE].delete(pageKey(item.id, index))
     }
   })
+}
+
+export async function getOfflineCacheSummary(): Promise<OfflineCacheSummary> {
+  let itemCount = 0
+
+  try {
+    const manifests = await txStore<StoredCachedItem[]>(META_STORE, 'readonly', (store) => store.getAll())
+    itemCount = manifests.length
+    const pageRows = await txStore<StoredPageRow[]>(PAGE_STORE, 'readonly', (store) => store.getAll())
+    const bytes = pageRows.reduce((total, row) => total + (row.blob?.size || 0), 0)
+    return {
+      bytes,
+      item_count: itemCount,
+      page_count: pageRows.length,
+      exact: true,
+      source: 'indexeddb',
+    }
+  } catch {
+    if (typeof navigator !== 'undefined' && typeof navigator.storage?.estimate === 'function') {
+      try {
+        const estimate = await navigator.storage.estimate()
+        return {
+          bytes: typeof estimate.usage === 'number' ? estimate.usage : null,
+          item_count: itemCount,
+          page_count: 0,
+          exact: false,
+          source: 'storage_estimate',
+        }
+      } catch {
+        // Fall through to unavailable below.
+      }
+    }
+
+    return {
+      bytes: null,
+      item_count: itemCount,
+      page_count: 0,
+      exact: false,
+      source: 'unavailable',
+    }
+  }
+}
+
+export async function cleanupInvalidOfflineCache(): Promise<OfflineCacheCleanupSummary> {
+  const manifests = await txStore<StoredCachedItem[]>(META_STORE, 'readonly', (store) => store.getAll())
+  const pageRows = await txStore<StoredPageRow[]>(PAGE_STORE, 'readonly', (store) => store.getAll())
+  const pageKeys = new Set(pageRows.map((row) => row.key).filter(Boolean))
+  const pageRowsByItemId = new Map<string, StoredPageRow[]>()
+
+  for (const row of pageRows) {
+    const itemId = pageItemId(row.key)
+    if (!itemId) continue
+    const existing = pageRowsByItemId.get(itemId)
+    if (existing) existing.push(row)
+    else pageRowsByItemId.set(itemId, [row])
+  }
+
+  const removedManifestIds = new Set<string>()
+  const removedPageKeys = new Set<string>()
+  const manifestRowsById = new Map<string, StoredCachedItem>()
+
+  for (const manifest of manifests) {
+    const itemId = typeof manifest.id === 'string' ? manifest.id : ''
+    if (itemId) manifestRowsById.set(itemId, manifest)
+
+    if (isInvalidManifestRow(manifest, pageKeys)) {
+      if (itemId) removedManifestIds.add(itemId)
+      const relatedPages = pageRowsByItemId.get(itemId) || []
+      for (const pageRow of relatedPages) {
+        removedPageKeys.add(pageRow.key)
+      }
+    }
+  }
+
+  for (const pageRow of pageRows) {
+    const itemId = pageItemId(pageRow.key)
+    if (!itemId || !manifestRowsById.has(itemId) || removedManifestIds.has(itemId)) {
+      removedPageKeys.add(pageRow.key)
+    }
+  }
+
+  if (!removedManifestIds.size && !removedPageKeys.size) {
+    return {
+      removed_manifest_count: 0,
+      removed_page_blob_count: 0,
+      removed_manifest_ids: [],
+    }
+  }
+
+  await txStores([META_STORE, PAGE_STORE, PROGRESS_STORE, QUEUE_STORE], 'readwrite', async (stores) => {
+    for (const manifestId of removedManifestIds) {
+      stores[META_STORE].delete(manifestId)
+      const manifest = manifestRowsById.get(manifestId)
+      if (manifest && typeof manifest.book === 'string' && typeof manifest.ep === 'string') {
+        const key = progressKey(manifest.book, manifest.ep)
+        stores[PROGRESS_STORE].delete(key)
+        stores[QUEUE_STORE].delete(key)
+      }
+    }
+
+    for (const pageKeyValue of removedPageKeys) {
+      stores[PAGE_STORE].delete(pageKeyValue)
+    }
+
+    return undefined
+  })
+
+  return {
+    removed_manifest_count: removedManifestIds.size,
+    removed_page_blob_count: removedPageKeys.size,
+    removed_manifest_ids: Array.from(removedManifestIds),
+  }
+}
+
+function isInvalidManifestRow(row: StoredCachedItem, pageKeys: Set<string>): boolean {
+  const id = typeof row.id === 'string' ? row.id.trim() : ''
+  const book = typeof row.book === 'string' ? row.book.trim() : ''
+  const ep = typeof row.ep === 'string' ? row.ep : null
+  const title = typeof row.title === 'string' ? row.title.trim() : ''
+  const pageCount = typeof row.page_count === 'number' ? row.page_count : NaN
+  const cachedPages = typeof row.cached_pages === 'number' ? row.cached_pages : NaN
+  const pages = row.pages
+
+  if (!id || !book || ep === null || !title) return true
+  if (!Number.isInteger(pageCount) || pageCount <= 0) return true
+  if (!Array.isArray(pages) || pages.length !== pageCount || pages.some((page) => typeof page !== 'string')) return true
+  if (!Number.isInteger(cachedPages) || cachedPages < 0 || cachedPages > pageCount) return true
+  if (row.status !== 'cached' && row.status !== 'partial') return true
+  if (row.status === 'cached') {
+    for (let index = 0; index < pageCount; index += 1) {
+      if (!pageKeys.has(pageKey(id, index))) return true
+    }
+  }
+  return false
+}
+
+function pageItemId(key: string): string {
+  if (!key) return ''
+  const separatorIndex = key.lastIndexOf(':')
+  return separatorIndex <= 0 ? '' : key.slice(0, separatorIndex)
 }
 
 function pageKey(itemId: string, index: number): string {

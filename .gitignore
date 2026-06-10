@@ -67,6 +67,8 @@ docs/.vitepress/cache
 *.lock
 deploy/stage/src/
 deploy/assets/icons
+test*/
+deploy/mobile/src-tauri/gen/
 # self/conf
 conf.yml
 # self/bug-report
@@ -98,3 +100,4 @@ desktop.ini
 .env.*.local
 *.wixobj
 *.wixpdb
+__*

@@ -5,6 +5,7 @@ from pathlib import Path
 from watchdog.events import FileSystemEventHandler
 
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'}
+SQLITE_CACHE_ARTIFACT = "rV.db"
 
 
 class ComicChangeHandler(FileSystemEventHandler):
@@ -20,6 +21,8 @@ class ComicChangeHandler(FileSystemEventHandler):
         with contextlib.suppress(ValueError):
             relative_path = event_path.relative_to(self.cache.scan_path)
             if parts := relative_path.parts:
+                if parts[0] == SQLITE_CACHE_ARTIFACT or parts[0].startswith(f"{SQLITE_CACHE_ARTIFACT}-"):
+                    return None, None
                 if len(parts) == 1:
                     return parts[0].replace('.cbz', ''), ""
                 book, second = parts[0], parts[1]

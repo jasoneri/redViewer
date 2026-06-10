@@ -8,11 +8,13 @@ Directory/CBZ mode strategies.
 """
 
 import sqlite3
+from contextlib import contextmanager
 from pathlib import Path
-from typing import List, Optional, Dict, Tuple
+from typing import Any, List, Optional, Dict, Tuple
 from urllib.parse import quote
 
 from utils import Var
+from utils.book_meta import normalize_meta_book_name, split_meta_tags
 from utils.mode_strategy import ModeStrategyFactory
 from models import BookData
 from watchdog.observers import Observer
@@ -39,8 +41,14 @@ class LocalStorageBackend(StorageBackend):
         self._var = Var
         self._create_table()
 
+    @contextmanager
     def _get_conn(self):
-        return sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path)
+        try:
+            yield conn
+            conn.commit()
+        finally:
+            conn.close()
 
     def _create_table(self):
         with self._get_conn() as conn:
@@ -65,6 +73,22 @@ class LocalStorageBackend(StorageBackend):
                     `mtime` REAL NOT NULL,
                     `ero` INTEGER NOT NULL DEFAULT 0,
                     UNIQUE(path, ero)
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS `mobile_progress` (
+                    `id` INTEGER PRIMARY KEY AUTOINCREMENT,
+                    `book` TEXT NOT NULL,
+                    `ep` TEXT NOT NULL DEFAULT '',
+                    `device_id` TEXT NOT NULL,
+                    `page_index` INTEGER NOT NULL DEFAULT 0,
+                    `scroll_top` INTEGER NOT NULL DEFAULT 0,
+                    `reading_mode` TEXT NOT NULL DEFAULT 'scroll',
+                    `status` TEXT NOT NULL DEFAULT 'reading',
+                    `updated_at` INTEGER NOT NULL,
+                    `created_at` INTEGER NOT NULL,
+                    `ero` INTEGER NOT NULL DEFAULT 0,
+                    UNIQUE(book, ep, device_id, ero)
                 )
             """)
 
@@ -155,6 +179,12 @@ class LocalStorageBackend(StorageBackend):
                 'UPDATE episodes SET rv_handle = ?, exist = 0 WHERE book = ? AND ep = ?',
                 (handle, book, ep)
             )
+        self._append_handle_record(book, ep, handle)
+
+    def _append_handle_record(self, book: str, ep: str, handle: str):
+        record_target = f"{book}/{ep}" if ep else book
+        with open(self.scan_path / "_record.txt", "a+", encoding="utf-8") as f:
+            f.write(f"<{handle}>{record_target}\n")
 
     def reset_cache(self):
         with self._get_conn() as conn:
@@ -212,6 +242,133 @@ class LocalStorageBackend(StorageBackend):
                 (self.ero, dir_name)
             )
             return {(row[0], row[1]) for row in cursor.fetchall()}
+
+    # ========== Mobile progress/read-state ==========
+
+    def supports_progress_sync(self) -> bool:
+        return True
+
+    def load_book_metainfo_map(self) -> Dict[str, Dict[str, Any]]:
+        with self._get_conn() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'metainfos' LIMIT 1"
+            )
+            if cursor.fetchone() is None:
+                return {}
+            cursor.execute(
+                """SELECT book, artist, source, preview_url, public_date, tags, pages, btype
+                   FROM metainfos
+                   WHERE ero = ?""",
+                (self.ero,),
+            )
+            meta_map: Dict[str, Dict[str, Any]] = {}
+            for book, artist, source, preview_url, public_date, tags, pages, btype in cursor.fetchall():
+                meta_map[normalize_meta_book_name(book)] = {
+                    "artist": artist or None,
+                    "source": source or None,
+                    "preview_url": preview_url or None,
+                    "public_date": public_date or None,
+                    "tags": split_meta_tags(tags),
+                    "pages": int(pages) if pages is not None else None,
+                    "btype": btype or None,
+                }
+            return meta_map
+
+    @staticmethod
+    def _progress_from_row(row) -> Optional[dict]:
+        if not row:
+            return None
+        book, ep, device_id, page_index, scroll_top, reading_mode, status, updated_at, created_at, ero = row
+        return {
+            "book": book,
+            "ep": ep,
+            "device_id": device_id,
+            "page_index": page_index,
+            "scroll_top": scroll_top,
+            "reading_mode": reading_mode,
+            "status": status,
+            "updated_at": updated_at,
+            "created_at": created_at,
+            "ero": ero,
+        }
+
+    def get_progress(self, book: str, ep: str, device_id: str) -> Optional[dict]:
+        with self._get_conn() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """SELECT book, ep, device_id, page_index, scroll_top, reading_mode, status,
+                          updated_at, created_at, ero
+                   FROM mobile_progress
+                   WHERE book = ? AND ep = ? AND device_id = ? AND ero = ?""",
+                (book, ep or "", device_id, self.ero),
+            )
+            return self._progress_from_row(cursor.fetchone())
+
+    def get_latest_progress(self, book: str, ep: str) -> Optional[dict]:
+        with self._get_conn() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """SELECT book, ep, device_id, page_index, scroll_top, reading_mode, status,
+                          updated_at, created_at, ero
+                   FROM mobile_progress
+                   WHERE book = ? AND ep = ? AND ero = ?
+                   ORDER BY updated_at DESC, id DESC
+                   LIMIT 1""",
+                (book, ep or "", self.ero),
+            )
+            return self._progress_from_row(cursor.fetchone())
+
+    def upsert_progress(self, progress: dict) -> dict:
+        book = progress["book"]
+        ep = progress.get("ep") or ""
+        device_id = progress["device_id"]
+        existing = self.get_progress(book, ep, device_id)
+        created_at = existing["created_at"] if existing else progress["updated_at"]
+
+        with self._get_conn() as conn:
+            if existing:
+                conn.execute(
+                    """UPDATE mobile_progress
+                       SET page_index = ?, scroll_top = ?, reading_mode = ?, status = ?,
+                           updated_at = ?
+                       WHERE book = ? AND ep = ? AND device_id = ? AND ero = ?""",
+                    (
+                        progress["page_index"],
+                        progress["scroll_top"],
+                        progress["reading_mode"],
+                        progress["status"],
+                        progress["updated_at"],
+                        book,
+                        ep,
+                        device_id,
+                        self.ero,
+                    ),
+                )
+            else:
+                conn.execute(
+                    """INSERT INTO mobile_progress (
+                           book, ep, device_id, page_index, scroll_top, reading_mode,
+                           status, updated_at, created_at, ero
+                       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (
+                        book,
+                        ep,
+                        device_id,
+                        progress["page_index"],
+                        progress["scroll_top"],
+                        progress["reading_mode"],
+                        progress["status"],
+                        progress["updated_at"],
+                        created_at,
+                        self.ero,
+                    ),
+                )
+
+        saved = self.get_progress(book, ep, device_id)
+        if saved is None:
+            raise RuntimeError("mobile progress write did not produce a readable row")
+        return saved
 
     # ========== URL 生成 ==========
 
