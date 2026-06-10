@@ -4,6 +4,9 @@ import {
   appendMcpAssistantDelta,
   buildCgsGateFlight,
   cgsDraftFromConfig,
+  cgsEpisodeSelectionsPayload,
+  cgsFirstEpisodeKeys,
+  cgsLatestEpisodeKeys,
   cgsMcpConfigured,
   cgsMcpDataObject,
   cgsMcpDataText,
@@ -12,7 +15,13 @@ import {
   cgsMcpToolTone,
   cgsProxiesFromText,
   cgsRootActionErrorMessage,
+  cgsSetBookEpisodeKeys,
+  cgsSubmitSelectionCount,
   cgsSubmitErrorMessage,
+  cgsToggleEpisodeKey,
+  cgsWorkResetErrorMessage,
+  cgsWorkResetJobRunning,
+  getCgsStatusKey,
   clampCgsSubmitPosition,
   nextTimelineId,
   normalizeCgsConfig,
@@ -25,6 +34,7 @@ import {
 import type {
   CgsConfigDraft,
   CgsConnectionState,
+  CgsEpisodeLoadState,
   CgsGateFlight,
   CgsGatePhase,
   CgsMcpLlmConfig,
@@ -40,6 +50,7 @@ import type { AppState } from '../app-shell/useAppState'
 import { hasRootSecret, rootSecretHeaders } from '../app-shell/useAppShellController'
 import {
   type CgsBook,
+  type CgsBookEpisode,
   type CgsConfig,
   type CgsSite,
   apiGet,
@@ -49,6 +60,10 @@ import {
 
 type ShowToast = (tone: 'ok' | 'warn' | 'error', text: string) => void
 type ShowCgsStatusToast = (status: Record<string, unknown> | null) => void
+
+const CGS_STATUS_POLL_INTERVAL_MS = 1200
+const CGS_STATUS_POLL_LIMIT = 120
+const CGS_STATUS_TERMINAL = new Set(['completed', 'failed'])
 
 type MobileAcquireControllerDeps = {
   cgsBookshelfPath: string
@@ -74,10 +89,12 @@ type AcquireWorkspaceControllerDeps = {
   cgsSessionId: string
   cgsSubmitPosition: CgsSubmitPosition
   cgsWorkspaceMode: CgsWorkspaceMode | null
+  episodesByBook: Record<string, CgsBookEpisode[]>
   hasRootSecret: () => boolean
   keyword: string
   refreshLibrary: (url?: string, nextSort?: SortMode, resetPage?: boolean, showLoading?: boolean) => Promise<void>
   rootSecretHeaders: () => Promise<Record<string, string>>
+  selectedEpisodeKeysByBook: Record<string, string[]>
   selectedKeys: string[]
   selectedSite: string
   show: ShowToast
@@ -93,6 +110,7 @@ type AcquireWorkspaceControllerDeps = {
   cgsStatusHeadRef: RefObject<HTMLButtonElement | null>
   cgsStatusToastKeyRef: MutableRefObject<string>
   cgsSubmitDragRef: MutableRefObject<CgsSubmitDragState | null>
+  setChapterPanelBookKey: Dispatch<SetStateAction<string>>
   setBusy: Dispatch<SetStateAction<string>>
   setCgsBooks: Dispatch<SetStateAction<CgsBook[]>>
   setCgsConfig: Dispatch<SetStateAction<CgsConfig | null>>
@@ -115,12 +133,31 @@ type AcquireWorkspaceControllerDeps = {
   setCgsStatus: Dispatch<SetStateAction<Record<string, unknown> | null>>
   setCgsSubmitPosition: Dispatch<SetStateAction<CgsSubmitPosition>>
   setCgsWorkspaceMode: Dispatch<SetStateAction<CgsWorkspaceMode | null>>
+  setEpisodeLoadByBook: Dispatch<SetStateAction<Record<string, CgsEpisodeLoadState>>>
+  setEpisodesByBook: Dispatch<SetStateAction<Record<string, CgsBookEpisode[]>>>
+  setSelectedEpisodeKeysByBook: Dispatch<SetStateAction<Record<string, string[]>>>
   setSelectedKeys: Dispatch<SetStateAction<string[]>>
   setSelectedSite: Dispatch<SetStateAction<string>>
   setSites: Dispatch<SetStateAction<CgsSite[]>>
 }
 
+function cgsGateFlightVisualRect(element: HTMLElement | null): DOMRect | null {
+  if (!element) return null
+  const iconRect = element.querySelector('svg')?.getBoundingClientRect()
+  if (iconRect && iconRect.width > 0 && iconRect.height > 0) return iconRect
+  return element.getBoundingClientRect()
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms))
+}
+
 export function useAcquireWorkspaceController(deps: AcquireWorkspaceControllerDeps) {
+  function clearCgsSelections() {
+    deps.setSelectedKeys([])
+    deps.setSelectedEpisodeKeysByBook({})
+  }
+
   function completeCgsGateFlight() {
     deps.setCgsGateFlight(null)
     deps.setCgsHeadGateFlight(null)
@@ -129,11 +166,11 @@ export function useAcquireWorkspaceController(deps: AcquireWorkspaceControllerDe
   }
 
   function startCgsGateFlight(mode: CgsWorkspaceMode, nextConnection: CgsConnectionState) {
-    const from = (mode === 'mcp' ? deps.cgsMcpGateRef : deps.cgsManualGateRef).current?.getBoundingClientRect()
-    const to = deps.cgsStatusDotRef.current?.getBoundingClientRect()
+    const from = cgsGateFlightVisualRect((mode === 'mcp' ? deps.cgsMcpGateRef : deps.cgsManualGateRef).current)
+    const to = cgsGateFlightVisualRect(deps.cgsStatusDotRef.current)
     const inactiveMode: CgsWorkspaceMode = mode === 'mcp' ? 'manual' : 'mcp'
-    const inactiveFrom = (inactiveMode === 'mcp' ? deps.cgsMcpGateRef : deps.cgsManualGateRef).current?.getBoundingClientRect()
-    const headTo = deps.cgsStatusHeadRef.current?.getBoundingClientRect()
+    const inactiveFrom = cgsGateFlightVisualRect((inactiveMode === 'mcp' ? deps.cgsMcpGateRef : deps.cgsManualGateRef).current)
+    const headTo = cgsGateFlightVisualRect(deps.cgsStatusHeadRef.current)
     if (!from || !to || prefersReducedMotion()) {
       if (nextConnection === 'online') deps.setCgsWorkspaceMode(mode)
       else deps.setCgsWorkspaceMode(null)
@@ -236,11 +273,11 @@ export function useAcquireWorkspaceController(deps: AcquireWorkspaceControllerDe
     }
   }
 
-  async function updateCgsConfig() {
+  async function updateCgsConfig(): Promise<boolean> {
     const svPath = deps.cgsConfigDraft.sv_path.trim()
     if (!svPath) {
       deps.show('warn', 'CGS 储存目录不能为空')
-      return
+      return false
     }
     deps.setCgsConfigBusy('save')
     try {
@@ -258,9 +295,10 @@ export function useAcquireWorkspaceController(deps: AcquireWorkspaceControllerDe
       deps.setCgsConfig(next)
       deps.setCgsConfigDraft(cgsDraftFromConfig(next))
       deps.setCgsConnection('online')
-      deps.show('ok', 'CGS 配置已更新')
+      return true
     } catch (error) {
       deps.show('error', cgsRootActionErrorMessage(error, 'CGS 配置更新失败', deps.hasRootSecret()))
+      return false
     } finally {
       deps.setCgsConfigBusy('')
     }
@@ -312,7 +350,6 @@ export function useAcquireWorkspaceController(deps: AcquireWorkspaceControllerDe
   function saveMcpLlmConfig() {
     const next = saveCgsMcpLlmConfig(deps.cgsMcpLlmDraft)
     deps.setCgsMcpLlmConfig(next)
-    deps.show('ok', 'LLM 配置已保存')
   }
 
   function applyCgsMcpEvent(item: CgsMcpSseEvent) {
@@ -421,10 +458,80 @@ export function useAcquireWorkspaceController(deps: AcquireWorkspaceControllerDe
     void sendCgsMcpPrompt()
   }
 
+  async function loadBookEpisodes(bookKey: string, force = false) {
+    if (!deps.cgsSessionId || !bookKey) return
+    if (!force && deps.episodesByBook[bookKey]?.length) {
+      deps.setEpisodeLoadByBook((state) => ({ ...state, [bookKey]: { status: 'ready' } }))
+      return
+    }
+    deps.setEpisodeLoadByBook((state) => ({ ...state, [bookKey]: { status: 'loading' } }))
+    try {
+      const response = await apiPost<{ book_key: string; episodes: CgsBookEpisode[] }>(
+        deps.backendUrl,
+        '/root/cgs/book-episodes',
+        { session_id: deps.cgsSessionId, book_key: bookKey },
+      )
+      deps.setEpisodesByBook((state) => ({ ...state, [response.book_key]: response.episodes || [] }))
+      deps.setEpisodeLoadByBook((state) => ({ ...state, [response.book_key]: { status: 'ready' } }))
+      deps.setCgsConnection('online')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '章节读取失败'
+      deps.setEpisodeLoadByBook((state) => ({ ...state, [bookKey]: { status: 'error', message } }))
+      deps.show('error', message)
+    }
+  }
+
+  function openChapterPanel(bookKey: string) {
+    if (!bookKey) return
+    deps.setChapterPanelBookKey(bookKey)
+    void loadBookEpisodes(bookKey)
+  }
+
+  function closeChapterPanel() {
+    deps.setChapterPanelBookKey('')
+  }
+
+  function selectAllBookEpisodes(bookKey: string) {
+    deps.setSelectedEpisodeKeysByBook((state) =>
+      cgsSetBookEpisodeKeys(state, bookKey, (deps.episodesByBook[bookKey] || []).map((episode) => episode.episode_key)),
+    )
+  }
+
+  function selectFirstBookEpisodes(bookKey: string, count: number) {
+    deps.setSelectedEpisodeKeysByBook((state) =>
+      cgsSetBookEpisodeKeys(state, bookKey, cgsFirstEpisodeKeys(deps.episodesByBook[bookKey] || [], count)),
+    )
+  }
+
+  function selectLatestBookEpisodes(bookKey: string, count: number) {
+    deps.setSelectedEpisodeKeysByBook((state) =>
+      cgsSetBookEpisodeKeys(state, bookKey, cgsLatestEpisodeKeys(deps.episodesByBook[bookKey] || [], count)),
+    )
+  }
+
+  function clearBookEpisodes(bookKey: string) {
+    deps.setSelectedEpisodeKeysByBook((state) => cgsSetBookEpisodeKeys(state, bookKey, []))
+  }
+
+  function toggleEpisodeKey(bookKey: string, episodeKey: string, checked: boolean) {
+    deps.setSelectedEpisodeKeysByBook((state) => cgsToggleEpisodeKey(state, bookKey, episodeKey, checked))
+  }
+
   async function searchCgs() {
     if (!deps.selectedSite || !deps.keyword.trim()) return
     deps.setBusy('cgs-search')
+    deps.setCgsStatus(null)
+    deps.cgsStatusToastKeyRef.current = ''
     try {
+      await apiPost<Record<string, unknown>>(deps.backendUrl, '/root/cgs/work/reset', {})
+      deps.setCgsBooks([])
+      deps.setCgsSessionId('')
+      clearCgsSelections()
+      deps.setEpisodesByBook({})
+      deps.setEpisodeLoadByBook({})
+      deps.setChapterPanelBookKey('')
+      deps.setCgsStatus(null)
+      deps.cgsStatusToastKeyRef.current = ''
       const response = await apiPost<{ session_id?: string; books: CgsBook[] }>(deps.backendUrl, '/root/cgs/search', {
         site: Number(deps.selectedSite),
         keyword: deps.keyword.trim(),
@@ -432,32 +539,39 @@ export function useAcquireWorkspaceController(deps: AcquireWorkspaceControllerDe
       })
       deps.setCgsBooks(response.books || [])
       deps.setCgsSessionId(response.session_id || '')
-      deps.setSelectedKeys([])
-      deps.setCgsStatus(null)
-      deps.cgsStatusToastKeyRef.current = ''
       deps.setCgsConnection('online')
       deps.show('ok', '搜索完成')
     } catch (error) {
-      deps.setCgsConnection('unreachable')
-      deps.show('error', error instanceof Error ? error.message : '搜索失败')
+      const message = cgsWorkResetErrorMessage(error, error instanceof Error ? error.message : '搜索失败')
+      const resetBlocked = cgsWorkResetJobRunning(error)
+      deps.setCgsConnection(resetBlocked ? 'online' : 'unreachable')
+      deps.show(resetBlocked ? 'warn' : 'error', message)
     } finally {
       deps.setBusy('')
     }
   }
 
   async function submitCgs() {
-    if (!deps.selectedKeys.length || !deps.cgsSessionId) return
+    const episodeSelections = cgsEpisodeSelectionsPayload(deps.selectedEpisodeKeysByBook)
+    const selectionCount = cgsSubmitSelectionCount(deps.selectedKeys, deps.selectedEpisodeKeysByBook)
+    if (!selectionCount || !deps.cgsSessionId) return
     deps.setBusy('cgs-submit')
     deps.cgsStatusToastKeyRef.current = ''
     try {
       const response = await apiPost<Record<string, unknown>>(deps.backendUrl, '/root/cgs/submit-books', {
         session_id: deps.cgsSessionId,
         book_keys: deps.selectedKeys,
+        episode_selections: episodeSelections,
       }, await deps.rootSecretHeaders())
       deps.setCgsStatus(response)
       deps.setCgsConnection('online')
+      clearCgsSelections()
+      deps.setChapterPanelBookKey('')
       deps.show('ok', '已提交')
-      await refreshCgsStatus()
+      const finalStatus = await pollCgsStatusUntilTerminal()
+      if (getCgsStatusKey(finalStatus) === 'completed') {
+        await deps.refreshLibrary(deps.backendUrl, deps.sort, false, false)
+      }
     } catch (error) {
       deps.setCgsConnection('unreachable')
       deps.show('error', cgsSubmitErrorMessage(error, deps.hasRootSecret()))
@@ -466,36 +580,61 @@ export function useAcquireWorkspaceController(deps: AcquireWorkspaceControllerDe
     }
   }
 
+  async function pollCgsStatusUntilTerminal(): Promise<Record<string, unknown> | null> {
+    let latest: Record<string, unknown> | null = null
+    for (let index = 0; index < CGS_STATUS_POLL_LIMIT; index += 1) {
+      const status = await readCgsStatus()
+      latest = status
+      const statusKey = getCgsStatusKey(status)
+      if (CGS_STATUS_TERMINAL.has(statusKey)) return status
+      await sleep(CGS_STATUS_POLL_INTERVAL_MS)
+    }
+    return latest
+  }
+
   async function refreshCgsStatus() {
     try {
-      const status = await apiGet<Record<string, unknown>>(deps.backendUrl, '/root/cgs/status')
-      deps.setCgsStatus(status)
-      deps.setCgsConnection('online')
-      deps.showCgsStatusToast(status)
+      await readCgsStatus()
     } catch (error) {
       deps.setCgsConnection('unreachable')
       deps.show('error', error instanceof Error ? error.message : '状态读取失败')
     }
   }
 
+  async function readCgsStatus(): Promise<Record<string, unknown>> {
+    const status = await apiGet<Record<string, unknown>>(deps.backendUrl, '/root/cgs/status')
+    deps.setCgsStatus(status)
+    deps.setCgsConnection('online')
+    deps.showCgsStatusToast(status)
+    return status
+  }
+
   return {
     completeCgsGateFlight,
+    clearBookEpisodes,
+    closeChapterPanel,
     finishCgsSubmitDrag,
     handleCgsMcpPromptKeyDown,
     loadCgsConfig,
     loadCgsSites,
     moveCgsSubmitDrag,
+    openChapterPanel,
     probeCgsMcp,
     refreshCgsStatus,
+    retryBookEpisodes: (bookKey: string) => loadBookEpisodes(bookKey, true),
     runCgsGateLoad,
     saveMcpLlmConfig,
     searchCgs,
+    selectAllBookEpisodes,
+    selectFirstBookEpisodes,
+    selectLatestBookEpisodes,
     sendCgsMcpPrompt,
     startCgsSubmitDrag,
     stopCgsMcpPrompt,
     submitCgs,
     switchCgsWorkspaceMode,
     syncCgsSavePathFromBookshelf,
+    toggleEpisodeKey,
     updateCgsConfig,
   }
 }
@@ -514,7 +653,9 @@ export function useMobileAcquireControllerModel(appState: AppState, deps: Mobile
     cgsSessionId,
     cgsSubmitPosition,
     cgsWorkspaceMode,
+    episodesByBook,
     keyword,
+    selectedEpisodeKeysByBook,
     selectedKeys,
     selectedSite,
     sort,
@@ -527,6 +668,7 @@ export function useMobileAcquireControllerModel(appState: AppState, deps: Mobile
     cgsStatusDotRef,
     cgsStatusHeadRef,
     cgsSubmitDragRef,
+    setChapterPanelBookKey,
     setBusy,
     setCgsBooks,
     setCgsConfig,
@@ -549,6 +691,9 @@ export function useMobileAcquireControllerModel(appState: AppState, deps: Mobile
     setCgsStatus,
     setCgsSubmitPosition,
     setCgsWorkspaceMode,
+    setEpisodeLoadByBook,
+    setEpisodesByBook,
+    setSelectedEpisodeKeysByBook,
     setSelectedKeys,
     setSelectedSite,
     setSites,
@@ -569,10 +714,12 @@ export function useMobileAcquireControllerModel(appState: AppState, deps: Mobile
     cgsSessionId,
     cgsSubmitPosition,
     cgsWorkspaceMode,
+    episodesByBook,
     hasRootSecret,
     keyword,
     refreshLibrary: deps.refreshLibrary,
     rootSecretHeaders,
+    selectedEpisodeKeysByBook,
     selectedKeys,
     selectedSite,
     show: deps.show,
@@ -588,6 +735,7 @@ export function useMobileAcquireControllerModel(appState: AppState, deps: Mobile
     cgsStatusHeadRef,
     cgsStatusToastKeyRef: deps.cgsStatusToastKeyRef,
     cgsSubmitDragRef,
+    setChapterPanelBookKey,
     setBusy,
     setCgsBooks,
     setCgsConfig,
@@ -610,6 +758,9 @@ export function useMobileAcquireControllerModel(appState: AppState, deps: Mobile
     setCgsStatus,
     setCgsSubmitPosition,
     setCgsWorkspaceMode,
+    setEpisodeLoadByBook,
+    setEpisodesByBook,
+    setSelectedEpisodeKeysByBook,
     setSelectedKeys,
     setSelectedSite,
     setSites,

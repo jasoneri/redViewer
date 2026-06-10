@@ -1,8 +1,9 @@
-import { buildUrl, type CgsBook, type CgsConfig } from '../mobileStore'
+import { buildUrl, type CgsBook, type CgsBookEpisode, type CgsConfig } from '../mobileStore'
 import type { CoverOverlayTag } from '../shared/Cover'
 import type {
   CgsConfigDraft,
   CgsConnectionState,
+  CgsEpisodeSelectionPayload,
   CgsGateFlight,
   CgsGateFlightTarget,
   CgsMcpDetailBlock,
@@ -136,6 +137,10 @@ export function cgsBookTitle(book: CgsBook): string {
   return cgsTextValue(book.title) || cgsTextValue(book.name) || cgsTextValue(book.book_key) || '未命名'
 }
 
+export function cgsBookSelectMode(book: CgsBook): 'book' | 'chapters' {
+  return book.select_mode === 'chapters' ? 'chapters' : 'book'
+}
+
 export function cgsCoverUrl(backendUrl: string, book: CgsBook): string {
   const coverPath = cgsTextValue(book.cover_static_url)
   if (!coverPath.startsWith('/cover/')) return ''
@@ -181,6 +186,95 @@ export function cgsSubmitErrorMessage(error: unknown, rootSecretConfigured: bool
     return 'Root Secret 未配置，请先在连接设置保存 root secret 后重试'
   }
   return message || '提交失败'
+}
+
+function uniqueStrings(values: string[]): string[] {
+  const seen = new Set<string>()
+  const result: string[] = []
+  for (const value of values) {
+    const key = cgsTextValue(value)
+    if (!key || seen.has(key)) continue
+    seen.add(key)
+    result.push(key)
+  }
+  return result
+}
+
+export function cgsEpisodeIndex(value: string | number | null): number {
+  if (typeof value === 'number') return Number.isFinite(value) ? Math.trunc(value) : 0
+  if (typeof value !== 'string') return 0
+  const text = value.trim()
+  return /^-?\d+$/.test(text) ? Number(text) : 0
+}
+
+function cgsEpisodeSelectionLimit(count: number): number {
+  return Math.max(1, Number.isFinite(count) ? Math.trunc(count) : 1)
+}
+
+export function cgsFirstEpisodeKeys(episodes: CgsBookEpisode[], count: number): string[] {
+  return episodes.slice(0, cgsEpisodeSelectionLimit(count)).map((episode) => episode.episode_key)
+}
+
+export function cgsLatestEpisodeKeys(episodes: CgsBookEpisode[], count: number): string[] {
+  return [...episodes]
+    .sort((left, right) => cgsEpisodeIndex(right.idx) - cgsEpisodeIndex(left.idx))
+    .slice(0, cgsEpisodeSelectionLimit(count))
+    .map((episode) => episode.episode_key)
+}
+
+export function cgsSelectedEpisodeCount(selectedEpisodeKeysByBook: Record<string, string[]>): number {
+  return Object.values(selectedEpisodeKeysByBook).reduce((total, keys) => total + uniqueStrings(keys).length, 0)
+}
+
+export function cgsSubmitSelectionCount(bookKeys: string[], selectedEpisodeKeysByBook: Record<string, string[]>): number {
+  return uniqueStrings(bookKeys).length + cgsSelectedEpisodeCount(selectedEpisodeKeysByBook)
+}
+
+export function cgsEpisodeSelectionsPayload(
+  selectedEpisodeKeysByBook: Record<string, string[]>,
+): CgsEpisodeSelectionPayload[] {
+  return Object.entries(selectedEpisodeKeysByBook)
+    .map(([bookKey, episodeKeys]) => ({
+      book_key: bookKey,
+      episode_keys: uniqueStrings(episodeKeys),
+    }))
+    .filter((selection) => selection.book_key && selection.episode_keys.length > 0)
+}
+
+export function cgsSetBookEpisodeKeys(
+  selectedEpisodeKeysByBook: Record<string, string[]>,
+  bookKey: string,
+  episodeKeys: string[],
+): Record<string, string[]> {
+  const key = cgsTextValue(bookKey)
+  if (!key) return selectedEpisodeKeysByBook
+  const nextKeys = uniqueStrings(episodeKeys)
+  if (!nextKeys.length) {
+    const { [key]: _removed, ...rest } = selectedEpisodeKeysByBook
+    return rest
+  }
+  return { ...selectedEpisodeKeysByBook, [key]: nextKeys }
+}
+
+export function cgsToggleEpisodeKey(
+  selectedEpisodeKeysByBook: Record<string, string[]>,
+  bookKey: string,
+  episodeKey: string,
+  checked: boolean,
+): Record<string, string[]> {
+  const current = selectedEpisodeKeysByBook[bookKey] || []
+  const next = checked ? [...current, episodeKey] : current.filter((key) => key !== episodeKey)
+  return cgsSetBookEpisodeKeys(selectedEpisodeKeysByBook, bookKey, next)
+}
+
+export function cgsWorkResetJobRunning(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : ''
+  return message.includes('409') || message.includes('job_running')
+}
+
+export function cgsWorkResetErrorMessage(error: unknown, fallback: string): string {
+  if (cgsWorkResetJobRunning(error)) return 'CGS 任务仍在运行，无法重置工作状态'
+  return error instanceof Error && error.message ? error.message : fallback
 }
 
 export function normalizeCgsConfig(value: CgsConfig): CgsConfig {

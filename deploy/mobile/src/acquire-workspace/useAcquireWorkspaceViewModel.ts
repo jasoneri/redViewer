@@ -1,7 +1,9 @@
 import { createElement, useMemo, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from 'react'
+import { Search } from 'lucide-react'
 import { CustomIcon } from '../icons/CustomIcon'
-import type { CgsBook, CgsConfig, CgsSite } from '../mobileStore'
+import type { CgsBook, CgsBookEpisode, CgsConfig, CgsSite } from '../mobileStore'
 import {
+  cgsBookSelectMode,
   cgsBookTitle,
   cgsCoverOverlayTags,
   cgsCoverUrl,
@@ -9,6 +11,7 @@ import {
   cgsMcpToolSummary,
   cgsMcpToolTone,
   cgsMcpWorseTone,
+  cgsSubmitSelectionCount,
   cgsTags,
   getCgsStatusKey,
 } from './acquireCore'
@@ -16,6 +19,7 @@ import type { AcquireDrawerSettingsProps, AcquireWorkspaceProps } from './Acquir
 import type {
   CgsConfigDraft,
   CgsConnectionState,
+  CgsEpisodeLoadState,
   CgsGateFlight,
   CgsGatePhase,
   CgsMcpLlmConfig,
@@ -44,6 +48,7 @@ type AcquireWorkspaceViewModelDeps = {
   cgsGateLoadingMode: CgsWorkspaceMode | null
   cgsGatePhase: CgsGatePhase
   cgsHeadGateFlight: CgsGateFlight | null
+  chapterPanelBookKey: string
   cgsMcpExpandedToolId: string | null
   cgsMcpHistoryOpen: boolean
   cgsMcpLlmDraft: CgsMcpLlmConfig
@@ -59,7 +64,10 @@ type AcquireWorkspaceViewModelDeps = {
   cgsSubmitPosition: CgsSubmitPosition
   cgsWorkspaceMode: CgsWorkspaceMode | null
   doujinTagPanel: DoujinTagPanel | null
+  episodeLoadByBook: Record<string, CgsEpisodeLoadState>
+  episodesByBook: Record<string, CgsBookEpisode[]>
   keyword: string
+  selectedEpisodeKeysByBook: Record<string, string[]>
   selectedKeys: string[]
   selectedSite: string
   sites: CgsSite[]
@@ -68,24 +76,31 @@ type AcquireWorkspaceViewModelDeps = {
   cgsMcpComposerRef: MutableRefObject<boolean>
   cgsMcpGateRef: RefObject<HTMLButtonElement | null>
   cgsMcpScrollRef: RefObject<HTMLDivElement | null>
+  clearBookEpisodes: (bookKey: string) => void
   clearSelection: () => void
+  closeChapterPanel: () => void
   closeDoujinTagPanel: () => void
   completeCgsGateFlight: () => void
   finishCgsSubmitDrag: AcquireWorkspaceProps['acquireActions']['finishSubmitDrag']
   handleCgsMcpPromptKeyDown: AcquireWorkspaceProps['mcpActions']['handlePromptKeyDown']
   moveCgsSubmitDrag: AcquireWorkspaceProps['acquireActions']['moveSubmitDrag']
   openCgsTagPanel: (bookId: string, bookTitle: string, tags: string[]) => void
+  openChapterPanel: (bookKey: string) => void
+  retryBookEpisodes: (bookKey: string) => Promise<void> | void
   runCgsGateLoad: (mode: CgsWorkspaceMode) => Promise<void> | void
   saveMcpLlmConfig: () => void
   searchCgs: () => Promise<void> | void
+  selectAllBookEpisodes: (bookKey: string) => void
   selectCgsSearchCandidate: (candidate: NonNullable<CgsSearchBookInfo['candidates']>[number]) => void
   selectDoujinTag: (tag: string) => void
+  selectFirstBookEpisodes: (bookKey: string, count: number) => void
+  selectLatestBookEpisodes: (bookKey: string, count: number) => void
   sendCgsMcpPrompt: () => Promise<void> | void
   startCgsSubmitDrag: AcquireWorkspaceProps['acquireActions']['startSubmitDrag']
   stopCgsMcpPrompt: () => void
   submitCgs: () => Promise<void> | void
   syncCgsSavePathFromBookshelf: () => void
-  updateCgsConfig: () => Promise<void> | void
+  updateCgsConfig: () => Promise<boolean> | boolean
   setCgsConfigDraft: Dispatch<SetStateAction<CgsConfigDraft>>
   setCgsMcpExpandedToolId: Dispatch<SetStateAction<string | null>>
   setCgsMcpHistoryOpen: Dispatch<SetStateAction<boolean>>
@@ -95,6 +110,7 @@ type AcquireWorkspaceViewModelDeps = {
   setKeyword: Dispatch<SetStateAction<string>>
   setSelectedKeys: Dispatch<SetStateAction<string[]>>
   setSelectedSite: Dispatch<SetStateAction<string>>
+  toggleEpisodeKey: (bookKey: string, episodeKey: string, checked: boolean) => void
 }
 
 export function useAcquireWorkspaceViewModel(deps: AcquireWorkspaceViewModelDeps) {
@@ -108,7 +124,8 @@ export function useAcquireWorkspaceViewModel(deps: AcquireWorkspaceViewModelDeps
   const showMcpGate = gateCanRender && (initialGateMode || (deps.cgsGatePhase === 'loading' && deps.cgsGateLoadingMode === 'mcp'))
   const manualContentHidden = Boolean(deps.cgsWorkspaceMode === 'mcp' && deps.cgsConnection === 'online' && !deps.cgsModeSwapBusy && !deps.cgsGateBusy)
   const mcpContentHidden = Boolean(deps.cgsWorkspaceMode === 'manual' && deps.cgsConnection === 'online' && !deps.cgsModeSwapBusy && !deps.cgsGateBusy)
-  const cgsSubmitDisabled = !deps.selectedKeys.length || !deps.cgsSessionId || deps.busy === 'cgs-submit'
+  const cgsSubmitCount = cgsSubmitSelectionCount(deps.selectedKeys, deps.selectedEpisodeKeysByBook)
+  const cgsSubmitDisabled = !cgsSubmitCount || !deps.cgsSessionId || deps.busy === 'cgs-submit'
   const showCgsFloatingSubmit = deps.view === 'acquire' && deps.cgsWorkspaceMode === 'manual' && deps.cgsConnection === 'online'
   const cgsMcpCanSend = Boolean(deps.cgsMcpPrompt.trim() && !deps.cgsMcpRunning)
   const cgsDownloadedHandleOptions = deps.cgsConfig?.downloaded_handle_options?.length ? deps.cgsConfig.downloaded_handle_options : ['-', '.cbz']
@@ -117,7 +134,7 @@ export function useAcquireWorkspaceViewModel(deps: AcquireWorkspaceViewModelDeps
 
   const cgsSteps: CgsStep[] = [
     { key: 'site', title: '站点', state: deps.sites.length ? 'done' : 'current', icon: createElement(CustomIcon, { name: 'cgsSite', size: 15 }) },
-    { key: 'search', title: '搜索', state: deps.cgsBooks.length ? 'done' : deps.sites.length ? 'current' : 'pending', icon: createElement(CustomIcon, { name: 'cgsSearch', size: 15 }) },
+    { key: 'search', title: '搜索', state: deps.cgsBooks.length ? 'done' : deps.sites.length ? 'current' : 'pending', icon: createElement(Search, { size: 15 }) },
     { key: 'submit', title: '提交', state: deps.cgsStatus ? 'done' : deps.cgsBooks.length ? 'current' : 'pending', icon: createElement(CustomIcon, { name: 'cgsSubmit', size: 15 }) },
     { key: 'library', title: '入库', state: cgsDone ? 'done' : deps.cgsStatus ? 'current' : 'pending', icon: createElement(CustomIcon, { name: 'cgsLibrary', size: 15 }) },
   ]
@@ -148,19 +165,19 @@ export function useAcquireWorkspaceViewModel(deps: AcquireWorkspaceViewModelDeps
   const cgsMcpSubmitDone = Boolean(cgsMcpSubmitTone && cgsMcpSubmitTone !== 'error')
   const cgsMcpSteps: CgsStep[] = [
     { key: 'site', title: '站点', state: cgsMcpSiteTone === 'error' ? 'error' : cgsMcpSiteDone ? 'done' : deps.cgsMcpRunning ? 'current' : 'pending', icon: createElement(CustomIcon, { name: 'cgsSite', size: 15 }) },
-    { key: 'search', title: '搜索', state: cgsMcpSearchTone === 'error' ? 'error' : cgsMcpSiteTone === 'error' ? 'pending' : cgsMcpSearchDone ? 'done' : cgsMcpSiteDone ? 'current' : 'pending', icon: createElement(CustomIcon, { name: 'cgsSearch', size: 15 }) },
+    { key: 'search', title: '搜索', state: cgsMcpSearchTone === 'error' ? 'error' : cgsMcpSiteTone === 'error' ? 'pending' : cgsMcpSearchDone ? 'done' : cgsMcpSiteDone ? 'current' : 'pending', icon: createElement(Search, { size: 15 }) },
     { key: 'submit', title: '提交', state: cgsMcpSubmitTone === 'error' ? 'error' : cgsMcpSiteTone === 'error' || cgsMcpSearchTone === 'error' ? 'pending' : cgsMcpSubmitDone ? 'done' : cgsMcpSearchDone ? 'current' : 'pending', icon: createElement(CustomIcon, { name: 'cgsSubmit', size: 15 }) },
     { key: 'library', title: '入库', state: cgsMcpFinal?.success && !cgsMcpToolErrored ? 'done' : cgsMcpFailed && !cgsMcpMappedStepErrored ? 'error' : cgsMcpSubmitDone ? 'current' : 'pending', icon: createElement(CustomIcon, { name: 'cgsLibrary', size: 15 }) },
   ]
 
   const workspaceProps: AcquireWorkspaceProps = {
     acquireView: {
-      clearDisabled: deps.selectedKeys.length === 0 || deps.busy === 'cgs-submit',
+      clearDisabled: cgsSubmitCount === 0 || deps.busy === 'cgs-submit',
       flights: [deps.cgsGateFlight, deps.cgsHeadGateFlight].filter((flight): flight is CgsGateFlight => Boolean(flight)),
       locked: acquireGateLocked,
       mode: deps.cgsWorkspaceMode,
       resultCount: deps.cgsBooks.length,
-      selectedCount: deps.selectedKeys.length,
+      selectedCount: cgsSubmitCount,
       showFloatingSubmit: showCgsFloatingSubmit,
       submitDisabled: cgsSubmitDisabled,
       submitPosition: deps.cgsSubmitPosition,
@@ -170,14 +187,18 @@ export function useAcquireWorkspaceViewModel(deps: AcquireWorkspaceViewModelDeps
       backendUrl: deps.backendUrl,
       books: deps.cgsBooks,
       busy: deps.busy,
+      chapterPanelBookKey: deps.chapterPanelBookKey,
       disabled: false,
       doujinTagPanel: deps.doujinTagPanel,
+      episodeLoadByBook: deps.episodeLoadByBook,
+      episodesByBook: deps.episodesByBook,
       gateLoadingMode: deps.cgsGateLoadingMode,
       gatePhase: deps.cgsGatePhase,
       hidden: manualContentHidden,
       keyword: deps.keyword,
       searchBookInfo: deps.cgsSearchBookInfo,
       searchCandidates: cgsSearchCandidates,
+      selectedEpisodeKeysByBook: deps.selectedEpisodeKeysByBook,
       selectedKeys: deps.selectedKeys,
       selectedSite: deps.selectedSite,
       showGate: showManualGate,
@@ -188,18 +209,27 @@ export function useAcquireWorkspaceViewModel(deps: AcquireWorkspaceViewModelDeps
       bookTitle: cgsBookTitle,
       coverOverlayTags: cgsCoverOverlayTags,
       coverUrl: cgsCoverUrl,
+      selectMode: cgsBookSelectMode,
       tags: cgsTags,
     },
     serverActions: {
+      clearBookEpisodes: deps.clearBookEpisodes,
+      closeChapterPanel: deps.closeChapterPanel,
       closeDoujinTagPanel: deps.closeDoujinTagPanel,
+      openChapterPanel: deps.openChapterPanel,
       openTagPanel: deps.openCgsTagPanel,
+      retryBookEpisodes: deps.retryBookEpisodes,
       runGateLoad: deps.runCgsGateLoad,
       search: deps.searchCgs,
+      selectAllBookEpisodes: deps.selectAllBookEpisodes,
       selectDoujinTag: deps.selectDoujinTag,
+      selectFirstBookEpisodes: deps.selectFirstBookEpisodes,
+      selectLatestBookEpisodes: deps.selectLatestBookEpisodes,
       selectSearchCandidate: deps.selectCgsSearchCandidate,
       setKeyword: deps.setKeyword,
       setSelectedSite: deps.setSelectedSite,
       toggleBookKey: (key, checked) => deps.setSelectedKeys((rows) => (checked ? [...rows, key] : rows.filter((row) => row !== key))),
+      toggleEpisodeKey: deps.toggleEpisodeKey,
     },
     mcpView: {
       active: deps.cgsWorkspaceMode === 'mcp',

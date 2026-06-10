@@ -1,4 +1,4 @@
-import { LoaderCircle, Save, Tags, Trash2, UserSearch } from 'lucide-react'
+import { LoaderCircle, Save, Tags, Trash2 } from 'lucide-react'
 import { Tag } from 'antd'
 import { CustomIcon } from '../icons/CustomIcon'
 import { Cover } from '../shared/Cover'
@@ -26,6 +26,8 @@ export function BookTile({
   const rowTags = shelfSelectors.visibleDoujinTags(book)
   const isDoujinTagPanelOpen = shelfView.doujinTagPanel?.bookId === book.id
   const hasReadProgress = Boolean(bookProgress)
+  // RVUX0001: manga tile-copy summary is for read progress; chapter count belongs to cover bottom-left.
+  const showMangaProgressSummary = !shelfView.activeSourceIsOffline && !shelfView.isDoujinMode && hasReadProgress
   const summaryText = shelfSelectors.bookSummary(book)
   const cachedCount = shelfSelectors.bookCachedCount(book)
   const coverSrc = shelfSelectors.coverSrc(book)
@@ -107,7 +109,7 @@ export function BookTile({
                 aria-label={`CGS 搜索 ${book.book}`}
                 title="CGS 搜索"
               >
-                <UserSearch size={15} />
+                <CustomIcon name="detailSearch" size={15} />
               </button>
             )}
           </div>
@@ -139,7 +141,7 @@ export function BookTile({
               </button>
             )}
           </div>
-        ) : !shelfView.isDoujinMode ? (
+        ) : showMangaProgressSummary ? (
           <span>{summaryText}</span>
         ) : null}
         {shelfSelectors.showShelfSummary(book) && hasReadProgress && <span>{summaryText}</span>}

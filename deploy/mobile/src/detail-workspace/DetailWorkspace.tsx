@@ -1,7 +1,8 @@
 import { Image, Tag } from 'antd'
-import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Download, LoaderCircle, Trash2, UserSearch } from 'lucide-react'
+import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Download, LoaderCircle, Trash2 } from 'lucide-react'
 import { CustomIcon } from '../icons/CustomIcon'
 import { renderCoverOverlayTag, type CoverOverlayTag } from '../shared/Cover'
+import { NativeSelectMenu } from '../shared/NativeDropdownMenu'
 import type { CachedItem, ConnectionState, LibraryItem, LibraryMeta, Progress, ShelfBook } from '../mobileStore'
 import { EpisodePanel } from './EpisodePanel'
 
@@ -75,6 +76,10 @@ function DetailToolbar({
   detailActions: DetailActions
 }) {
   const { selectedBook } = detailView
+  const seriesOptions = [
+    ...(selectedBook.kind !== 'series' ? [{ value: selectedBook.id, label: selectedBook.book }] : []),
+    ...detailView.seriesBooks.map((book) => ({ value: book.id, label: book.book })),
+  ]
 
   return (
     <div className="detail-toolbar-row btn-group" aria-label="系列导航与模式">
@@ -98,21 +103,18 @@ function DetailToolbar({
       >
         <ChevronLeft size={17} />
       </button>
-      <label className="detail-series-picker" title={selectedBook.book}>
+      <div className="detail-series-picker" title={selectedBook.book}>
         <CustomIcon name="bookList" className="detail-series-picker-icon" size={17} />
-        <select
+        <NativeSelectMenu
           className="detail-series-select"
           value={detailView.selectedSeriesValue}
-          onChange={(event) => detailActions.selectDetailSeries(event.target.value)}
+          onValueChange={detailActions.selectDetailSeries}
           disabled={!detailView.seriesBooks.length}
           aria-label={`选择系列：${selectedBook.book}`}
-        >
-          {selectedBook.kind !== 'series' && <option value={selectedBook.id}>{selectedBook.book}</option>}
-          {detailView.seriesBooks.map((book) => (
-            <option key={book.id} value={book.id}>{book.book}</option>
-          ))}
-        </select>
-      </label>
+          options={seriesOptions}
+          menuClassName="detail-series-select-dropdown"
+        />
+      </div>
       <button
         className="detail-toolbar-button tone-primary"
         type="button"
@@ -170,7 +172,7 @@ function DetailHero({
                   aria-label={`CGS 搜索 ${selectedBook.book}`}
                   title="CGS 搜索"
                 >
-                  <UserSearch size={16} />
+                  <CustomIcon name="detailSearch" size={16} />
                 </button>
                 <button
                   className="compact-button icon-only detail-cache-button"

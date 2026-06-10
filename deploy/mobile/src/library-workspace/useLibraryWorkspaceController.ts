@@ -294,6 +294,7 @@ export function useLibraryWorkspaceController(deps: LibraryWorkspaceControllerDe
       book: book.book,
       title,
       artist: meta.artist,
+      source: meta.source,
       tags: meta.tags,
       candidates,
     }

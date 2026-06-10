@@ -3,8 +3,7 @@ import { CircleHelp, CornerDownLeft, FolderOpen, Globe2, Grid2X2, LoaderCircle, 
 import type { ReactNode, RefObject } from 'react'
 import { CustomIcon } from '../icons/CustomIcon'
 import { StatusBadgeIcon } from '../shared/Cover'
-
-const BACKEND_URL_DATALIST_ID = 'backend-url-history'
+import { InputHistoryMenu } from '../shared/NativeDropdownMenu'
 
 export type DrawerView = 'library' | 'downloads' | 'reader' | 'acquire'
 export type DrawerTabView = 'library' | 'downloads' | 'acquire'
@@ -186,22 +185,19 @@ function LibraryDrawerCards({
                 onClick={() => void actions.discoverBackend()}
                 className={backendIconClassName}
               />
-              <input
+              <InputHistoryMenu
                 ref={drawerView.backendInputRef}
                 value={drawerView.backendDraft}
                 aria-label="api-url"
-                list={BACKEND_URL_DATALIST_ID}
                 inputMode="url"
                 autoComplete="on"
-                onChange={(event) => actions.setBackendDraft(event.target.value)}
+                suggestions={drawerView.backendUrlHistory}
+                onValueChange={actions.setBackendDraft}
                 onFocus={actions.moveBackendCaretToEnd}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') void actions.saveBackend()
                 }}
               />
-              <datalist id={BACKEND_URL_DATALIST_ID}>
-                {drawerView.backendUrlHistory.map((url) => <option key={url} value={url} />)}
-              </datalist>
               <button className="accept-clear" onClick={actions.clearBackendDraft} disabled={!drawerView.backendDraft} aria-label="清空服务地址">
                 <X size={16} />
               </button>
@@ -307,11 +303,12 @@ function LibraryDrawerCards({
       </section>
 
       <section className="drawer-card">
-        <div className="drawer-card-header">
+        <div className="drawer-card-header drawer-inline-meta-header">
           <div className="drawer-card-title">
             <CustomIcon name="updatePackage" size={17} />
             <strong>版本</strong>
           </div>
+          <strong className="drawer-version-label">ver {drawerView.appVersion}</strong>
         </div>
         <div className="drawer-card-body">
           <div className="drawer-action-grid" aria-label="更新操作">
@@ -328,30 +325,23 @@ function LibraryDrawerCards({
       </section>
 
       <section className="drawer-card">
-        <div className="drawer-card-header">
+        <div className="drawer-card-header drawer-inline-meta-header">
           <div className="drawer-card-title">
             <CustomIcon name="about" size={17} />
             <strong>关于</strong>
           </div>
+          <span className="drawer-author">
+            {drawerView.authorAvatarSrc ? (
+              <img className="drawer-author-avatar" src={drawerView.authorAvatarSrc} alt={`${drawerView.appAuthor} GitHub avatar`} />
+            ) : (
+              <span className="drawer-author-avatar drawer-author-avatar-fallback" aria-hidden="true">
+                {drawerView.appAuthor.charAt(0).toUpperCase()}
+              </span>
+            )}
+            <strong>{drawerView.appAuthor}</strong>
+          </span>
         </div>
         <div className="drawer-card-body">
-          <div className="drawer-info-row">
-            {/* <span className="drawer-info-label">版本</span> */}
-            <strong>ver {drawerView.appVersion}</strong>
-          </div>
-          <div className="drawer-info-row">
-            {/* <span className="drawer-info-label">作者</span> */}
-            <span className="drawer-author">
-              {drawerView.authorAvatarSrc ? (
-                <img className="drawer-author-avatar" src={drawerView.authorAvatarSrc} alt={`${drawerView.appAuthor} GitHub avatar`} />
-              ) : (
-                <span className="drawer-author-avatar drawer-author-avatar-fallback" aria-hidden="true">
-                  {drawerView.appAuthor.charAt(0).toUpperCase()}
-                </span>
-              )}
-              <strong>{drawerView.appAuthor}</strong>
-            </span>
-          </div>
           <div className="drawer-action-grid" aria-label="关于与反馈入口">
             <button type="button" className="drawer-action-card" onClick={() => void actions.openExternalLink(links.docs, '使用说明')}>
               <CustomIcon name="docs" size={18} />

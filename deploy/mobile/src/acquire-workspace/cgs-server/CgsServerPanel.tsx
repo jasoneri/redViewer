@@ -1,7 +1,10 @@
-import { FolderOpen, LoaderCircle, PlugZap, RefreshCw, Search, Tags, UserSearch, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { BookOpen, Check, FolderOpen, LoaderCircle, PlugZap, RefreshCw, Save, Search, Tags, X } from 'lucide-react'
 import { Tag } from 'antd'
+import { CustomIcon } from '../../icons/CustomIcon'
 import { Cover } from '../../shared/Cover'
-import type { CgsBook } from '../../mobileStore'
+import { InputHistoryMenu, NativeSelectMenu } from '../../shared/NativeDropdownMenu'
+import type { CgsBook, CgsBookEpisode } from '../../mobileStore'
 import { AcquireFlowSteps, CgsGateLayer } from '../acquireUi'
 import type {
   AcquireWorkspaceRefs,
@@ -12,6 +15,52 @@ import type {
   CgsServerPanelSelectors,
   CgsServerPanelView,
 } from '../acquireTypes'
+
+const CGS_PROXY_HISTORY_KEY = 'redviewer:cgs-proxy-history'
+const CGS_PROXY_HISTORY_LIMIT = 8
+
+function normalizeCgsProxyHistoryValue(value: string): string {
+  return value.trim()
+}
+
+function dedupeCgsProxyHistory(values: string[]): string[] {
+  const seen = new Set<string>()
+  const result: string[] = []
+  for (const value of values) {
+    const normalized = normalizeCgsProxyHistoryValue(value)
+    if (!normalized || seen.has(normalized)) continue
+    seen.add(normalized)
+    result.push(normalized)
+    if (result.length >= CGS_PROXY_HISTORY_LIMIT) break
+  }
+  return result
+}
+
+function readCgsProxyHistory(): string[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = window.localStorage.getItem(CGS_PROXY_HISTORY_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? dedupeCgsProxyHistory(parsed.filter((item): item is string => typeof item === 'string')) : []
+  } catch {
+    return []
+  }
+}
+
+function saveCgsProxyHistory(value: string, currentHistory: string[]): string[] {
+  const normalized = normalizeCgsProxyHistoryValue(value)
+  if (!normalized) return currentHistory
+  const nextHistory = dedupeCgsProxyHistory([normalized, ...currentHistory])
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem(CGS_PROXY_HISTORY_KEY, JSON.stringify(nextHistory))
+    } catch {
+      // Ignore storage quota or privacy-mode failures; the input still works.
+    }
+  }
+  return nextHistory
+}
 
 function CgsSearchControls({
   serverView,
@@ -25,6 +74,7 @@ function CgsSearchControls({
       {serverView.searchBookInfo && serverView.searchCandidates.length > 0 && (
         <CgsSearchSource
           bookTitle={serverView.searchBookInfo.book}
+          source={serverView.searchBookInfo.source}
           candidates={serverView.searchCandidates}
           keyword={serverView.keyword}
           onSelect={serverActions.selectSearchCandidate}
@@ -32,22 +82,20 @@ function CgsSearchControls({
       )}
 
       <div className="acquire-search-row btn-group">
-        <select
+        <NativeSelectMenu
           className="acquire-site-select"
           value={serverView.selectedSite}
-          onChange={(event) => serverActions.setSelectedSite(event.target.value)}
+          onValueChange={serverActions.setSelectedSite}
           aria-label="选择站点"
-        >
-          <option value="">选择站点</option>
-          {serverView.sites.map((site) => {
-            const index = site.site_index ?? site.index
-            return (
-              <option value={index} key={String(index)}>
-                {site.spider_name || site.name || index}
-              </option>
-            )
-          })}
-        </select>
+          options={[
+            { value: '', label: '选择站点' },
+            ...serverView.sites.map((site) => {
+              const index = site.site_index ?? site.index
+              return { value: String(index), label: site.spider_name || site.name || String(index) }
+            }),
+          ]}
+          menuClassName="acquire-site-select-dropdown"
+        />
         <label className="search-field acquire-search-field">
           <input
             value={serverView.keyword}
@@ -72,11 +120,13 @@ function CgsSearchControls({
 
 function CgsSearchSource({
   bookTitle,
+  source,
   candidates,
   keyword,
   onSelect,
 }: {
   bookTitle: string
+  source: string | null
   candidates: CgsSearchCandidate[]
   keyword: string
   onSelect: (candidate: CgsSearchCandidate) => void
@@ -84,8 +134,9 @@ function CgsSearchSource({
   return (
     <div className="cgs-search-source" aria-label={`${bookTitle} 快捷搜索`}>
       <div className="cgs-search-source-title">
-        <UserSearch size={15} />
-        <span title={bookTitle}>{bookTitle}</span>
+        <CustomIcon name="detailSearch" size={15} />
+        <span className="cgs-search-source-name" title={bookTitle}>{bookTitle}</span>
+        {source && <span className="cgs-search-source-badge" title={`源站：${source}`}>{source}</span>}
       </div>
       <div className="cgs-search-candidates" aria-label="搜索输入候选">
         {candidates.map((candidate) => (
@@ -113,7 +164,7 @@ function CgsResultList({
 }: {
   serverView: CgsServerPanelView
   serverSelectors: CgsServerPanelSelectors
-  serverActions: Pick<CgsServerPanelActions, 'openTagPanel' | 'toggleBookKey'>
+  serverActions: Pick<CgsServerPanelActions, 'openChapterPanel' | 'openTagPanel' | 'toggleBookKey'>
 }) {
   return (
     <div className="cgs-results">
@@ -139,10 +190,12 @@ function CgsResultCard({
   book: CgsBook
   serverView: CgsServerPanelView
   serverSelectors: CgsServerPanelSelectors
-  serverActions: Pick<CgsServerPanelActions, 'openTagPanel' | 'toggleBookKey'>
+  serverActions: Pick<CgsServerPanelActions, 'openChapterPanel' | 'openTagPanel' | 'toggleBookKey'>
 }) {
   const key = book.book_key || ''
-  const checked = serverView.selectedKeys.includes(key)
+  const selectMode = serverSelectors.selectMode(book)
+  const chapterSelectedCount = key ? serverView.selectedEpisodeKeysByBook[key]?.length || 0 : 0
+  const checked = selectMode === 'book' && serverView.selectedKeys.includes(key)
   const title = serverSelectors.bookTitle(book)
   const coverSrc = serverSelectors.coverUrl(serverView.backendUrl, book)
   const coverOverlayTags = serverSelectors.coverOverlayTags(book)
@@ -151,18 +204,37 @@ function CgsResultCard({
   const isCgsTagPanelOpen = serverView.doujinTagPanel?.bookId === cgsTagPanelKey && serverView.doujinTagPanel.mode === 'preview'
 
   return (
-    <article className={`cgs-result-card ${checked ? 'selected' : ''} ${book.supported === false ? 'unavailable' : ''}`}>
-      <label className="cgs-card-poster">
-        <Cover src={coverSrc} title={title} badge={null} overlayTags={coverOverlayTags} />
-        <input
-          className="cgs-card-check"
-          type="checkbox"
-          checked={checked}
+    <article className={`cgs-result-card ${checked || chapterSelectedCount > 0 ? 'selected' : ''} ${book.supported === false ? 'unavailable' : ''}`}>
+      {selectMode === 'chapters' ? (
+        <button
+          className="cgs-card-poster cgs-card-poster-button"
+          type="button"
           disabled={!key || book.supported === false}
-          aria-label={`选择 ${title}`}
-          onChange={(event) => serverActions.toggleBookKey(key, event.target.checked)}
-        />
-      </label>
+          onClick={() => serverActions.openChapterPanel(key)}
+          aria-label={`${title} 章节`}
+          aria-haspopup="dialog"
+          aria-expanded={serverView.chapterPanelBookKey === key}
+          aria-controls="cgs-chapter-sheet"
+        >
+          <Cover src={coverSrc} title={title} badge={null} overlayTags={coverOverlayTags} />
+          <span className={`cgs-card-chapter-badge ${chapterSelectedCount > 0 ? 'has-selection' : ''}`} aria-hidden="true">
+            <BookOpen size={14} />
+            {chapterSelectedCount > 0 && <span>{chapterSelectedCount}</span>}
+          </span>
+        </button>
+      ) : (
+        <label className="cgs-card-poster">
+          <Cover src={coverSrc} title={title} badge={null} overlayTags={coverOverlayTags} />
+          <input
+            className="cgs-card-check"
+            type="checkbox"
+            checked={checked}
+            disabled={!key || book.supported === false}
+            aria-label={`选择 ${title}`}
+            onChange={(event) => serverActions.toggleBookKey(key, event.target.checked)}
+          />
+        </label>
+      )}
       <div className="cgs-card-body">
         <div className="cgs-card-head">
           <strong title={title}>{title}</strong>
@@ -188,6 +260,137 @@ function CgsResultCard({
         )}
       </div>
     </article>
+  )
+}
+
+function CgsChapterSheet({
+  serverView,
+  serverSelectors,
+  serverActions,
+}: {
+  serverView: CgsServerPanelView
+  serverSelectors: CgsServerPanelSelectors
+  serverActions: Pick<
+    CgsServerPanelActions,
+    | 'clearBookEpisodes'
+    | 'closeChapterPanel'
+    | 'retryBookEpisodes'
+    | 'selectAllBookEpisodes'
+    | 'selectFirstBookEpisodes'
+    | 'selectLatestBookEpisodes'
+    | 'toggleEpisodeKey'
+  >
+}) {
+  const bookKey = serverView.chapterPanelBookKey
+  const book = serverView.books.find((row) => row.book_key === bookKey)
+  if (!bookKey || !book) return null
+
+  const title = serverSelectors.bookTitle(book)
+  const episodes = serverView.episodesByBook[bookKey] || []
+  const loadState = serverView.episodeLoadByBook[bookKey]?.status || 'idle'
+  const errorMessage = serverView.episodeLoadByBook[bookKey]?.message || '章节读取失败'
+  const selectedKeys = serverView.selectedEpisodeKeysByBook[bookKey] || []
+  const selectedSet = new Set(selectedKeys)
+  const loading = loadState === 'loading'
+  const canSelect = episodes.length > 0 && !loading
+
+  return (
+    <>
+      <button className="tool-scrim doujin-tag-scrim cgs-chapter-scrim" onClick={serverActions.closeChapterPanel} aria-label="关闭章节面板" />
+      <section
+        id="cgs-chapter-sheet"
+        className="doujin-tag-sheet cgs-chapter-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${title} 章节面板`}
+      >
+        <div className="cgs-chapter-sheet-head">
+          <strong title={title}>{title}</strong>
+          <span>{selectedKeys.length}/{episodes.length}</span>
+        </div>
+        <div className="cgs-chapter-actions" aria-label="章节选择操作">
+          <button type="button" onClick={() => serverActions.selectLatestBookEpisodes(bookKey, 1)} disabled={!canSelect}>最新</button>
+          <button type="button" onClick={() => serverActions.selectFirstBookEpisodes(bookKey, 1)} disabled={!canSelect}>首话</button>
+          <button type="button" onClick={() => serverActions.selectAllBookEpisodes(bookKey)} disabled={!canSelect}>全部</button>
+          <button type="button" onClick={() => serverActions.clearBookEpisodes(bookKey)} disabled={!selectedKeys.length}>清空</button>
+          <button
+            type="button"
+            className="icon-only"
+            onClick={() => void serverActions.retryBookEpisodes(bookKey)}
+            disabled={loading}
+            aria-label="刷新章节"
+            title="刷新章节"
+          >
+            {loading ? <LoaderCircle className="spin" size={14} /> : <RefreshCw size={14} />}
+          </button>
+        </div>
+        {loading && <div className="cgs-chapter-state"><LoaderCircle className="spin" size={16} /><span>读取中</span></div>}
+        {loadState === 'error' && (
+          <div className="cgs-chapter-state error">
+            <span>{errorMessage}</span>
+            <button type="button" onClick={() => void serverActions.retryBookEpisodes(bookKey)}>重试</button>
+          </div>
+        )}
+        {!loading && loadState !== 'error' && episodes.length === 0 && <div className="cgs-chapter-state"><span>暂无章节</span></div>}
+        {episodes.length > 0 && (
+          <div className="cgs-chapter-list" aria-label={`${title} 章节列表`}>
+            {episodes.map((episode) => (
+              <CgsChapterOption
+                key={episode.episode_key}
+                bookKey={bookKey}
+                episode={episode}
+                checked={selectedSet.has(episode.episode_key)}
+                disabled={loading}
+                onToggle={serverActions.toggleEpisodeKey}
+              />
+            ))}
+          </div>
+        )}
+        <div className="doujin-tag-btn-group is-preview">
+          <button
+            type="button"
+            className="doujin-tag-close-btn ghost"
+            onClick={serverActions.closeChapterPanel}
+            aria-label="关闭章节面板"
+            title="关闭"
+          >
+            <X size={15} aria-hidden="true" />
+          </button>
+        </div>
+      </section>
+    </>
+  )
+}
+
+function CgsChapterOption({
+  bookKey,
+  episode,
+  checked,
+  disabled,
+  onToggle,
+}: {
+  bookKey: string
+  episode: CgsBookEpisode
+  checked: boolean
+  disabled: boolean
+  onToggle: (bookKey: string, episodeKey: string, checked: boolean) => void
+}) {
+  const idxText = episode.idx === null || episode.idx === undefined ? '-' : String(episode.idx)
+  const name = episode.name || idxText
+
+  return (
+    <label className={`cgs-chapter-option ${checked ? 'active' : ''}`}>
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onToggle(bookKey, episode.episode_key, event.target.checked)}
+        aria-label={`选择 ${name}`}
+      />
+      <span className="cgs-chapter-index" title={idxText}>{idxText}</span>
+      <span className="cgs-chapter-name" title={name}>{name}</span>
+      {episode.downloaded && <span className="cgs-chapter-downloaded">已下载</span>}
+    </label>
   )
 }
 
@@ -267,6 +470,7 @@ export function CgsServerPanel({
       <CgsSearchControls serverView={serverView} serverActions={serverActions} />
       <CgsResultList serverView={serverView} serverSelectors={serverSelectors} serverActions={serverActions} />
       <CgsPreviewTagSheet serverView={serverView} serverActions={serverActions} />
+      <CgsChapterSheet serverView={serverView} serverSelectors={serverSelectors} serverActions={serverActions} />
 
       {serverView.showGate && (
         <CgsGateLayer
@@ -291,39 +495,87 @@ export function CgsServerDrawerSettings({
   drawerView: CgsServerDrawerView
   drawerActions: CgsServerDrawerActions
 }) {
+  const [proxyHistory, setProxyHistory] = useState(readCgsProxyHistory)
+  const [saveFeedback, setSaveFeedback] = useState<'idle' | 'check' | 'fading'>('idle')
+  const saveFeedbackTimers = useRef<number[]>([])
+  const clearSaveFeedbackTimers = () => {
+    saveFeedbackTimers.current.forEach((timer) => window.clearTimeout(timer))
+    saveFeedbackTimers.current = []
+  }
+  const commitProxyHistory = (value: string = drawerView.draft.proxies_text) => {
+    setProxyHistory((currentHistory) => saveCgsProxyHistory(value, currentHistory))
+  }
+  const showSaveCompleteFeedback = () => {
+    clearSaveFeedbackTimers()
+    setSaveFeedback('check')
+    saveFeedbackTimers.current = [
+      window.setTimeout(() => setSaveFeedback('fading'), 1500),
+      window.setTimeout(() => setSaveFeedback('idle'), 1800),
+    ]
+  }
+  const saveConfig = async () => {
+    clearSaveFeedbackTimers()
+    setSaveFeedback('idle')
+    commitProxyHistory()
+    const saved = await drawerActions.saveConfig()
+    if (saved) showSaveCompleteFeedback()
+  }
+
+  useEffect(() => () => clearSaveFeedbackTimers(), [])
+
+  const saveIcon = drawerView.busy === 'save'
+    ? <LoaderCircle className="spin" size={18} />
+    : saveFeedback === 'idle'
+      ? <Save size={18} />
+      : <Check className={`cgs-save-check${saveFeedback === 'fading' ? ' is-fading' : ''}`} size={18} />
+
   return (
     <section className="drawer-card cgs-conf-drawer-card cgs-server-drawer-card">
       <div className="drawer-card-header">
         <div className="drawer-card-title">
           <PlugZap size={17} />
           <strong>CGS 配置</strong>
+          <button
+            type="button"
+            className="icon-only cgs-conf-header-save"
+            onClick={() => void saveConfig()}
+            disabled={drawerView.busy === 'save'}
+            aria-label="保存 CGS"
+            title="保存 CGS"
+          >
+            {saveIcon}
+          </button>
         </div>
       </div>
       <div className="drawer-card-body">
         <label className="cgs-conf-field">
           <div className="cgs-conf-btn-group cgs-conf-prefixed-group">
             <button type="button" className="cgs-conf-text-btn" disabled>后处理</button>
-            <select
+            <NativeSelectMenu
               value={drawerView.draft.downloaded_handle}
-              onChange={(event) => drawerActions.setDraft((draft) => ({ ...draft, downloaded_handle: event.target.value }))}
+              onValueChange={(value) => drawerActions.setDraft((draft) => ({ ...draft, downloaded_handle: value }))}
               disabled={drawerView.loading}
               aria-label="后处理"
-            >
-              {drawerView.downloadedHandleOptions.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
+              options={drawerView.downloadedHandleOptions.map((option) => ({ value: option, label: option }))}
+              menuClassName="cgs-conf-select-dropdown"
+            />
           </div>
         </label>
         <label className="cgs-conf-field">
           <div className="cgs-conf-btn-group cgs-conf-prefixed-group">
             <button type="button" className="cgs-conf-text-btn" disabled>代理</button>
-            <input
+            <InputHistoryMenu
               value={drawerView.draft.proxies_text}
-              onChange={(event) => drawerActions.setDraft((draft) => ({ ...draft, proxies_text: event.target.value }))}
+              suggestions={proxyHistory}
+              onValueChange={(value) => drawerActions.setDraft((draft) => ({ ...draft, proxies_text: value }))}
+              onBlur={(event) => commitProxyHistory(event.currentTarget.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') commitProxyHistory(event.currentTarget.value)
+              }}
               placeholder="127.0.0.1:10809"
               disabled={drawerView.loading}
               aria-label="代理"
+              menuClassName="cgs-conf-input-history-dropdown"
             />
           </div>
         </label>
@@ -351,17 +603,6 @@ export function CgsServerDrawerSettings({
             </button>
           </div>
         </label>
-        <div className="drawer-action-grid cgs-conf-actions" aria-label="CGS 配置操作">
-          <button
-            type="button"
-            className="drawer-action-card"
-            onClick={() => void drawerActions.saveConfig()}
-            disabled={drawerView.busy === 'save'}
-          >
-            {drawerView.busy === 'save' ? <LoaderCircle className="spin" size={18} /> : <PlugZap size={18} />}
-            <span>保存 CGS</span>
-          </button>
-        </div>
       </div>
     </section>
   )

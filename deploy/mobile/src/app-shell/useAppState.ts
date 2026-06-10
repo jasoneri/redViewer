@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState } from 'react'
-import type { CgsBook, CgsConfig, CgsSite, ConnectionState, CachedItem, ShelfBook } from '../mobileStore'
+import type { CgsBook, CgsBookEpisode, CgsConfig, CgsSite, ConnectionState, CachedItem, ShelfBook } from '../mobileStore'
 import { BACKEND_URL_KEY, ensureDeviceId } from '../mobileStore'
 import type {
   CgsConfigDraft,
   CgsConnectionState,
+  CgsEpisodeLoadState,
   CgsGateFlight,
   CgsGatePhase,
   CgsMcpLlmConfig,
@@ -118,6 +119,10 @@ export function useAppState() {
   const [autoOpenConsumed, setAutoOpenConsumed] = useState(false)
   const [cgsBooks, setCgsBooks] = useState<CgsBook[]>([])
   const [selectedKeys, setSelectedKeys] = useState<string[]>([])
+  const [selectedEpisodeKeysByBook, setSelectedEpisodeKeysByBook] = useState<Record<string, string[]>>({})
+  const [episodesByBook, setEpisodesByBook] = useState<Record<string, CgsBookEpisode[]>>({})
+  const [episodeLoadByBook, setEpisodeLoadByBook] = useState<Record<string, CgsEpisodeLoadState>>({})
+  const [chapterPanelBookKey, setChapterPanelBookKey] = useState('')
   const [cgsSessionId, setCgsSessionId] = useState('')
   const [cgsStatus, setCgsStatus] = useState<Record<string, unknown> | null>(null)
   const [cgsConfig, setCgsConfig] = useState<CgsConfig | null>(null)
@@ -179,6 +184,7 @@ export function useAppState() {
     activeItem, activeToolPanel, appVersion, authorAvatarSrc, autoOpenConsumed, autoScrollFrameRef, autoScrollIntervalRef, autoScrollingRef,
     backendDraft, backendInputRef, backendUrl, backendUrlHistory, busy, cached, cacheProgress, cacheSummaryHint, cacheSummaryText,
     cgsBooks, cgsConfig, cgsConfigBusy, cgsConfigDraft, cgsConnection, cgsGateFlight, cgsGateLoadingMode, cgsGatePhase, cgsHeadGateFlight,
+    chapterPanelBookKey, episodeLoadByBook, episodesByBook,
     cgsManualGateRef, cgsMcpAbortRef, cgsMcpComposerRef, cgsMcpExpandedToolId, cgsMcpFailedRef, cgsMcpGateRef, cgsMcpHistoryOpen,
     cgsMcpLlmConfig, cgsMcpLlmDraft, cgsMcpModelHelpOpen, cgsMcpPrompt, cgsMcpPromptHistory, cgsMcpRunning, cgsMcpScrollRef,
     cgsMcpSubmittedRef, cgsMcpTimeline, cgsModeSwap, cgsSearchBookInfo, cgsSessionId, cgsStatus, cgsStatusDotRef, cgsStatusHeadRef,
@@ -191,19 +197,19 @@ export function useAppState() {
     readerPageFlipActiveRef, readerPageFlipKeyRef, readerPageJumpOpen, readerPages, readerProgrammaticScrollRef, readerReturnView,
     readerScrollRenderNonce, readerScrollTop, readerSettings, readerSettingsOpen, readerShelfSource, readerUserScrolledRef,
     restoredScrollRef, rootSecretConfigured, rootSecretDraft, rootSecretHelpOpen, scrollProgressTimerRef, scrollReaderRef, selectedBook,
-    selectedKeys, selectedShelfSource, selectedSite, seriesOnly, setActiveItem, setActiveToolPanel, setAppVersion, setAuthorAvatarSrc,
+    selectedEpisodeKeysByBook, selectedKeys, selectedShelfSource, selectedSite, seriesOnly, setActiveItem, setActiveToolPanel, setAppVersion, setAuthorAvatarSrc,
     setAutoOpenConsumed, setBackendDraft, setBackendUrl, setBackendUrlHistory, setBusy, setCached, setCacheProgress, setCacheSummaryHint,
     setCacheSummaryText, setCgsBooks, setCgsConfig, setCgsConfigBusy, setCgsConfigDraft, setCgsConnection, setCgsGateFlight,
     setCgsGateLoadingMode, setCgsGatePhase, setCgsHeadGateFlight, setCgsMcpExpandedToolId, setCgsMcpHistoryOpen, setCgsMcpLlmConfig,
     setCgsMcpLlmDraft, setCgsMcpModelHelpOpen, setCgsMcpPrompt, setCgsMcpPromptHistory, setCgsMcpRunning, setCgsMcpTimeline,
-    setCgsModeSwap, setCgsSearchBookInfo, setCgsSessionId, setCgsStatus, setCgsSubmitPosition, setCgsWorkspaceMode, setComicConfig,
+    setChapterPanelBookKey, setCgsModeSwap, setCgsSearchBookInfo, setCgsSessionId, setCgsStatus, setCgsSubmitPosition, setCgsWorkspaceMode, setComicConfig,
     setComicPathDraft, setConnection, setDeleteHardMode, setDoujinTagPanel, setDrawerOpen, setEdgeTipAction, setEpisodePage,
-    setEpisodePageCounts, setFilesystemBusy, setFilesystemExpandedKeys, setFilesystemTree, setFilterDraft, setKeyword, setLibraryPage,
+    setEpisodeLoadByBook, setEpisodePageCounts, setEpisodesByBook, setFilesystemBusy, setFilesystemExpandedKeys, setFilesystemTree, setFilterDraft, setKeyword, setLibraryPage,
     setOfflineCoverUrls, setOpenOpsId, setPageIndex, setPathBusy, setPathSegments, setProgressByKey, setQuery, setReaderAutoScrolling,
     setReaderChromeVisible, setReaderFit, setReaderFloatingControlPosition, setReaderFloatingControlUnlocked, setReaderLoadedImages,
     setReaderMaxScrollTop, setReaderMode, setReaderPageFlip, setReaderPageJumpOpen, setReaderPages, setReaderReturnView,
     setReaderScrollTop, setReaderSettings, setReaderSettingsOpen, setReaderShelfSource, setRootSecretConfigured, setRootSecretDraft,
-    setRootSecretHelpOpen, setSelectedBook, setSelectedKeys, setSelectedShelfSource, setSelectedSite, setSeriesOnly, setShelf, setSites,
+    setRootSecretHelpOpen, setSelectedBook, setSelectedEpisodeKeysByBook, setSelectedKeys, setSelectedShelfSource, setSelectedSite, setSeriesOnly, setShelf, setSites,
     setSort, setStatusInfo, setStorageBusy, setToolMenuOpen, setView, shelf, sites, sort, statusInfo, storageBusy, toolMenuOpen, view,
   }
 }

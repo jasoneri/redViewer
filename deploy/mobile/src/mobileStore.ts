@@ -100,6 +100,7 @@ export type CgsSite = {
 
 export type CgsBook = {
   book_key?: string
+  select_mode?: 'book' | 'chapters' | string
   title?: string
   name?: string
   source?: string
@@ -115,6 +116,14 @@ export type CgsBook = {
   cover_static_url?: string
   unsupported_reason?: string
   supported?: boolean
+  [key: string]: unknown
+}
+
+export type CgsBookEpisode = {
+  episode_key: string
+  idx: number | string | null
+  name: string
+  downloaded?: boolean
   [key: string]: unknown
 }
 

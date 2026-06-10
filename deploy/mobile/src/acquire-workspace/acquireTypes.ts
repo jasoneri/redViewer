@@ -1,5 +1,5 @@
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEventHandler, ReactNode, RefObject } from 'react'
-import type { CgsBook, CgsConfig, CgsSite } from '../mobileStore'
+import type { CgsBook, CgsBookEpisode, CgsConfig, CgsSite } from '../mobileStore'
 import type { CoverOverlayTag } from '../shared/Cover'
 
 export type CgsConnectionState = 'unknown' | 'online' | 'unreachable'
@@ -62,8 +62,19 @@ export type CgsSearchBookInfo = {
   book: string
   title: string
   artist: string | null
+  source: string | null
   tags: string[]
   candidates: CgsSearchCandidate[]
+}
+export type CgsEpisodeLoadStatus = 'idle' | 'loading' | 'ready' | 'error'
+export type CgsEpisodeLoadState = {
+  status: CgsEpisodeLoadStatus
+  code?: string
+  message?: string
+}
+export type CgsEpisodeSelectionPayload = {
+  book_key: string
+  episode_keys: string[]
 }
 export type CgsConfigDraft = {
   downloaded_handle: string
@@ -95,14 +106,18 @@ export type CgsServerPanelView = {
   backendUrl: string
   books: CgsBook[]
   busy: string
+  chapterPanelBookKey: string
   disabled: boolean
   doujinTagPanel: DoujinTagPanel | null
+  episodeLoadByBook: Record<string, CgsEpisodeLoadState>
+  episodesByBook: Record<string, CgsBookEpisode[]>
   gateLoadingMode: CgsWorkspaceMode | null
   gatePhase: CgsGatePhase
   hidden: boolean
   keyword: string
   searchBookInfo: CgsSearchBookInfo | null
   searchCandidates: CgsSearchCandidate[]
+  selectedEpisodeKeysByBook: Record<string, string[]>
   selectedKeys: string[]
   selectedSite: string
   showGate: boolean
@@ -114,19 +129,28 @@ export type CgsServerPanelSelectors = {
   bookTitle: (book: CgsBook) => string
   coverOverlayTags: (book: CgsBook) => CoverOverlayTag[]
   coverUrl: (backendUrl: string, book: CgsBook) => string
+  selectMode: (book: CgsBook) => 'book' | 'chapters'
   tags: (book: CgsBook) => string[]
 }
 
 export type CgsServerPanelActions = {
+  clearBookEpisodes: (bookKey: string) => void
   closeDoujinTagPanel: () => void
+  closeChapterPanel: () => void
   openTagPanel: (bookId: string, bookTitle: string, tags: string[]) => void
+  openChapterPanel: (bookKey: string) => void
+  retryBookEpisodes: (bookKey: string) => Promise<void> | void
   runGateLoad: (mode: CgsWorkspaceMode) => Promise<void> | void
   search: () => Promise<void> | void
+  selectAllBookEpisodes: (bookKey: string) => void
   selectDoujinTag: (tag: string) => void
+  selectFirstBookEpisodes: (bookKey: string, count: number) => void
+  selectLatestBookEpisodes: (bookKey: string, count: number) => void
   selectSearchCandidate: (candidate: CgsSearchCandidate) => void
   setKeyword: (value: string) => void
   setSelectedSite: (value: string) => void
   toggleBookKey: (key: string, checked: boolean) => void
+  toggleEpisodeKey: (bookKey: string, episodeKey: string, checked: boolean) => void
 }
 
 export type CgsMcpToolTone = 'ok' | 'warn' | 'error'
@@ -177,7 +201,7 @@ export type CgsServerDrawerView = {
 }
 
 export type CgsServerDrawerActions = {
-  saveConfig: () => Promise<void> | void
+  saveConfig: () => Promise<boolean> | boolean
   setDraft: (updater: (draft: CgsConfigDraft) => CgsConfigDraft) => void
   syncSavePathFromBookshelf: () => void
 }

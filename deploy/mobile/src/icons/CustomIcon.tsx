@@ -11,6 +11,7 @@ type CustomIconName =
   | 'cgsSite'
   | 'cgsSubmit'
   | 'data'
+  | 'detailSearch'
   | 'docs'
   | 'doujin'
   | 'faq'
@@ -43,6 +44,7 @@ export function CustomIcon({ name, ...props }: CustomIconProps) {
   if (name === 'cgsSite') return <CgsSiteIcon {...props} />
   if (name === 'cgsSubmit') return <CgsSubmitIcon {...props} />
   if (name === 'data') return <DataIcon {...props} />
+  if (name === 'detailSearch') return <DetailSearchIcon {...props} />
   if (name === 'docs') return <DocsIcon {...props} />
   if (name === 'faq') return <FaqIcon {...props} />
   if (name === 'feedback') return <FeedbackIcon {...props} />
@@ -113,10 +115,20 @@ function CgsSearchIcon({ className, size = 16 }: IconSvgProps) {
   )
 }
 
-function CgsSubmitIcon({ className, size = 16 }: IconSvgProps) {
+function DetailSearchIcon({ className, size = 16 }: IconSvgProps) {
   return (
     <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path fill="currentColor" d="M6.5 20q-2.28 0-3.89-1.57Q1 16.85 1 14.58q0-1.95 1.17-3.48q1.18-1.53 3.08-1.95q.63-2.3 2.5-3.72Q9.63 4 12 4q2.93 0 4.96 2.04Q19 8.07 19 11q1.73.2 2.86 1.5q1.14 1.28 1.14 3q0 1.88-1.31 3.19T18.5 20H13q-.82 0-1.41-.59Q11 18.83 11 18v-5.15L9.4 14.4L8 13l4-4l4 4l-1.4 1.4l-1.6-1.55V18h5.5q1.05 0 1.77-.73q.73-.72.73-1.77t-.73-1.77Q19.55 13 18.5 13H17v-2q0-2.07-1.46-3.54Q14.08 6 12 6Q9.93 6 8.46 7.46Q7 8.93 7 11h-.5q-1.45 0-2.47 1.03Q3 13.05 3 14.5T4.03 17q1.02 1 2.47 1H9v2m3-7" />
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path fill="currentColor" d="M15.5 12c2.5 0 4.5 2 4.5 4.5c0 .88-.25 1.71-.69 2.4l3.08 3.1L21 23.39l-3.12-3.07c-.69.43-1.51.68-2.38.68c-2.5 0-4.5-2-4.5-4.5s2-4.5 4.5-4.5m0 2a2.5 2.5 0 0 0-2.5 2.5a2.5 2.5 0 0 0 2.5 2.5a2.5 2.5 0 0 0 2.5-2.5a2.5 2.5 0 0 0-2.5-2.5M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h1v7l2.5-1.5L12 9V2h6a2 2 0 0 1 2 2v7.81A6.48 6.48 0 0 0 15.5 10A6.5 6.5 0 0 0 9 16.5c0 2.31 1.21 4.35 3.03 5.5z" />
+    </svg>
+  )
+}
+
+function CgsSubmitIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 256 256" aria-hidden="true" focusable="false">
+      <path d="M0 0h256v256H0z" fill="none" />
+      <path fill="currentColor" d="m246.15 65.46l-.07-.08l-23.93-23.53a20 20 0 0 0-28.23-.05l-90 88.83l-33.86-32.85a20 20 0 0 0-28.21.08l-24 24a20 20 0 0 0 0 28.26l71.62 72a20 20 0 0 0 28.29 0L246.15 93.74a20 20 0 0 0 0-28.28M103.61 202.33L37.64 136L56 117.61L95.65 156a12 12 0 0 0 16.78-.08L208 61.61l18.32 18Z" />
     </svg>
   )
 }

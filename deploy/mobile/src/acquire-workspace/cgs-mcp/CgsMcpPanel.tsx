@@ -1,4 +1,5 @@
-import { ChevronRight, CircleHelp, History, Send, Square } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Check, ChevronRight, CircleHelp, History, LoaderCircle, Save, Send, Square } from 'lucide-react'
 import { CustomIcon } from '../../icons/CustomIcon'
 import { ProgressMeter } from '../../shared/Cover'
 import { AcquireFlowSteps, CgsGateLayer } from '../acquireUi'
@@ -26,7 +27,6 @@ function CgsMcpTimeline({
     <div className="mcp-chat-scroll" ref={acquireRefs.mcpScroll} aria-live="polite">
       {mcpView.timeline.length === 0 && !mcpView.running && (
         <div className="mcp-empty">
-          <CustomIcon name="mcp" size={22} />
         </div>
       )}
       {mcpView.timeline.map((item) => {
@@ -188,7 +188,7 @@ export function CgsMcpPanel({
     >
       <div className="section-bar acquire-section-bar">
         <div>
-          <h2>CGS-mcp</h2>
+          <h2>CGS mcp</h2>
         </div>
       </div>
 
@@ -223,12 +223,56 @@ export function CgsMcpDrawerSettings({
   drawerView: CgsMcpDrawerView
   drawerActions: CgsMcpDrawerActions
 }) {
+  const [saveBusy, setSaveBusy] = useState(false)
+  const [saveFeedback, setSaveFeedback] = useState<'idle' | 'check' | 'fading'>('idle')
+  const saveFeedbackTimers = useRef<number[]>([])
+  const clearSaveFeedbackTimers = () => {
+    saveFeedbackTimers.current.forEach((timer) => window.clearTimeout(timer))
+    saveFeedbackTimers.current = []
+  }
+  const showSaveCompleteFeedback = () => {
+    clearSaveFeedbackTimers()
+    setSaveFeedback('check')
+    saveFeedbackTimers.current = [
+      window.setTimeout(() => setSaveFeedback('fading'), 1500),
+      window.setTimeout(() => setSaveFeedback('idle'), 1800),
+    ]
+  }
+  const saveConfig = () => {
+    clearSaveFeedbackTimers()
+    setSaveFeedback('idle')
+    setSaveBusy(true)
+    saveFeedbackTimers.current = [window.setTimeout(() => {
+      drawerActions.saveConfig()
+      setSaveBusy(false)
+      showSaveCompleteFeedback()
+    }, 160)]
+  }
+
+  useEffect(() => () => clearSaveFeedbackTimers(), [])
+
+  const saveIcon = saveBusy
+    ? <LoaderCircle className="spin" size={18} />
+    : saveFeedback === 'idle'
+      ? <Save size={18} />
+      : <Check className={`cgs-save-check${saveFeedback === 'fading' ? ' is-fading' : ''}`} size={18} />
+
   return (
     <section className="drawer-card cgs-conf-drawer-card cgs-mcp-drawer-card">
       <div className="drawer-card-header">
         <div className="drawer-card-title">
           <CustomIcon name="mcp" size={17} />
-          <strong>CGS MCP / LLM 配置</strong>
+          <strong>LLM {'>'} MCP 配置</strong>
+          <button
+            type="button"
+            className="icon-only cgs-conf-header-save"
+            onClick={saveConfig}
+            disabled={saveBusy}
+            aria-label="保存 MCP"
+            title="保存 MCP"
+          >
+            {saveIcon}
+          </button>
         </div>
       </div>
       <div className="drawer-card-body">
@@ -285,16 +329,6 @@ export function CgsMcpDrawerSettings({
             </div>
           )}
         </label>
-        <div className="drawer-action-grid cgs-conf-actions" aria-label="CGS MCP 配置操作">
-          <button
-            type="button"
-            className="drawer-action-card"
-            onClick={drawerActions.saveConfig}
-          >
-            <CustomIcon name="mcp" size={18} />
-            <span>保存 MCP</span>
-          </button>
-        </div>
       </div>
     </section>
   )

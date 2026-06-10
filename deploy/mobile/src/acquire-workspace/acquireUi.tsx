@@ -113,6 +113,7 @@ export function CgsSubmitFloat({
         disabled={acquireView.submitDisabled}
         aria-label={`提交选中 ${acquireView.selectedCount} 项`}
       >
+        <CustomIcon name="cgsSubmit" className="cgs-submit-icon" size={24} />
         <span className="cgs-submit-badge">{acquireView.selectedCount || acquireView.resultCount}</span>
       </button>
       <div className="btn-group cgs-submit-tools" role="group" aria-label="提交浮标工具">
