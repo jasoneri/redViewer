@@ -16,6 +16,7 @@ type CustomIconName =
   | 'doujin'
   | 'faq'
   | 'feedback'
+  | 'key'
   | 'mcp'
   | 'offline'
   | 'releaseCheck'
@@ -48,6 +49,7 @@ export function CustomIcon({ name, ...props }: CustomIconProps) {
   if (name === 'docs') return <DocsIcon {...props} />
   if (name === 'faq') return <FaqIcon {...props} />
   if (name === 'feedback') return <FeedbackIcon {...props} />
+  if (name === 'key') return <KeyIcon {...props} />
   if (name === 'mcp') return <McpIcon {...props} />
   if (name === 'offline') return <OfflineIcon {...props} />
   if (name === 'releaseCheck') return <ReleaseCheckIcon {...props} />
@@ -315,6 +317,26 @@ function FeedbackIcon({ className, size = 16 }: IconSvgProps) {
       <path
         fill="currentColor"
         d="M17.75 14c-.13 0-.27-.02-.4-.06a1.25 1.25 0 0 1-.85-1.19v-1.76c-1.4-.13-2.5-1.31-2.5-2.74v-3.5C14 3.23 15.23 2 16.75 2h6.5C24.77 2 26 3.23 26 4.75v3.5C26 9.77 24.77 11 23.25 11h-2.62l-1.88 2.5c-.24.32-.61.5-1 .5M9.5 16.5a4.26 4.26 0 0 1-4.25-4.25A4.26 4.26 0 0 1 9.5 8a4.26 4.26 0 0 1 4.25 4.25A4.26 4.26 0 0 1 9.5 16.5m-6.029 7.42C4.781 25.3 6.811 26 9.501 26s4.72-.7 6.03-2.08c1.522-1.61 1.473-3.553 1.47-3.684v-.006c0-1.23-1-2.23-2.23-2.23H4.231c-1.23 0-2.23 1-2.23 2.19v.013c-.004.19-.042 2.117 1.47 3.717"
+      />
+    </svg>
+  )
+}
+
+function KeyIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M12.65 10a6 6 0 0 0-6.88-3.88c-2.29.46-4.15 2.29-4.63 4.58A6.006 6.006 0 0 0 7 18a5.99 5.99 0 0 0 5.65-4H17v2c0 1.1.9 2 2 2s2-.9 2-2v-2c1.1 0 2-.9 2-2s-.9-2-2-2zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2s2 .9 2 2s-.9 2-2 2"
       />
     </svg>
   )

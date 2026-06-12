@@ -131,7 +131,6 @@ function MenuLayer({
       className={`rvui-dropdown-menu ${className}`.trim()}
       role="listbox"
       style={style}
-      onPointerDown={(event) => event.preventDefault()}
     >
       {options.length ? options.map((option, index) => (
         <div
@@ -146,8 +145,7 @@ function MenuLayer({
           aria-selected={option.value === value}
           aria-disabled={option.disabled || undefined}
           title={option.label}
-          onPointerDown={(event) => {
-            event.preventDefault()
+          onClick={() => {
             if (!option.disabled) onSelect(option.value)
           }}
         >

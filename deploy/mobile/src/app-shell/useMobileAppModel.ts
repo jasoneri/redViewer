@@ -79,7 +79,7 @@ function useToastController() {
   }
 }
 
-export function useMobileAppModel(appState: AppState) {
+export function useMobileAppModel(appState: AppState, options?: { onRootSecretSaved?: () => void }) {
   const {
     activeItem, activeToolPanel, appVersion, authorAvatarSrc, autoOpenConsumed, autoScrollFrameRef, autoScrollIntervalRef, autoScrollingRef,
     backendDraft, backendInputRef, backendUrl, backendUrlHistory, busy, cached, cacheProgress, cacheSummaryHint, cacheSummaryText,
@@ -95,7 +95,7 @@ export function useMobileAppModel(appState: AppState) {
     readerFloatingControlUnlocked, readerInitialRestorePendingRef, readerLoadedImages, readerMaxScrollTop, readerMode, readerPageFlip,
     readerPageFlipActiveRef, readerPageFlipKeyRef, readerPageJumpOpen, readerPages, readerProgrammaticScrollRef, readerReturnView,
     readerScrollRenderNonce, readerScrollTop, readerSettings, readerSettingsOpen, readerShelfSource, readerUserScrolledRef,
-    restoredScrollRef, rootSecretConfigured, rootSecretDraft, rootSecretHelpOpen, scrollProgressTimerRef, scrollReaderRef, selectedBook,
+    restoredScrollRef, rootSecretAuthorized, rootSecretConfigured, rootSecretDraft, rootSecretHelpOpen, scrollProgressTimerRef, scrollReaderRef, selectedBook,
     selectedKeys, selectedShelfSource, selectedSite, seriesOnly, setActiveItem, setActiveToolPanel, setAppVersion, setAuthorAvatarSrc,
     setAutoOpenConsumed, setBackendDraft, setBackendUrl, setBackendUrlHistory, setBusy, setCached, setCacheProgress, setCacheSummaryHint,
     setCacheSummaryText, setCgsBooks, setCgsConfig, setCgsConfigBusy, setCgsConfigDraft, setCgsConnection, setCgsGateFlight,
@@ -107,7 +107,7 @@ export function useMobileAppModel(appState: AppState) {
     setOfflineCoverUrls, setOpenOpsId, setPageIndex, setPathBusy, setPathSegments, setProgressByKey, setQuery, setReaderAutoScrolling,
     setReaderChromeVisible, setReaderFit, setReaderFloatingControlPosition, setReaderFloatingControlUnlocked, setReaderLoadedImages,
     setReaderMaxScrollTop, setReaderMode, setReaderPageFlip, setReaderPageJumpOpen, setReaderPages, setReaderReturnView,
-    setReaderScrollTop, setReaderSettings, setReaderSettingsOpen, setReaderShelfSource, setRootSecretConfigured, setRootSecretDraft,
+    setReaderScrollTop, setReaderSettings, setReaderSettingsOpen, setReaderShelfSource, setRootSecretAuthorized, setRootSecretConfigured, setRootSecretDraft,
     setRootSecretHelpOpen, setSelectedBook, setSelectedKeys, setSelectedShelfSource, setSelectedSite, setSeriesOnly, setShelf, setSites,
     setSort, setStatusInfo, setStorageBusy, setToolMenuOpen, setView, shelf, sites, sort, statusInfo, storageBusy, toolMenuOpen, view,
   } = appState
@@ -120,8 +120,9 @@ export function useMobileAppModel(appState: AppState) {
   } = useToastController()
 
   const readerRuntime = useMobileReaderRuntimeModel(appState)
-  const appShellController = useMobileAppShellControllerModel(appState, show)
+  const appShellController = useMobileAppShellControllerModel(appState, show, { onRootSecretSaved: options?.onRootSecretSaved })
   const {
+    authorizeStoredRootSecret,
     changeFilesystemExpandedKeys,
     checkBackend,
     cleanupInvalidCache,
@@ -139,7 +140,14 @@ export function useMobileAppModel(appState: AppState) {
     saveComicPath,
     saveRootSecret,
   } = appShellController
+
+  async function authorizeAcquire(): Promise<boolean> {
+    if (rootSecretAuthorized) return true
+    return authorizeStoredRootSecret()
+  }
+
   const shelfModel = useMobileShelfModel(appState, {
+    authorizeAcquire,
     refreshCache,
     refreshLibrary,
     restoreReaderScrollTop: readerRuntime.restoreReaderScrollTop,
@@ -282,11 +290,16 @@ export function useMobileAppModel(appState: AppState) {
     cgsStatusHeadRef,
     switchCgsWorkspaceMode,
   })
+
+  function guardedOpenDrawerTab(next: Parameters<typeof openDrawerTab>[0]) {
+    openDrawerTab(next)
+  }
+
   const leftDrawerProps: LeftDrawerProps = {
     open: drawerOpen,
     activeView: view,
     onClose: () => setDrawerOpen(false),
-    onOpenTab: openDrawerTab,
+    onOpenTab: guardedOpenDrawerTab,
     libraryView: {
       appAuthor: APP_AUTHOR,
       appVersion,
@@ -351,6 +364,10 @@ export function useMobileAppModel(appState: AppState) {
     readerWorkspaceProps,
     selectedBook,
     setDrawerOpen,
+    setLocksState: (locks: Record<string, boolean>) => {
+      // Update settings store or state if needed
+      console.log('Locks updated:', locks)
+    },
     shelfWorkspace,
     toast,
     view,

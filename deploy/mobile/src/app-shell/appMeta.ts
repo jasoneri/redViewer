@@ -4,7 +4,7 @@ const APP_AUTHOR_AVATAR_URL = 'https://avatars.githubusercontent.com/u/47016274'
 const APP_AUTHOR_AVATAR_STORAGE_KEY = 'rv_mobile_author_github_avatar'
 
 export const DEFAULT_BACKEND = 'http://127.0.0.1:12345'
-export const EDGE_LOGO_SRC = './assets/rV.png'
+export const EDGE_LOGO_SRC = './assets/edge.png'
 export const APP_VERSION_FALLBACK = '0.1.0'
 export const APP_AUTHOR = 'jsoneri'
 export const DOCS_URL = 'https://rv.101114105.xyz/'

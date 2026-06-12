@@ -163,6 +163,10 @@ function LibraryDrawerCards({
     drawerView.backendScanning ? 'is-scanning' : '',
   ].filter(Boolean).join(' ')
 
+  function RootSecretStatusIcon({ size = 16 }: { size?: number }) {
+    return <CustomIcon name="key" size={size} />
+  }
+
   return (
     <>
       <section className="drawer-card">
@@ -210,7 +214,7 @@ function LibraryDrawerCards({
           <label className={`secret-field ${drawerView.rootSecretHelpOpen ? 'help-open' : ''}`} aria-label="redviewer-root-secret">
             <div className="accept-field">
               <StatusBadgeIcon
-                Icon={Settings}
+                Icon={RootSecretStatusIcon}
                 ok={drawerView.rootSecretConfigured}
                 label={drawerView.rootSecretConfigured ? 'Root Secret 已配置' : 'Root Secret 未配置'}
                 title={drawerView.rootSecretConfigured ? 'Root Secret 已配置' : 'Root Secret 未配置'}
@@ -240,8 +244,8 @@ function LibraryDrawerCards({
             </div>
             {drawerView.rootSecretHelpOpen && (
               <div className="secret-help-popover tail-top-right" role="note" aria-label="rv-backend-secret 用途">
-                <strong>以下情况需要此 secret</strong>
-                <span>书本/章节 的 save/del ; CGS remote 操作</span>
+                <strong>作用：cgs 交互凭证 与 管理操作锁</strong>
+                <span>操作锁：卡片的 保存/删除 ; 切换同人志；路径配置等</span>
               </div>
             )}
           </label>

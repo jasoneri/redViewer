@@ -26,6 +26,7 @@ type LibraryWorkspaceControllerDeps = {
   libraryPageCount: number
   nextSeriesBook: ShelfBook | null
   previousSeriesBook: ShelfBook | null
+  authorizeAcquire: () => Promise<boolean>
   selectedBook: ShelfBook | null
   selectedShelfSource: ShelfSource
   seriesBooks: ShelfBook[]
@@ -264,10 +265,20 @@ export function useLibraryWorkspaceController(deps: LibraryWorkspaceControllerDe
   }
 
   function openTab(next: View) {
+    if (next === 'acquire') {
+      void openAcquireTab()
+      return
+    }
     deps.setView(next)
     deps.setSelectedBook(null)
     if (next === 'downloads') deps.setSelectedShelfSource('downloads')
     if (next === 'library') deps.setSelectedShelfSource('library')
+  }
+
+  async function openAcquireTab() {
+    if (!(await deps.authorizeAcquire())) return
+    deps.setView('acquire')
+    deps.setSelectedBook(null)
   }
 
   function openDrawerTab(next: View) {

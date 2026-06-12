@@ -215,6 +215,7 @@ type AppShellControllerDeps = {
   rootSecretDraft: string
   sort: SortMode
   show: ShowToast
+  onRootSecretSaved?: () => void
   setBackendDraft: Dispatch<SetStateAction<string>>
   setBackendUrl: Dispatch<SetStateAction<string>>
   setBackendUrlHistory: Dispatch<SetStateAction<string[]>>
@@ -231,6 +232,7 @@ type AppShellControllerDeps = {
   setLibraryPage: Dispatch<SetStateAction<number>>
   setPathBusy: Dispatch<SetStateAction<string>>
   setPathSegments: Dispatch<SetStateAction<FilesystemSegment[]>>
+  setRootSecretAuthorized: Dispatch<SetStateAction<boolean>>
   setRootSecretConfigured: Dispatch<SetStateAction<boolean>>
   setRootSecretDraft: Dispatch<SetStateAction<string>>
   setShelf: Dispatch<SetStateAction<ShelfBook[]>>
@@ -256,7 +258,16 @@ function sameSubnetBackendCandidates(host: string): string[] {
   return Array.from({ length: 254 }, (_, index) => backendUrlForHost(`${prefix}.${index + 1}`))
 }
 
-function browserBackendCandidates(draft: string, currentUrl: string, history: string[]): string[] {
+async function getLocalIpFromTauri(): Promise<string> {
+  try {
+    const { invoke } = await import('@tauri-apps/api/core')
+    return await invoke<string>('get_local_ip')
+  } catch {
+    return ''
+  }
+}
+
+async function browserBackendCandidates(draft: string, currentUrl: string, history: string[]): Promise<string[]> {
   const candidates = new Set<string>()
   const add = (value: string) => {
     const next = normalizeBackendUrl(value)
@@ -268,9 +279,10 @@ function browserBackendCandidates(draft: string, currentUrl: string, history: st
   history.forEach(add)
 
   const host = typeof window === 'undefined' ? '' : window.location.hostname
-  if (host) {
-    add(backendUrlForHost(host))
-    sameSubnetBackendCandidates(host).forEach(add)
+  const effectiveHost = isPrivateIpv4Host(host) ? host : await getLocalIpFromTauri()
+  if (effectiveHost) {
+    add(backendUrlForHost(effectiveHost))
+    sameSubnetBackendCandidates(effectiveHost).forEach(add)
   }
   add(backendUrlForHost('127.0.0.1'))
   add(backendUrlForHost('localhost'))
@@ -302,9 +314,10 @@ async function probeBackendCandidate(url: string): Promise<boolean> {
   }
 }
 
-async function firstReachableBackend(candidates: string[]): Promise<string> {
-  for (let index = 0; index < candidates.length; index += BACKEND_PROBE_BATCH_SIZE) {
-    const batch = candidates.slice(index, index + BACKEND_PROBE_BATCH_SIZE)
+async function firstReachableBackend(candidates: string[] | Promise<string[]>): Promise<string> {
+  const resolved = await candidates
+  for (let index = 0; index < resolved.length; index += BACKEND_PROBE_BATCH_SIZE) {
+    const batch = resolved.slice(index, index + BACKEND_PROBE_BATCH_SIZE)
     const results = await Promise.all(batch.map(async (candidate) => ({
       candidate,
       ok: await probeBackendCandidate(candidate),
@@ -500,20 +513,62 @@ export function useAppShellController(deps: AppShellControllerDeps) {
 
   async function saveRootSecret() {
     const next = deps.rootSecretDraft.trim()
-    if (!next) {
+    const stored = localStorage.getItem(ROOT_SECRET_STORAGE_KEY) || ''
+    const candidate = next || stored
+    if (!candidate) {
+      deps.setRootSecretAuthorized(false)
       deps.show('warn', 'rv-backend-secret 不能为空')
       return
     }
     try {
-      const secret = await encryptRootSecretPayload(`${next}:${Date.now()}`)
+      const secret = await encryptRootSecretPayload(`${candidate}:${Date.now()}`)
       await apiPost<{ success: boolean; skip?: boolean }>(deps.backendUrl, '/root/auth', { secret })
-      localStorage.setItem(ROOT_SECRET_STORAGE_KEY, next)
-      deps.setRootSecretDraft('')
+      if (next) {
+        localStorage.setItem(ROOT_SECRET_STORAGE_KEY, next)
+        deps.setRootSecretDraft('')
+      }
+      deps.setRootSecretAuthorized(true)
       deps.setRootSecretConfigured(true)
+      deps.onRootSecretSaved?.()
     } catch (error) {
-      localStorage.removeItem(ROOT_SECRET_STORAGE_KEY)
-      deps.setRootSecretConfigured(false)
-      deps.show('error', error instanceof Error ? error.message : 'rv-backend-secret 校验失败')
+      deps.setRootSecretAuthorized(false)
+      const message = error instanceof Error ? error.message : 'rv-backend-secret 校验失败'
+      if (!next && stored && message.startsWith('401')) {
+        localStorage.removeItem(ROOT_SECRET_STORAGE_KEY)
+        deps.setRootSecretConfigured(false)
+        deps.show('error', '已保存的 rv-backend-secret 已失效，请重新输入')
+        return
+      }
+      deps.setRootSecretConfigured(Boolean(stored))
+      deps.show('error', message)
+    }
+  }
+
+  async function authorizeStoredRootSecret(): Promise<boolean> {
+    const stored = localStorage.getItem(ROOT_SECRET_STORAGE_KEY) || ''
+    if (!stored) {
+      deps.setRootSecretAuthorized(false)
+      deps.show('warn', '请先通过 Root Secret 鉴权')
+      return false
+    }
+    try {
+      const secret = await encryptRootSecretPayload(`${stored}:${Date.now()}`)
+      await apiPost<{ success: boolean; skip?: boolean }>(deps.backendUrl, '/root/auth', { secret })
+      deps.setRootSecretAuthorized(true)
+      deps.setRootSecretConfigured(true)
+      return true
+    } catch (error) {
+      deps.setRootSecretAuthorized(false)
+      const message = error instanceof Error ? error.message : 'rv-backend-secret 校验失败'
+      if (message.startsWith('401')) {
+        localStorage.removeItem(ROOT_SECRET_STORAGE_KEY)
+        deps.setRootSecretConfigured(false)
+        deps.show('error', '已保存的 rv-backend-secret 已失效，请重新输入')
+        return false
+      }
+      deps.setRootSecretConfigured(true)
+      deps.show('error', message)
+      return false
     }
   }
 
@@ -624,6 +679,7 @@ export function useAppShellController(deps: AppShellControllerDeps) {
   }
 
   return {
+    authorizeStoredRootSecret,
     changeFilesystemExpandedKeys,
     checkBackend,
     cleanupInvalidCache,
@@ -643,7 +699,7 @@ export function useAppShellController(deps: AppShellControllerDeps) {
   }
 }
 
-export function useMobileAppShellControllerModel(appState: AppState, show: ShowToast) {
+export function useMobileAppShellControllerModel(appState: AppState, show: ShowToast, options?: { onRootSecretSaved?: () => void }) {
   const {
     busy,
     backendDraft,
@@ -670,6 +726,7 @@ export function useMobileAppShellControllerModel(appState: AppState, show: ShowT
     setLibraryPage,
     setPathBusy,
     setPathSegments,
+    setRootSecretAuthorized,
     setRootSecretConfigured,
     setRootSecretDraft,
     setShelf,
@@ -688,6 +745,7 @@ export function useMobileAppShellControllerModel(appState: AppState, show: ShowT
     rootSecretDraft,
     sort,
     show,
+    onRootSecretSaved: options?.onRootSecretSaved,
     setBackendDraft,
     setBackendUrl,
     setBackendUrlHistory,
@@ -704,6 +762,7 @@ export function useMobileAppShellControllerModel(appState: AppState, show: ShowT
     setLibraryPage,
     setPathBusy,
     setPathSegments,
+    setRootSecretAuthorized,
     setRootSecretConfigured,
     setRootSecretDraft,
     setShelf,

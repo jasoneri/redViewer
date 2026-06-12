@@ -36,6 +36,7 @@ export function EdgeTools({
   onStripPointerUp: PointerEventHandler<HTMLButtonElement>
   onStripPointerCancel: PointerEventHandler<HTMLButtonElement>
 }) {
+  const iconSize = 20.4
   const actionButtonClass = (action: EdgeAction): string => ['menu-card', tipAction === action ? 'tip-active' : '']
     .filter(Boolean)
     .join(' ')
@@ -63,24 +64,8 @@ export function EdgeTools({
           onClick={runAction}
           disabled={busy === 'library'}
         >
-          {busy === 'library' ? <LoaderCircle className="spin" size={17} /> : <RefreshCw size={17} />}
+          {busy === 'library' ? <LoaderCircle className="spin" size={iconSize} /> : <RefreshCw size={iconSize} />}
           <span className="span-tip">刷新</span>
-        </button>
-        <button
-          className={actionButtonClass('filter')}
-          data-edge-action="filter"
-          onClick={runAction}
-        >
-          <Filter size={17} />
-          <span className="span-tip">筛选</span>
-        </button>
-        <button
-          className={actionButtonClass('sort')}
-          data-edge-action="sort"
-          onClick={runAction}
-        >
-          <SlidersHorizontal size={17} />
-          <span className="span-tip">排序</span>
         </button>
         {showDoujinAction && (
           <button
@@ -89,7 +74,7 @@ export function EdgeTools({
             onClick={runAction}
             disabled={busy === 'switch-ero'}
           >
-            {busy === 'switch-ero' ? <LoaderCircle className="spin" size={17} /> : <CustomIcon name="doujin" className={`doujin-mode-icon ${comicMode}`} size={17} />}
+            {busy === 'switch-ero' ? <LoaderCircle className="spin" size={iconSize} /> : <CustomIcon name="doujin" className={`doujin-mode-icon ${comicMode}`} size={iconSize} />}
             <span className="span-tip">切换同人</span>
           </button>
         )}
@@ -98,8 +83,24 @@ export function EdgeTools({
           data-edge-action="delete-mode"
           onClick={runAction}
         >
-          <Trash2 className={`delete-mode-icon ${deleteHardMode ? 'delete' : 'remove'}`} size={17} />
+          <Trash2 className={`delete-mode-icon ${deleteHardMode ? 'delete' : 'remove'}`} size={iconSize} />
           <span className="span-tip">删除模式</span>
+        </button>
+        <button
+          className={actionButtonClass('sort')}
+          data-edge-action="sort"
+          onClick={runAction}
+        >
+          <SlidersHorizontal size={iconSize} />
+          <span className="span-tip">排序</span>
+        </button>
+        <button
+          className={actionButtonClass('filter')}
+          data-edge-action="filter"
+          onClick={runAction}
+        >
+          <Filter size={iconSize} />
+          <span className="span-tip">筛选</span>
         </button>
       </div>
     </div>

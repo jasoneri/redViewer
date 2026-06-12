@@ -40,6 +40,7 @@ type ShowToast = (tone: ToastTone, text: string) => void
 type ReaderRuntimeModel = ReturnType<typeof useMobileReaderRuntimeModel>
 
 type MobileShelfModelDeps = {
+  authorizeAcquire: () => Promise<boolean>
   refreshCache: () => Promise<CachedItem[]>
   refreshLibrary: (url?: string, nextSort?: SortMode, resetPage?: boolean, showLoading?: boolean) => Promise<void>
   restoreReaderScrollTop: ReaderRuntimeModel['restoreReaderScrollTop']
@@ -244,6 +245,7 @@ export function useMobileShelfModel(appState: AppState, deps: MobileShelfModelDe
     libraryPageCount,
     nextSeriesBook,
     previousSeriesBook,
+    authorizeAcquire: deps.authorizeAcquire,
     selectedBook,
     selectedShelfSource,
     seriesBooks,

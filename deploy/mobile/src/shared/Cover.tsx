@@ -1,8 +1,7 @@
 import { ConfigProvider, Pagination, Tag, theme } from 'antd'
 import zhCN from 'antd/locale/zh_CN'
 import { BookOpen } from 'lucide-react'
-import type { LucideIcon } from 'lucide-react'
-import type { ReactNode } from 'react'
+import type { ComponentType, ReactNode } from 'react'
 
 export type CoverOverlayAnchor = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 export type CoverOverlayTone = 'artist' | 'episodes' | 'light' | 'pages'
@@ -102,7 +101,7 @@ export function StatusBadgeIcon({
   onClick,
   className = '',
 }: {
-  Icon: LucideIcon
+  Icon: ComponentType<{ size?: number }>
   ok: boolean
   label: string
   title: string

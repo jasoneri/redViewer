@@ -1,6 +1,8 @@
 import { AlertCircle, Check, Menu, X } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { useState } from 'react'
 import { LeftDrawer } from './app-shell/LeftDrawer'
+import { LocksModal } from './app-shell/LocksModal'
 import { useAppState } from './app-shell/useAppState'
 import { useMobileAppModel, type ToastTone } from './app-shell/useMobileAppModel'
 import { AcquireWorkspace } from './acquire-workspace/AcquireWorkspace'
@@ -61,6 +63,7 @@ function toastIcon(tone: ToastTone): ReactNode {
 
 export function App() {
   const appState = useAppState()
+  const [locksModalOpen, setLocksModalOpen] = useState(false)
   const {
     acquireWorkspace,
     drawerOpen,
@@ -69,10 +72,16 @@ export function App() {
     readerWorkspaceProps,
     selectedBook,
     setDrawerOpen,
+    setLocksState,
     shelfWorkspace,
     toast,
     view,
-  } = useMobileAppModel(appState)
+  } = useMobileAppModel(appState, {
+    onRootSecretSaved: () => {
+      setDrawerOpen(false)
+      setLocksModalOpen(true)
+    },
+  })
 
   return (
     <div className={`shell view-${view} ${selectedBook ? 'detail-open' : ''} ${drawerOpen ? 'drawer-open' : ''}`}>
@@ -86,6 +95,13 @@ export function App() {
           />
 
           <LeftDrawer {...leftDrawerProps} />
+          
+          <LocksModal
+            open={locksModalOpen}
+            onClose={() => setLocksModalOpen(false)}
+            onLocksUpdate={setLocksState}
+            backendUrl={appState.backendUrl}
+          />
         </>
       )}
 
