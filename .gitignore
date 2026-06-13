@@ -69,6 +69,13 @@ deploy/stage/src/
 deploy/assets/icons
 test*/
 deploy/mobile/src-tauri/gen/
+# Android build artifacts
+build/
+*.apk
+*.aab
+*.idsig
+*.keystore
+!debug.keystore
 # self/conf
 conf.yml
 # self/bug-report
@@ -101,3 +108,5 @@ desktop.ini
 *.wixobj
 *.wixpdb
 __*
+# tauri
+deploy/mobile/scripts/*

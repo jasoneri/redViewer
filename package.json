@@ -1,0 +1,43 @@
+{
+  "name": "rv-workspace",
+  "version": "1.7.0",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "deploy/tauri",
+    "deploy/mobile",
+    "docs"
+  ],
+  "scripts": {
+    "web:dev": "bun --filter rv dev",
+    "web:build": "bun --filter rv build",
+    "web:preview": "bun --filter rv preview",
+    "web:start": "bun --filter rv start",
+    
+    "desktop:dev": "bun --filter rv-desktop dev",
+    "desktop:build": "bun --filter rv-desktop build",
+    "desktop:preview": "bun --filter rv-desktop preview",
+    "desktop:lint": "bun --filter rv-desktop lint",
+    "desktop:tauri": "cd deploy/tauri && cargo tauri dev",
+    "desktop:pack": "pwsh -File deploy/scripts/build-desktop.ps1",
+    "desktop:start": "concurrently \"bun desktop:dev\" \"bun desktop:tauri\"",
+    
+    "mobile:dev": "bun --filter rv-mobile dev",
+    "mobile:build": "bun --filter rv-mobile build",
+    "mobile:preview": "bun --filter rv-mobile preview",
+    "mobile:apk": "bun --filter rv-mobile android:apk",
+    "mobile:apk-release": "pwsh -File deploy/mobile/scripts/android-apk.ps1 -Release",
+    "mobile:icons": "bun --filter rv-mobile android:icons",
+    "mobile:mumu-dev": "bun --filter rv-mobile mumu:dev",
+    "mobile:mumu": "bun --filter rv-mobile mumu:hotreload",
+    
+    "docs:dev": "bun --filter rv-docs docs:dev",
+    "docs:build": "bun --filter rv-docs docs:build",
+    "docs:preview": "bun --filter rv-docs docs:preview",
+    
+    "backend:dev": "cd backend && uv run app.py"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

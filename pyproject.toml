@@ -8,6 +8,7 @@ dependencies = [
     "fastapi",
     "httpx",
     "loguru>=0.7.3",
+    "mcp>=1.12.4",
     "packaging>=25.0",
     "platformdirs",
     "py7zr",
