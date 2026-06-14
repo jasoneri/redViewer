@@ -15,6 +15,9 @@ hero:
     - theme: alt
       text: 🎸功能预览
       link: /guide/
+    - theme: sponsor
+      text: 📱app
+      link: /guide/mobile
     - theme: brand
       text: 📦下载
       link: https://github.com/jasoneri/redViewer/releases

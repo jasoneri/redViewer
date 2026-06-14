@@ -26,7 +26,7 @@
     "mobile:build": "bun --filter rv-mobile build",
     "mobile:preview": "bun --filter rv-mobile preview",
     "mobile:apk": "bun --filter rv-mobile android:apk",
-    "mobile:apk-release": "pwsh -File deploy/mobile/scripts/android-apk.ps1 -Release",
+    "mobile:apk-release": "pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File deploy/mobile/scripts/android-apk.ps1 -Release",
     "mobile:icons": "bun --filter rv-mobile android:icons",
     "mobile:mumu-dev": "bun --filter rv-mobile mumu:dev",
     "mobile:mumu": "bun --filter rv-mobile mumu:hotreload",
