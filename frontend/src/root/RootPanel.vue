@@ -102,7 +102,7 @@
       </el-tab-pane>
 
       <el-tab-pane label="CGS 交互" name="cgs">
-        <TabCgs />
+        <TabCgs :stored-secret="storedSecret" :auth-required="needAuth" />
       </el-tab-pane>
     </el-tabs>
   </div>
@@ -132,7 +132,7 @@
       <p>每一后端各自对应<el-text class="mx-1" type="primary">锁状态</el-text> 和 <el-text class="mx-1" type="primary">超管密钥</el-text>，<el-text class="mx-1" type="warning">理应事前设置</el-text></p>
     </el-tour-step>
     <el-tour-step :target="getTabHeader(2)" title="CGS 交互" placement="bottom">
-      <p>计划开发中，敬请期待</p>
+      <p>按站点搜索 BookInfo，选择结果后提交给 CGS 下载</p>
     </el-tour-step>
   </el-tour>
   </div>
@@ -205,7 +205,7 @@ onMounted(async () => {
       startTour()
     } else {
       const cached = localStorage.getItem('rootSecret')
-      if (cached) authenticate(cached, true)
+      if (cached) await authenticate(cached, true)
     }
   } catch (e) {
     console.error('连接后端失败', e)

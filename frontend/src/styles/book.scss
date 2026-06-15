@@ -4,12 +4,13 @@
 
   .el-image {
     display: block;
+    line-height: 0;
     min-height: 200px;
-    margin-bottom: 10px;
+    margin: 0;
+  }
 
-    &:last-child {
-      margin-bottom: 0;
-    }
+  :deep(.el-image__inner) {
+    display: block;
   }
 }
 
