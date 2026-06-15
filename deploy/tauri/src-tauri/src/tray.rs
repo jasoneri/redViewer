@@ -17,6 +17,7 @@ use rv_lib::open_in_file_manager;
 
 // Menu item identifiers
 pub const MENU_OPEN: &str = "open";
+pub const MENU_UPDATE_SECRET: &str = "update_secret";
 pub const MENU_LOGS: &str = "logs";
 pub const MENU_RESTART: &str = "restart";
 pub const MENU_QUIT: &str = "quit";
@@ -24,13 +25,14 @@ pub const MENU_QUIT: &str = "quit";
 /// Build the system tray with menu
 pub fn build_tray(app: &tauri::AppHandle) -> tauri::Result<TrayIcon> {
     let open = MenuItem::with_id(app, MENU_OPEN, i18n::get_i18n_text("tray_open"), true, None::<&str>)?;
+    let update_secret = MenuItem::with_id(app, MENU_UPDATE_SECRET, i18n::get_i18n_text("tray_update_secret"),true,None::<&str>,)?;
     let logs = MenuItem::with_id(app, MENU_LOGS, i18n::get_i18n_text("tray_logs"), true, None::<&str>)?;
     let restart = MenuItem::with_id(app, MENU_RESTART, i18n::get_i18n_text("tray_restart"), true, None::<&str>)?;
     let quit = MenuItem::with_id(app, MENU_QUIT, i18n::get_i18n_text("tray_quit"), true, None::<&str>)?;
     let sep1 = PredefinedMenuItem::separator(app)?;
     let sep2 = PredefinedMenuItem::separator(app)?;
 
-    let menu = Menu::with_items(app, &[&open, &sep1, &restart, &logs, &sep2, &quit])?;
+    let menu = Menu::with_items(app, &[&open, &update_secret, &sep1, &restart, &logs, &sep2, &quit],)?;
     let app_handle = app.clone();
 
     let tray = TrayIconBuilder::new()
@@ -95,6 +97,9 @@ fn handle_menu_click(app: &tauri::AppHandle, ws: Option<&WebServer>, pm: Option<
             app.opener()
                 .open_url(&url, None::<&str>)
                 .log_err_with(|| format!("open browser (url={})", url));
+        }
+        MENU_UPDATE_SECRET => {
+            main_window::show_secret_settings(app);
         }
         MENU_LOGS => {
             let Some(pm) = pm else {

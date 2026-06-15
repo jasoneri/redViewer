@@ -4,13 +4,15 @@
 #   Stage 2 (Bundle):    Build NSIS installer with all resources (requires: cargo, bun, uv)
 #
 # Usage:
-#   .\build-desktop.ps1                      # Build all (Stage 1 + Stage 2)
+#   .\build-desktop.ps1                      # Build all (reuse existing installer + Stage 2)
+#   .\build-desktop.ps1 -RebuildInstaller    # Force rebuild installer even if it already exists
 #   .\build-desktop.ps1 -Target Installer    # Stage 1 only: build rvInstaller.exe
 #   .\build-desktop.ps1 -Target Bundle       # Stage 2 only: build NSIS (requires Stage 1 output)
 #   .\build-desktop.ps1 -SkipFrontend        # Skip frontend build (use existing dist)
 
 param(
     [switch]$SkipFrontend,
+    [switch]$RebuildInstaller,
     [ValidateSet('All', 'Installer', 'Bundle')]
     [string]$Target = 'All'
 )
@@ -395,8 +397,20 @@ if ($Target -in @('Installer', 'All')) {
     Write-Host "  STAGE 1: BUILD INSTALLER             " -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan
 
-    Test-DependenciesStage1
-    $InstallerPath = Build-Installer
+    # Installer crate rarely changes: reuse the prebuilt binary unless explicitly
+    # targeting Installer or forcing a rebuild. Build automatically on first run.
+    $existingInstaller = Join-Path $TauriDir "target/release/rvInstaller.exe"
+    $forceBuild = $RebuildInstaller -or ($Target -eq 'Installer')
+
+    if (-not $forceBuild -and (Test-Path $existingInstaller)) {
+        Write-Host "Reusing existing rvInstaller.exe (use -RebuildInstaller to force rebuild)" -ForegroundColor Green
+        Write-Host "  -> $existingInstaller" -ForegroundColor DarkGray
+        $InstallerPath = $existingInstaller
+    }
+    else {
+        Test-DependenciesStage1
+        $InstallerPath = Build-Installer
+    }
 
     if ($Target -eq 'Installer') {
         Write-Host "`n=== Stage 1 Complete ===" -ForegroundColor Green

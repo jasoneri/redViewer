@@ -1,12 +1,13 @@
 {
   "$schema": "https://schema.tauri.app/v2/config.json",
   "productName": "rV",
-  "version": "1.6.0",
+  // RVBASE002: Tauri resolves this package.json path; do not replace with a concrete version.
+  "version": "../package.json",
   "identifier": "jsoneri.redviewer",
   "build": {
     "beforeDevCommand": "",
     "beforeBuildCommand": "",
-    "devUrl": "http://localhost:5173",
+    "devUrl": "http://localhost:5140",
     "frontendDist": "../dist"
   },
   "app": {

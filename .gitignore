@@ -107,6 +107,7 @@ desktop.ini
 .env.*.local
 *.wixobj
 *.wixpdb
+*.lnk
 __*
 # tauri
 deploy/mobile/scripts/*

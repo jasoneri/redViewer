@@ -3,7 +3,7 @@ members = ["lib", "src-tauri", "installer"]
 resolver = "2"
 
 [workspace.package]
-version = "1.6.0"
+version = "1.7.0"
 edition = "2024"
 rust-version = "1.92"
 authors = ["jasoneri"]
@@ -27,6 +27,7 @@ color-eyre = "0.6"
 thiserror = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+http = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 tracing-appender = "0.2"
@@ -35,11 +36,11 @@ toml = "0.8"
 parking_lot = "0.12"
 
 # Tauri dependencies (src-tauri only)
-tauri = { version = "2.9.5", features = ["tray-icon", "macos-private-api"] }
+tauri = { version = "2.9.5", features = ["tray-icon", "macos-private-api", "config-json5"] }
 tauri-plugin-opener = "2"
 tauri-plugin-single-instance = "2"
 notify-rust = "4"
-tauri-build = { version = "2.5", features = [] }
+tauri-build = { version = "2.5", features = ["config-json5"] }
 
 # HTTP server dependencies (src-tauri only)
 axum = { version = "0.8.8", default-features = false, features = ["http1", "tokio"] }

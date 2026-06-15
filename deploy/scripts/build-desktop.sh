@@ -5,7 +5,8 @@
 #   Stage 2 (Bundle):    Build app bundle with all resources (requires: cargo, bun, uv)
 #
 # Usage:
-#   ./build-desktop.sh                       # Build all (Stage 1 + Stage 2)
+#   ./build-desktop.sh                       # Build all (reuse existing installer + Stage 2)
+#   ./build-desktop.sh --rebuild-installer   # Force rebuild installer even if it already exists
 #   ./build-desktop.sh -t installer          # Stage 1 only: build rvInstaller
 #   ./build-desktop.sh -t bundle             # Stage 2 only: build app (requires Stage 1 output)
 #   ./build-desktop.sh -s                    # Skip frontend build
@@ -15,6 +16,7 @@ set -euo pipefail
 SKIP_FRONTEND=false
 TARGET="all"  # all, installer, bundle
 CROSS_TARGET=""
+REBUILD_INSTALLER=false
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -31,9 +33,13 @@ while [[ $# -gt 0 ]]; do
             CROSS_TARGET="$2"
             shift 2
             ;;
+        --rebuild-installer)
+            REBUILD_INSTALLER=true
+            shift
+            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: ./build-desktop.sh [-s|--skip-frontend] [-t|--target all|installer|bundle]"
+            echo "Usage: ./build-desktop.sh [-s|--skip-frontend] [-t|--target all|installer|bundle] [--rebuild-installer]"
             exit 1
             ;;
     esac
@@ -389,8 +395,22 @@ if [[ "$TARGET" == "installer" || "$TARGET" == "all" ]]; then
     echo "  STAGE 1: BUILD INSTALLER             "
     echo "========================================"
 
-    check_dependencies_stage1
-    build_installer
+    # Installer crate rarely changes: reuse the prebuilt binary unless explicitly
+    # targeting installer or forcing a rebuild. Build automatically on first run.
+    if [ -n "$CROSS_TARGET" ]; then
+        existing_installer="$TAURI_DIR/target/$CROSS_TARGET/release/rvInstaller"
+    else
+        existing_installer="$TAURI_DIR/target/release/rvInstaller"
+    fi
+
+    if [ "$REBUILD_INSTALLER" = false ] && [ "$TARGET" != "installer" ] && [ -f "$existing_installer" ]; then
+        echo "Reusing existing rvInstaller (use --rebuild-installer to force rebuild)"
+        echo "  -> $existing_installer"
+        INSTALLER_PATH="$existing_installer"
+    else
+        check_dependencies_stage1
+        build_installer
+    fi
 
     if [ "$TARGET" == "installer" ]; then
         echo ""

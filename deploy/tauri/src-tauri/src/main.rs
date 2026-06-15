@@ -16,6 +16,7 @@ mod args;
 mod i18n;
 mod main_window;
 mod python;
+mod resources;
 mod toast;
 mod tray;
 mod webserver;
@@ -28,7 +29,10 @@ use std::sync::{
 };
 use tauri::{Emitter, Manager};
 
-use crate::python::PythonManager;
+use crate::python::{
+    DesktopAdminSecretResponse, DesktopAdminState, DesktopLocksState, DesktopLocksUpdate,
+    PythonManager,
+};
 use crate::webserver::{WebServer, WebServerConfig};
 
 /// Global flag to indicate user-initiated quit (vs window close)
@@ -119,6 +123,84 @@ fn get_system_theme(_app_handle: tauri::AppHandle) -> Result<String, String> {
     Ok("auto".to_string())
 }
 
+fn get_python_manager(app: &tauri::AppHandle) -> Result<PythonManager, String> {
+    app.try_state::<PythonManager>()
+        .map(|state| state.inner().clone())
+        .ok_or_else(|| "PythonManager not available".to_string())
+}
+
+async fn run_backend_call<T, F>(label: &'static str, f: F) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> anyhow::Result<T> + Send + 'static,
+{
+    tokio::task::spawn_blocking(f)
+        .await
+        .map_err(|e| format!("{} task failed: {}", label, e))?
+        .map_err(|e| format!("{:#}", e))
+}
+
+#[tauri::command]
+async fn desktop_admin_get_state(app: tauri::AppHandle) -> Result<DesktopAdminState, String> {
+    let pm = get_python_manager(&app)?;
+    run_backend_call("desktop admin state", move || pm.desktop_admin_state()).await
+}
+
+#[tauri::command]
+async fn desktop_admin_update_secret(
+    app: tauri::AppHandle,
+    secret: String,
+) -> Result<DesktopAdminSecretResponse, String> {
+    let pm = get_python_manager(&app)?;
+    run_backend_call("desktop admin secret update", move || {
+        pm.desktop_admin_update_secret(&secret)
+    })
+    .await
+}
+
+#[tauri::command]
+async fn desktop_admin_update_locks(
+    app: tauri::AppHandle,
+    updates: DesktopLocksUpdate,
+) -> Result<DesktopLocksState, String> {
+    let pm = get_python_manager(&app)?;
+    run_backend_call("desktop admin locks update", move || {
+        pm.desktop_admin_update_locks(&updates)
+            .map(|response| response.locks)
+    })
+    .await
+}
+
+/// Get the fonts directory path in AppData
+#[tauri::command]
+fn get_fonts_dir() -> Result<String, String> {
+    resources::get_fonts_dir()
+        .map(|p| p.to_string_lossy().to_string())
+        .map_err(|e| format!("Failed to get fonts directory: {:#}", e))
+}
+
+/// List all available fonts
+#[tauri::command]
+fn list_fonts() -> Result<Vec<String>, String> {
+    resources::list_fonts()
+        .map_err(|e| format!("Failed to list fonts: {:#}", e))
+}
+
+/// Get the absolute path to a specific font file
+#[tauri::command]
+fn get_font_path(font_name: String) -> Result<Option<String>, String> {
+    resources::get_font_path(&font_name)
+        .map(|opt| opt.map(|p| p.to_string_lossy().to_string()))
+        .map_err(|e| format!("Failed to get font path: {:#}", e))
+}
+
+/// Get a font file as bytes without routing through asset.localhost.
+#[tauri::command]
+fn get_font_bytes(font_name: String) -> Result<Option<Vec<u8>>, String> {
+    resources::get_font_bytes(&font_name)
+        .map_err(|e| format!("Failed to read font bytes: {:#}", e))
+}
+
 /// Install color-eyre error hooks with comprehensive reporting in dev mode
 fn install_error_hooks() -> color_eyre::Result<()> {
     // In dev mode, enable all debugging features
@@ -126,11 +208,15 @@ fn install_error_hooks() -> color_eyre::Result<()> {
         // Force backtrace capture
         if std::env::var("RUST_BACKTRACE").is_err() {
             // SAFETY: called before any threads are spawned
-            unsafe { std::env::set_var("RUST_BACKTRACE", "full"); }
+            unsafe {
+                std::env::set_var("RUST_BACKTRACE", "full");
+            }
         }
         if std::env::var("RUST_LIB_BACKTRACE").is_err() {
             // SAFETY: called before any threads are spawned
-            unsafe { std::env::set_var("RUST_LIB_BACKTRACE", "1"); }
+            unsafe {
+                std::env::set_var("RUST_LIB_BACKTRACE", "1");
+            }
         }
     }
 
@@ -471,6 +557,13 @@ fn main() {
             main_window::get_lan_url,
             get_backend_status,
             get_system_theme,
+            desktop_admin_get_state,
+            desktop_admin_update_secret,
+            desktop_admin_update_locks,
+            get_fonts_dir,
+            list_fonts,
+            get_font_path,
+            get_font_bytes,
             toast::show_toast,
         ])
         .build(ctx);

@@ -6,6 +6,9 @@ import path from 'node:path'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: './',
+  server: {
+    port: 5140,
+  },
   build: {
     outDir: 'dist',
     emptyOutDir: true,

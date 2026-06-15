@@ -8,6 +8,7 @@
 
 + ✨ 新增 rv-app android ，支持离线缓存等，特有功能 cgs-server/mcp
 + rv-desktop 增加 udp 广播与 rv-app 扫描搭配使用
++ rv-desktop 界面增加设置页面，可直接设 .secret （ 用于 cgs-server/mcp ，操作锁等 ）
 
 ---
 
