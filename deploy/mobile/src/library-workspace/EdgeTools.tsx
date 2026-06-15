@@ -1,5 +1,6 @@
 import { Filter, LoaderCircle, RefreshCw, SlidersHorizontal, Trash2 } from 'lucide-react'
-import type { MouseEventHandler, PointerEventHandler } from 'react'
+import type { MouseEventHandler } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CustomIcon } from '../icons/CustomIcon'
 
 export const edgeActions = ['filter', 'sort', 'refresh', 'delete-mode', 'doujin'] as const
@@ -12,54 +13,120 @@ export function isEdgeAction(value: string | undefined): value is EdgeAction {
 export function EdgeTools({
   open,
   logoSrc,
-  tipAction,
   busy,
   comicMode,
   deleteHardMode,
   showDoujinAction,
   onAction,
-  onStripPointerDown,
-  onStripPointerMove,
-  onStripPointerUp,
-  onStripPointerCancel,
+  onOpenMenu,
+  onCloseMenu,
+  effectSrc,
+  effectDuration,
 }: {
   open: boolean
   logoSrc: string
-  tipAction: EdgeAction | null
   busy: string
   comicMode: string
   deleteHardMode: boolean
   showDoujinAction: boolean
   onAction: (action: EdgeAction) => void
-  onStripPointerDown: PointerEventHandler<HTMLButtonElement>
-  onStripPointerMove: PointerEventHandler<HTMLButtonElement>
-  onStripPointerUp: PointerEventHandler<HTMLButtonElement>
-  onStripPointerCancel: PointerEventHandler<HTMLButtonElement>
+  onOpenMenu: () => void
+  onCloseMenu: () => void
+  effectSrc?: string
+  effectDuration: number
 }) {
+  const [showEffect, setShowEffect] = useState(false)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const pendingOpenTimerRef = useRef<number | null>(null)
+  const autoHideTimerRef = useRef<number | null>(null)
+
   const iconSize = 20.4
-  const actionButtonClass = (action: EdgeAction): string => ['menu-card', tipAction === action ? 'tip-active' : '']
-    .filter(Boolean)
-    .join(' ')
   const runAction: MouseEventHandler<HTMLButtonElement> = (event) => {
     const action = event.currentTarget.dataset.edgeAction
-    if (isEdgeAction(action)) onAction(action)
+    if (!isEdgeAction(action)) return
+    onCloseMenu()
+    onAction(action)
+  }
+
+  const clearPendingOpen = (): boolean => {
+    if (pendingOpenTimerRef.current === null) return false
+    window.clearTimeout(pendingOpenTimerRef.current)
+    pendingOpenTimerRef.current = null
+    setShowEffect(false)
+    return true
+  }
+
+  useEffect(() => {
+    return () => {
+      clearPendingOpen()
+      if (autoHideTimerRef.current === null) return
+      window.clearTimeout(autoHideTimerRef.current)
+      autoHideTimerRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    if (autoHideTimerRef.current !== null) {
+      window.clearTimeout(autoHideTimerRef.current)
+      autoHideTimerRef.current = null
+    }
+    if (!open) return
+    // RVUX0001: tap-open edge menu must collapse when left idle.
+    autoHideTimerRef.current = window.setTimeout(() => {
+      autoHideTimerRef.current = null
+      onCloseMenu()
+    }, 3000)
+    return () => {
+      if (autoHideTimerRef.current === null) return
+      window.clearTimeout(autoHideTimerRef.current)
+      autoHideTimerRef.current = null
+    }
+  }, [open, onCloseMenu])
+
+  useEffect(() => {
+    if (!open) return
+    const handleOutsidePointerDown = (event: PointerEvent) => {
+      const root = rootRef.current
+      const target = event.target
+      if (!root || !(target instanceof Node) || root.contains(target)) return
+      onCloseMenu()
+    }
+    document.addEventListener('pointerdown', handleOutsidePointerDown, true)
+    return () => document.removeEventListener('pointerdown', handleOutsidePointerDown, true)
+  }, [open, onCloseMenu])
+
+  const handleStripClick: MouseEventHandler<HTMLButtonElement> = () => {
+    if (open) return
+    clearPendingOpen()
+    if (effectSrc && !open) {
+      setShowEffect(true)
+      // RVUX0001: _act.edge is tap feedback before opening, not a hold gesture.
+      pendingOpenTimerRef.current = window.setTimeout(() => {
+        pendingOpenTimerRef.current = null
+        setShowEffect(false)
+        onOpenMenu()
+      }, effectDuration)
+      return
+    }
+
+    onOpenMenu()
   }
 
   return (
-    <div className={`edge-tools ${open ? 'open' : ''}`}>
+    <div ref={rootRef} className={`edge-tools ${open ? 'open' : ''} ${showEffect ? 'effect-active' : ''}`}>
       <button
         className="edge-strip"
-        onPointerDown={onStripPointerDown}
-        onPointerMove={onStripPointerMove}
-        onPointerUp={onStripPointerUp}
-        onPointerCancel={onStripPointerCancel}
+        onClick={handleStripClick}
         aria-label="书架工具"
       >
         <img className="edge-img" src={logoSrc} alt="" />
+        {effectSrc && showEffect && (
+          <img className="edge-effect" src={effectSrc} alt="" />
+        )}
       </button>
       <div className="edge-menu" aria-hidden={!open}>
         <button
-          className={actionButtonClass('refresh')}
+          className="menu-card"
           data-edge-action="refresh"
           onClick={runAction}
           disabled={busy === 'library'}
@@ -69,7 +136,7 @@ export function EdgeTools({
         </button>
         {showDoujinAction && (
           <button
-            className={actionButtonClass('doujin')}
+            className="menu-card"
             data-edge-action="doujin"
             onClick={runAction}
             disabled={busy === 'switch-ero'}
@@ -79,7 +146,7 @@ export function EdgeTools({
           </button>
         )}
         <button
-          className={actionButtonClass('delete-mode')}
+          className="menu-card"
           data-edge-action="delete-mode"
           onClick={runAction}
         >
@@ -87,7 +154,7 @@ export function EdgeTools({
           <span className="span-tip">删除模式</span>
         </button>
         <button
-          className={actionButtonClass('sort')}
+          className="menu-card"
           data-edge-action="sort"
           onClick={runAction}
         >
@@ -95,7 +162,7 @@ export function EdgeTools({
           <span className="span-tip">排序</span>
         </button>
         <button
-          className={actionButtonClass('filter')}
+          className="menu-card"
           data-edge-action="filter"
           onClick={runAction}
         >

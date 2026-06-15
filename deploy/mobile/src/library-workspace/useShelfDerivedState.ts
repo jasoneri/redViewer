@@ -43,15 +43,23 @@ export function useShelfDerivedState(deps: ShelfDerivedStateDeps) {
   const cachedPages = useMemo(() => deps.cached.reduce((total, item) => total + item.cached_pages, 0), [deps.cached])
   const cachedComplete = useMemo(() => deps.cached.filter((item) => item.status === 'cached').length, [deps.cached])
   const progressCount = useMemo(() => Object.values(deps.progressByKey).filter((progress) => progress.status !== 'unread').length, [deps.progressByKey])
+  
+  const sortedLibraryShelf = useMemo(() => sortShelfBooks(deps.shelf, deps.sort), [deps.shelf, deps.sort])
+  const sortedOfflineShelf = useMemo(() => sortShelfBooks(offlineShelf, deps.sort), [offlineShelf, deps.sort])
   const sortedActiveShelf = useMemo(() => sortShelfBooks(activeShelf, deps.sort), [activeShelf, deps.sort])
-  const filteredShelf = useMemo(() => {
+  
+  const applyFilter = (sortedShelf: ShelfBook[]) => {
     const value = deps.query.trim().toLowerCase()
-    return sortedActiveShelf.filter((book) => {
+    return sortedShelf.filter((book) => {
       if (deps.seriesOnly && book.kind !== 'series') return false
       if (!value) return true
       return searchableBookTokens(book).some((token) => token.toLowerCase().includes(value))
     })
-  }, [deps.query, deps.seriesOnly, sortedActiveShelf])
+  }
+  
+  const filteredLibraryShelf = useMemo(() => applyFilter(sortedLibraryShelf), [deps.query, deps.seriesOnly, sortedLibraryShelf])
+  const filteredOfflineShelf = useMemo(() => applyFilter(sortedOfflineShelf), [deps.query, deps.seriesOnly, sortedOfflineShelf])
+  const filteredShelf = useMemo(() => applyFilter(sortedActiveShelf), [deps.query, deps.seriesOnly, sortedActiveShelf])
   const seriesBooks = useMemo(() => detailShelf.filter((book) => book.kind === 'series'), [detailShelf])
   const selectedSeriesIndex = useMemo(() => {
     if (deps.selectedBook?.kind !== 'series') return -1
@@ -98,6 +106,8 @@ export function useShelfDerivedState(deps: ShelfDerivedStateDeps) {
     episodePageSafe,
     episodePageSize: EPISODE_PAGE_SIZE,
     filterBoardKeywords,
+    filteredLibraryShelf,
+    filteredOfflineShelf,
     filteredShelf,
     libraryMetaByCacheKey,
     libraryPageCount,

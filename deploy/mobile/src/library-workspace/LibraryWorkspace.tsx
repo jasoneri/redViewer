@@ -1,5 +1,5 @@
 import { Filter, X } from 'lucide-react'
-import type { PointerEventHandler, ReactNode, RefObject } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import { ShelfPager, type CoverOverlayTag } from '../shared/Cover'
 import type { ConnectionState, LibraryMeta, Progress, ShelfBook } from '../mobileStore'
 import { BookTile } from './BookTile'
@@ -28,7 +28,8 @@ export type ShelfWorkspaceView = {
   deleteHardMode: boolean
   doujinTagPanel: DoujinTagPanel | null
   edgeLogoSrc: string
-  edgeTipAction: EdgeAction | null
+  edgeEffectSrc: string
+  edgeEffectDuration: number
   filterBoardKeywords: string[]
   filterDraft: string
   filteredTotal: number
@@ -73,6 +74,8 @@ export type ShelfWorkspaceActions = {
   handleBookAction: (book: ShelfBook, handle: 'save' | 'remove' | 'del') => MaybePromise
   openCgsSearchFromBook: (book: ShelfBook) => void
   openDoujinTagPanel: (book: ShelfBook) => void
+  openEdgeMenu: () => void
+  closeEdgeMenu: () => void
   openShelfBook: (book: ShelfBook, source: ShelfSource) => void
   removeCachedBook: (book: ShelfBook) => MaybePromise
   runEdgeAction: (action: EdgeAction) => void
@@ -81,10 +84,6 @@ export type ShelfWorkspaceActions = {
   setFilterDraft: (value: string) => void
   toggleOps: (bookId: string) => void
   toggleSeriesOnly: () => void
-  edgePointerCancel: PointerEventHandler<HTMLButtonElement>
-  edgePointerDown: PointerEventHandler<HTMLButtonElement>
-  edgePointerMove: PointerEventHandler<HTMLButtonElement>
-  edgePointerUp: PointerEventHandler<HTMLButtonElement>
 }
 
 export type LibraryWorkspaceProps = {
@@ -212,16 +211,15 @@ export function LibraryWorkspace({
       <EdgeTools
         open={shelfView.toolMenuOpen}
         logoSrc={shelfView.edgeLogoSrc}
-        tipAction={shelfView.edgeTipAction}
+        effectSrc={shelfView.edgeEffectSrc}
+        effectDuration={shelfView.edgeEffectDuration}
         busy={shelfView.busy}
         comicMode={shelfView.comicMode}
         deleteHardMode={shelfView.deleteHardMode}
         showDoujinAction={!shelfView.activeSourceIsOffline}
         onAction={shelfActions.runEdgeAction}
-        onStripPointerDown={shelfActions.edgePointerDown}
-        onStripPointerMove={shelfActions.edgePointerMove}
-        onStripPointerUp={shelfActions.edgePointerUp}
-        onStripPointerCancel={shelfActions.edgePointerCancel}
+        onOpenMenu={shelfActions.openEdgeMenu}
+        onCloseMenu={shelfActions.closeEdgeMenu}
       />
 
       {shelfView.activeToolPanel && (

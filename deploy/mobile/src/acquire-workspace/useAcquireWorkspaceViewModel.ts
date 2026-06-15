@@ -114,19 +114,22 @@ type AcquireWorkspaceViewModelDeps = {
 }
 
 export function useAcquireWorkspaceViewModel(deps: AcquireWorkspaceViewModelDeps) {
-  const cgsDone = getCgsStatusKey(deps.cgsStatus) === 'completed'
+  const cgsStatusKey = getCgsStatusKey(deps.cgsStatus)
+  const cgsDone = cgsStatusKey === 'completed'
+  const cgsImportLoading = deps.busy === 'cgs-submit' && Boolean(deps.cgsStatus) && !cgsDone && cgsStatusKey !== 'failed'
   const cgsSearchCandidates = deps.cgsSearchBookInfo?.candidates || []
-  // RVUX001: no active acquire mode keeps the gate overlay until a probe succeeds.
-  const acquireGateLocked = deps.view === 'acquire' && !deps.cgsWorkspaceMode
+  const cgsConnectionOnline = deps.cgsConnection === 'online'
+  // RVUX001: selected CGS/MCP modes are exclusive; disconnect only re-gates the active panel.
+  const acquireGateLocked = deps.view === 'acquire' && (!deps.cgsWorkspaceMode || !cgsConnectionOnline)
   const gateCanRender = deps.view === 'acquire' && deps.cgsGatePhase !== 'flying'
   const initialGateMode = !deps.cgsWorkspaceMode
-  const showManualGate = gateCanRender && (initialGateMode || (deps.cgsGatePhase === 'loading' && deps.cgsGateLoadingMode === 'manual') || (deps.cgsWorkspaceMode === 'mcp' && deps.cgsConnection === 'unknown'))
-  const showMcpGate = gateCanRender && (initialGateMode || (deps.cgsGatePhase === 'loading' && deps.cgsGateLoadingMode === 'mcp'))
-  const manualContentHidden = Boolean(deps.cgsWorkspaceMode === 'mcp' && deps.cgsConnection === 'online' && !deps.cgsModeSwapBusy && !deps.cgsGateBusy)
-  const mcpContentHidden = Boolean(deps.cgsWorkspaceMode === 'manual' && deps.cgsConnection === 'online' && !deps.cgsModeSwapBusy && !deps.cgsGateBusy)
+  const showManualGate = gateCanRender && (initialGateMode || (!cgsConnectionOnline && deps.cgsWorkspaceMode === 'manual') || (deps.cgsGatePhase === 'loading' && deps.cgsGateLoadingMode === 'manual'))
+  const showMcpGate = gateCanRender && (initialGateMode || (!cgsConnectionOnline && deps.cgsWorkspaceMode === 'mcp') || (deps.cgsGatePhase === 'loading' && deps.cgsGateLoadingMode === 'mcp'))
+  const manualContentHidden = deps.cgsWorkspaceMode === 'mcp'
+  const mcpContentHidden = deps.cgsWorkspaceMode === 'manual'
   const cgsSubmitCount = cgsSubmitSelectionCount(deps.selectedKeys, deps.selectedEpisodeKeysByBook)
   const cgsSubmitDisabled = !cgsSubmitCount || !deps.cgsSessionId || deps.busy === 'cgs-submit'
-  const showCgsFloatingSubmit = deps.view === 'acquire' && deps.cgsWorkspaceMode === 'manual' && deps.cgsConnection === 'online'
+  const showCgsFloatingSubmit = deps.view === 'acquire' && cgsConnectionOnline && deps.cgsWorkspaceMode === 'manual'
   const cgsMcpCanSend = Boolean(deps.cgsMcpPrompt.trim() && !deps.cgsMcpRunning)
   const cgsDownloadedHandleOptions = deps.cgsConfig?.downloaded_handle_options?.length ? deps.cgsConfig.downloaded_handle_options : ['-', '.cbz']
   const cgsConfigLoading = deps.cgsConfigBusy === 'load'
@@ -136,7 +139,7 @@ export function useAcquireWorkspaceViewModel(deps: AcquireWorkspaceViewModelDeps
     { key: 'site', title: '站点', state: deps.sites.length ? 'done' : 'current', icon: createElement(CustomIcon, { name: 'cgsSite', size: 15 }) },
     { key: 'search', title: '搜索', state: deps.cgsBooks.length ? 'done' : deps.sites.length ? 'current' : 'pending', icon: createElement(Search, { size: 15 }) },
     { key: 'submit', title: '提交', state: deps.cgsStatus ? 'done' : deps.cgsBooks.length ? 'current' : 'pending', icon: createElement(CustomIcon, { name: 'cgsSubmit', size: 15 }) },
-    { key: 'library', title: '入库', state: cgsDone ? 'done' : deps.cgsStatus ? 'current' : 'pending', icon: createElement(CustomIcon, { name: 'cgsLibrary', size: 15 }) },
+    { key: 'library', title: '入库', state: cgsDone ? 'done' : deps.cgsStatus ? 'current' : 'pending', icon: createElement(CustomIcon, { name: 'cgsLibrary', size: 15 }), loading: cgsImportLoading, ariaLabel: cgsImportLoading ? '入库中' : undefined },
   ]
 
   const cgsMcpRunTimeline = useMemo(() => {

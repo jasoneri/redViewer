@@ -14,6 +14,10 @@ export type ReaderItem = {
   title: string
   page_count: number
   source: 'cache' | 'remote'
+  meta?: {
+    source?: string | null
+    btype?: string | null
+  }
 }
 export type ReaderProgress = {
   page_index: number

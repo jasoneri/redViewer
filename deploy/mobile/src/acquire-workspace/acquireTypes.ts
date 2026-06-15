@@ -44,6 +44,8 @@ export type CgsStep = {
   title: string
   state: CgsStepState
   icon: ReactNode
+  loading?: boolean
+  ariaLabel?: string
 }
 export type DoujinTagPanel = {
   bookId: string

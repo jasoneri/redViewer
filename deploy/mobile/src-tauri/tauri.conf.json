@@ -1,0 +1,42 @@
+{
+  "$schema": "https://schema.tauri.app/v2/config.json",
+  "productName": "rV",
+  "version": "../package.json",
+  "identifier": "jsoneri.redviewer.mobile",
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://192.168.230.1:5150",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "rV",
+        "width": 390,
+        "height": 844,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' data: blob:; connect-src 'self' http: https: ipc: http://ipc.localhost; img-src 'self' data: blob: http: https:; style-src 'self' 'unsafe-inline'; script-src 'self'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "publisher": "jasoneri",
+    "icon": [
+      "../../../deploy/assets/icons/icon.png",
+      "../../../deploy/assets/icons/icon.ico"
+    ],
+    "android": {
+      "minSdkVersion": 24
+    },
+    "iOS": {}
+  }
+}
+
+
+

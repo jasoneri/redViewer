@@ -1,5 +1,5 @@
-import type { Dispatch, MutableRefObject, PointerEvent, SetStateAction } from 'react'
-import { isEdgeAction, type EdgeAction } from './EdgeTools'
+import type { Dispatch, SetStateAction } from 'react'
+import type { EdgeAction } from './EdgeTools'
 import { ensureMeta, type SortMode } from './libraryCore'
 import type { CgsSearchCandidate, CgsSearchBookInfo } from '../acquire-workspace/acquireTypes'
 import type { ShelfBook } from '../mobileStore'
@@ -33,7 +33,6 @@ type LibraryWorkspaceControllerDeps = {
   sort: SortMode
   statusInfo: StatusInfo
   view: View
-  edgePointerActiveRef: MutableRefObject<boolean>
   refreshCache: () => Promise<unknown>
   refreshLibrary: (url?: string, nextSort?: SortMode, resetPage?: boolean, showLoading?: boolean) => Promise<void>
   show: ShowToast
@@ -49,7 +48,6 @@ type LibraryWorkspaceControllerDeps = {
     mode?: 'filter' | 'preview'
   } | null>>
   setDrawerOpen: Dispatch<SetStateAction<boolean>>
-  setEdgeTipAction: Dispatch<SetStateAction<EdgeAction | null>>
   setEpisodePage: Dispatch<SetStateAction<number>>
   setFilterDraft: Dispatch<SetStateAction<string>>
   setKeyword: Dispatch<SetStateAction<string>>
@@ -221,47 +219,12 @@ export function useLibraryWorkspaceController(deps: LibraryWorkspaceControllerDe
     if (action === 'doujin') void switchDoujinMode()
   }
 
-  function edgeActionFromPoint(clientX: number, clientY: number): EdgeAction | null {
-    const target = document.elementFromPoint(clientX, clientY)
-    const button = target?.closest?.('[data-edge-action]') as HTMLElement | null
-    const action = button?.dataset.edgeAction
-    return isEdgeAction(action) && button?.ariaDisabled !== 'true' ? action : null
-  }
-
-  function handleEdgeStripPointerDown(event: PointerEvent<HTMLButtonElement>) {
-    deps.edgePointerActiveRef.current = true
+  function openEdgeMenu() {
     deps.setToolMenuOpen(true)
-    deps.setEdgeTipAction(null)
-    event.currentTarget.setPointerCapture(event.pointerId)
   }
 
-  function handleEdgePointerMove(event: PointerEvent<HTMLButtonElement>) {
-    if (!deps.edgePointerActiveRef.current) return
-    event.preventDefault()
-    deps.setEdgeTipAction(edgeActionFromPoint(event.clientX, event.clientY))
-  }
-
-  function handleEdgePointerUp(event: PointerEvent<HTMLButtonElement>) {
-    if (!deps.edgePointerActiveRef.current) return
-    event.preventDefault()
-    const action = edgeActionFromPoint(event.clientX, event.clientY)
-    deps.edgePointerActiveRef.current = false
-    deps.setEdgeTipAction(null)
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
-    if (action) {
-      deps.setToolMenuOpen(false)
-      runEdgeAction(action)
-      return
-    }
-    // RVUX0001: drag-open edge menu always collapses on release, selected or not.
+  function closeEdgeMenu() {
     deps.setToolMenuOpen(false)
-  }
-
-  function handleEdgePointerCancel(event: PointerEvent<HTMLButtonElement>) {
-    deps.edgePointerActiveRef.current = false
-    deps.setToolMenuOpen(false)
-    deps.setEdgeTipAction(null)
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
   }
 
   function openTab(next: View) {
@@ -335,14 +298,12 @@ export function useLibraryWorkspaceController(deps: LibraryWorkspaceControllerDe
     changeSort: changeSortImpl,
     clearFilter,
     closeDoujinTagPanel,
-    handleEdgePointerCancel,
-    handleEdgePointerMove,
-    handleEdgePointerUp,
-    handleEdgeStripPointerDown,
+    closeEdgeMenu,
     openCgsSearchFromBook,
     openCgsTagPanel,
     openDrawerTab,
     openDoujinTagPanel,
+    openEdgeMenu,
     openNextDetailSeries,
     openPreviousDetailSeries,
     openSettingsDrawer,

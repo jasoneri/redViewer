@@ -1,4 +1,4 @@
-import { Check, Save, Settings, Trash2, X } from 'lucide-react'
+import { Save, Settings, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import type { ReaderFloatingControlPosition } from './readerCore'
 
@@ -7,16 +7,13 @@ type ReaderFloatingControlProps = {
   deleteHardMode: boolean
   readerAutoScrolling: boolean
   readerFloatingControlPosition: ReaderFloatingControlPosition
-  readerFloatingControlUnlocked: boolean
-  acceptReaderFloatingControlPosition: () => void
-  cancelReaderFloatingControlPosition: () => void
+  finishReaderFloatingControlDrag: (position: ReaderFloatingControlPosition) => void
   jumpReaderScrollByDrag: (dragRatio: number) => void
   moveReaderFloatingControl: (position: ReaderFloatingControlPosition) => void
   readerBookHandle: (handle: 'save' | 'remove' | 'del') => void
   scrollReaderToTop: () => void
   showReaderChromeControls: () => void
   stopReaderAutoScroll: () => void
-  unlockReaderFloatingControl: () => void
 }
 
 function clamp(value: number, min: number, max: number): number {
@@ -56,16 +53,13 @@ export function ReaderFloatingControl({
   deleteHardMode,
   readerAutoScrolling,
   readerFloatingControlPosition,
-  readerFloatingControlUnlocked,
-  acceptReaderFloatingControlPosition,
-  cancelReaderFloatingControlPosition,
+  finishReaderFloatingControlDrag,
   jumpReaderScrollByDrag,
   moveReaderFloatingControl,
   readerBookHandle,
   scrollReaderToTop,
   showReaderChromeControls,
   stopReaderAutoScroll,
-  unlockReaderFloatingControl,
 }: ReaderFloatingControlProps) {
   const [floatingMenuOpen, setFloatingMenuOpen] = useState(false)
   const floatingPointerRef = useRef({
@@ -75,6 +69,7 @@ export function ReaderFloatingControl({
     startPosition: readerFloatingControlPosition,
     moved: false,
   })
+  const moveDragRef = useRef<{ pointerId: number; startX: number; startY: number; startPosition: ReaderFloatingControlPosition } | null>(null)
 
   useEffect(() => {
     setFloatingMenuOpen(false)
@@ -99,11 +94,6 @@ export function ReaderFloatingControl({
     const deltaX = event.clientX - floatingPointerRef.current.startX
     const deltaY = event.clientY - floatingPointerRef.current.startY
     if (Math.abs(deltaX) > 6 || Math.abs(deltaY) > 6) floatingPointerRef.current.moved = true
-    if (!readerFloatingControlUnlocked) return
-    moveReaderFloatingControl({
-      x: clamp(floatingPointerRef.current.startPosition.x + deltaX, 0, window.innerWidth),
-      y: clamp(floatingPointerRef.current.startPosition.y + deltaY, 0, window.innerHeight),
-    })
   }
 
   const handleFloatingPointerUp = (event: PointerEvent<HTMLButtonElement>) => {
@@ -114,10 +104,6 @@ export function ReaderFloatingControl({
     const moved = floatingPointerRef.current.moved
     floatingPointerRef.current.active = false
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
-    if (readerFloatingControlUnlocked) {
-      setFloatingMenuOpen(true)
-      return
-    }
     if (!moved && readerAutoScrolling) {
       // RVUX0003: immersive auto-scroll stops from the floating progress control.
       setFloatingMenuOpen(false)
@@ -137,72 +123,87 @@ export function ReaderFloatingControl({
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
   }
 
-  const menuOpen = floatingMenuOpen && !readerFloatingControlUnlocked
+  const handleMovePointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+    if (event.pointerType === 'mouse' && event.button !== 0) return
+    event.preventDefault()
+    event.currentTarget.setPointerCapture(event.pointerId)
+    moveDragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      startPosition: readerFloatingControlPosition,
+    }
+  }
+
+  const handleMovePointerMove = (event: PointerEvent<HTMLButtonElement>) => {
+    const drag = moveDragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    event.preventDefault()
+    const deltaX = event.clientX - drag.startX
+    const deltaY = event.clientY - drag.startY
+    moveReaderFloatingControl({
+      x: clamp(drag.startPosition.x + deltaX, 0, window.innerWidth),
+      y: clamp(drag.startPosition.y + deltaY, 0, window.innerHeight),
+    })
+  }
+
+  const handleMovePointerFinish = (event: PointerEvent<HTMLButtonElement>) => {
+    const drag = moveDragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    moveDragRef.current = null
+    finishReaderFloatingControlDrag(readerFloatingControlPosition)
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
+
   const readerRect = typeof document !== 'undefined' ? document.querySelector<HTMLElement>('.reader')?.getBoundingClientRect() : undefined
   const viewportWidth = readerRect?.width || (typeof window !== 'undefined' ? window.innerWidth : 0)
   const viewportHeight = readerRect?.height || (typeof window !== 'undefined' ? window.innerHeight : 0)
   const menuAlign = viewportWidth && readerFloatingControlPosition.x > viewportWidth / 2 ? 'align-right' : 'align-left'
   const menuSide = viewportHeight && readerFloatingControlPosition.y + 22 > viewportHeight / 2 ? 'open-up' : 'open-down'
-  const progressButton = (
-    <button
-      className="reader-floating-control"
-      onPointerDown={readerFloatingControlUnlocked ? undefined : handleFloatingPointerDown}
-      onPointerMove={readerFloatingControlUnlocked ? undefined : handleFloatingPointerMove}
-      onPointerUp={readerFloatingControlUnlocked ? undefined : handleFloatingPointerUp}
-      onPointerCancel={readerFloatingControlUnlocked ? undefined : handleFloatingPointerCancel}
-      aria-label="滚动进度控制"
-    >
-      <span>{activeProgress}</span>
-    </button>
-  )
 
   return (
-    <div
-      className={`reader-floating-wrap ${readerFloatingControlUnlocked ? 'unlocked' : 'locked'}`}
-      style={{ left: readerFloatingControlPosition.x, top: readerFloatingControlPosition.y }}
-    >
-      {progressButton}
-      {readerFloatingControlUnlocked ? (
-        <div className="reader-floating-edit-group" aria-label="滚动控制坐标编辑">
-          <button className="reader-floating-edit-action accept" onClick={acceptReaderFloatingControlPosition} aria-label="锁定坐标">
-            <Check size={18} />
+    <div className="reader-floating-wrap" style={{ left: readerFloatingControlPosition.x, top: readerFloatingControlPosition.y }}>
+      <button
+        className="reader-floating-control"
+        onPointerDown={handleFloatingPointerDown}
+        onPointerMove={handleFloatingPointerMove}
+        onPointerUp={handleFloatingPointerUp}
+        onPointerCancel={handleFloatingPointerCancel}
+        aria-label="滚动进度控制"
+      >
+        <span>{activeProgress}</span>
+      </button>
+      {floatingMenuOpen && (
+        <div className={`reader-floating-teachtip ${menuAlign} ${menuSide}`} aria-label="滚动控制菜单">
+          <button className="reader-icon" onClick={showReaderChromeControls} aria-label="显示阅读工具栏">
+            <Settings size={18} />
+          </button>
+          <button className="reader-icon" onClick={scrollReaderToTop} aria-label="回到第一页">
+            <TopIcon size={18} />
           </button>
           <button
-            className="reader-floating-move-handle"
-            onPointerDown={handleFloatingPointerDown}
-            onPointerMove={handleFloatingPointerMove}
-            onPointerUp={handleFloatingPointerUp}
-            onPointerCancel={handleFloatingPointerCancel}
+            className="reader-icon reader-floating-drag"
+            onPointerDown={handleMovePointerDown}
+            onPointerMove={handleMovePointerMove}
+            onPointerUp={handleMovePointerFinish}
+            onPointerCancel={handleMovePointerFinish}
             aria-label="拖动滚动进度控制坐标"
           >
-            <MoveIcon size={20} />
+            <MoveIcon size={18} />
           </button>
-          <button className="reader-floating-edit-action close" onClick={cancelReaderFloatingControlPosition} aria-label="取消坐标">
-            <X size={18} />
+          <button className="reader-icon handle-btn handle-saveBtn" onClick={() => readerBookHandle('save')} aria-label="保留">
+            <Save size={18} />
+          </button>
+          <button
+            className={`reader-icon handle-btn ${deleteHardMode ? 'handle-delBtn' : 'handle-removeBtn'}`}
+            onClick={() => readerBookHandle(deleteHardMode ? 'del' : 'remove')}
+            aria-label={deleteHardMode ? '彻底删除' : '移至回收'}
+          >
+            <Trash2 size={18} />
           </button>
         </div>
-      ) : (
-        <>
-          {menuOpen && (
-            <div className={`reader-floating-teachtip ${menuAlign} ${menuSide}`} aria-label="滚动控制菜单">
-              <button className="reader-icon" onClick={showReaderChromeControls} aria-label="显示阅读工具栏">
-                <Settings size={18} />
-              </button>
-              <button className="reader-icon" onClick={scrollReaderToTop} aria-label="回到第一页">
-                <TopIcon size={18} />
-              </button>
-              <button className="reader-icon" onClick={unlockReaderFloatingControl} aria-label="解锁滚动控制坐标">
-                <MoveIcon size={18} />
-              </button>
-              <button className="reader-icon handle-btn handle-saveBtn" onClick={() => readerBookHandle('save')} aria-label="保留">
-                <Save size={18} />
-              </button>
-              <button className={`reader-icon handle-btn ${deleteHardMode ? 'handle-delBtn' : 'handle-removeBtn'}`} onClick={() => readerBookHandle(deleteHardMode ? 'del' : 'remove')} aria-label={deleteHardMode ? '彻底删除' : '移至回收'}>
-                <Trash2 size={18} />
-              </button>
-            </div>
-          )}
-        </>
       )}
     </div>
   )

@@ -28,6 +28,7 @@ export type LibraryDrawerView = {
   appAuthor: string
   appVersion: string
   authorAvatarSrc: string
+  settingsBottomGifSrc: string
   backendAvailable: boolean
   backendDraft: string
   backendInputRef: RefObject<HTMLInputElement | null>
@@ -71,6 +72,7 @@ export type LeftDrawerActions = {
   discoverBackend: () => Promise<void> | void
   handleBooksPathChange: (path: string) => Promise<void> | void
   moveBackendCaretToEnd: () => void
+  openCustomSettingsFromBackground: () => void
   openExternalLink: (url: string, label: string) => Promise<void> | void
   refreshFilesystem: (path?: string) => Promise<void> | void
   saveBackend: () => Promise<void> | void
@@ -125,7 +127,7 @@ export function LeftDrawer({
           </button>
           <button className={activeView === 'acquire' ? 'active' : ''} onClick={() => onOpenTab('acquire')}>
             <Search size={18} />
-            <span>获取</span>
+            <span>CGS</span>
           </button>
         </nav>
         <div className="drawer-settings">
@@ -137,6 +139,15 @@ export function LeftDrawer({
           )}
           {activeView === 'acquire' && acquireSettings}
         </div>
+        {libraryView.settingsBottomGifSrc && (
+          <img 
+            className="settings-bottom-bg" 
+            src={libraryView.settingsBottomGifSrc} 
+            alt="" 
+            aria-hidden="true"
+            onClick={actions.openCustomSettingsFromBackground}
+          />
+        )}
       </aside>
     </>
   )

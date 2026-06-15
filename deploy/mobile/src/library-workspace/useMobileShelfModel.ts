@@ -5,7 +5,7 @@ import type { AppState } from '../app-shell/useAppState'
 import type { DetailWorkspaceProps } from '../detail-workspace/DetailWorkspace'
 import { EmptyState } from '../shared/Cover'
 import type { CachedItem, ConnectionState } from '../mobileStore'
-import { EDGE_LOGO_SRC } from '../app-shell/appMeta'
+import { EDGE_LOGO_SRC, MENU_LOGO_SRC } from '../app-shell/appMeta'
 import type { useMobileReaderRuntimeModel } from '../reader-workspace/useReaderRuntime'
 import { useLibraryReaderActions } from './useLibraryReaderActions'
 import { useLibraryWorkspaceController } from './useLibraryWorkspaceController'
@@ -92,8 +92,6 @@ export function useMobileShelfModel(appState: AppState, deps: MobileShelfModelDe
     deleteHardMode,
     doujinTagLinkButtonRef,
     doujinTagPanel,
-    edgePointerActiveRef,
-    edgeTipAction,
     episodePage,
     episodePageCounts,
     filterDraft,
@@ -125,7 +123,6 @@ export function useMobileShelfModel(appState: AppState, deps: MobileShelfModelDe
     setDeleteHardMode,
     setDoujinTagPanel,
     setDrawerOpen,
-    setEdgeTipAction,
     setEpisodePage,
     setFilterDraft,
     setKeyword,
@@ -176,6 +173,8 @@ export function useMobileShelfModel(appState: AppState, deps: MobileShelfModelDe
     episodePageSafe,
     episodePageSize,
     filterBoardKeywords,
+    filteredLibraryShelf,
+    filteredOfflineShelf,
     filteredShelf,
     libraryPageCount,
     libraryPageSafe,
@@ -197,6 +196,8 @@ export function useMobileShelfModel(appState: AppState, deps: MobileShelfModelDe
     cachedById,
     connection,
     episodePageSize,
+    filteredLibraryShelf,
+    filteredOfflineShelf,
     offlineShelf,
     readerReturnView,
     readerSettings,
@@ -252,7 +253,6 @@ export function useMobileShelfModel(appState: AppState, deps: MobileShelfModelDe
     sort,
     statusInfo,
     view,
-    edgePointerActiveRef,
     refreshCache: deps.refreshCache,
     refreshLibrary: deps.refreshLibrary,
     show: deps.show,
@@ -262,7 +262,6 @@ export function useMobileShelfModel(appState: AppState, deps: MobileShelfModelDe
     setDeleteHardMode,
     setDoujinTagPanel,
     setDrawerOpen,
-    setEdgeTipAction,
     setEpisodePage,
     setFilterDraft,
     setKeyword,
@@ -296,8 +295,9 @@ export function useMobileShelfModel(appState: AppState, deps: MobileShelfModelDe
       connection,
       deleteHardMode,
       doujinTagPanel,
-      edgeLogoSrc: EDGE_LOGO_SRC,
-      edgeTipAction,
+      edgeLogoSrc: appState.edgeImgSrc || EDGE_LOGO_SRC,
+      edgeEffectSrc: appState.edgeEffectSrc,
+      edgeEffectDuration: appState.edgeEffectDuration,
       filterBoardKeywords,
       filterDraft,
       filteredTotal: filteredShelf.length,
@@ -340,6 +340,8 @@ export function useMobileShelfModel(appState: AppState, deps: MobileShelfModelDe
       handleBookAction: libraryReaderActions.handleBookAction,
       openCgsSearchFromBook: libraryWorkspaceController.openCgsSearchFromBook,
       openDoujinTagPanel: libraryWorkspaceController.openDoujinTagPanel,
+      openEdgeMenu: libraryWorkspaceController.openEdgeMenu,
+      closeEdgeMenu: libraryWorkspaceController.closeEdgeMenu,
       openShelfBook: libraryReaderActions.openShelfBook,
       removeCachedBook: libraryReaderActions.removeCachedBook,
       runEdgeAction: libraryWorkspaceController.runEdgeAction,
@@ -348,10 +350,6 @@ export function useMobileShelfModel(appState: AppState, deps: MobileShelfModelDe
       setFilterDraft,
       toggleOps: (bookId) => setOpenOpsId((id) => (id === bookId ? '' : bookId)),
       toggleSeriesOnly: libraryWorkspaceController.toggleSeriesOnly,
-      edgePointerCancel: libraryWorkspaceController.handleEdgePointerCancel,
-      edgePointerDown: libraryWorkspaceController.handleEdgeStripPointerDown,
-      edgePointerMove: libraryWorkspaceController.handleEdgePointerMove,
-      edgePointerUp: libraryWorkspaceController.handleEdgePointerUp,
     },
     doujinTagLinkButtonRef,
   }

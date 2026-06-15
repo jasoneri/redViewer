@@ -33,7 +33,6 @@ export type ReaderWorkspaceProps = {
   readerIntervalTimeBounds: ReaderIntervalTimeBounds
   readerPageFlipDurationBounds: ReaderIntervalTimeBounds
   readerFloatingControlPosition: ReaderFloatingControlPosition
-  readerFloatingControlUnlocked: boolean
   readerToolbarVisible: boolean
   scrollReaderRef: RefObject<HTMLDivElement | null>
   changeReaderMode: (mode: ReaderMode) => void
@@ -59,9 +58,7 @@ export type ReaderWorkspaceProps = {
   readerBookHandle: (handle: 'save' | 'remove' | 'del') => void
   scrollReaderToTop: () => void
   showReaderChromeControls: () => void
-  acceptReaderFloatingControlPosition: () => void
-  cancelReaderFloatingControlPosition: () => void
-  unlockReaderFloatingControl: () => void
+  finishReaderFloatingControlDrag: (position: ReaderFloatingControlPosition) => void
   deleteHardMode: boolean
   setReaderFit: Dispatch<SetStateAction<ReaderFit>>
   setReaderPageJumpOpen: Dispatch<SetStateAction<boolean>>
@@ -77,6 +74,7 @@ function clamp(value: number, min: number, max: number): number {
 type ReaderTopbarProps = {
   bookTitle: string
   chapterTitle: string
+  bookSource: string | null
   onBack: () => void
   openReaderNeighbor: (direction: number) => void
   setReaderSettingsOpen: Dispatch<SetStateAction<boolean>>
@@ -85,6 +83,7 @@ type ReaderTopbarProps = {
 function ReaderTopbar({
   bookTitle,
   chapterTitle,
+  bookSource,
   onBack,
   openReaderNeighbor,
   setReaderSettingsOpen,
@@ -95,6 +94,7 @@ function ReaderTopbar({
         <ArrowLeft size={19} />
       </button>
       <div className="reader-top-title">
+        {bookSource && <p className="reader-book-source">{bookSource}</p>}
         <strong>{bookTitle}</strong>
         {chapterTitle && <span>{chapterTitle}</span>}
       </div>
@@ -132,7 +132,6 @@ export function ReaderWorkspace({
   readerIntervalTimeBounds,
   readerPageFlipDurationBounds,
   readerFloatingControlPosition,
-  readerFloatingControlUnlocked,
   readerToolbarVisible,
   scrollReaderRef,
   changeReaderMode,
@@ -157,9 +156,7 @@ export function ReaderWorkspace({
   readerBookHandle,
   scrollReaderToTop,
   showReaderChromeControls,
-  acceptReaderFloatingControlPosition,
-  cancelReaderFloatingControlPosition,
-  unlockReaderFloatingControl,
+  finishReaderFloatingControlDrag,
   deleteHardMode,
   setReaderPageJumpOpen,
   setReaderSettingsOpen,
@@ -168,11 +165,13 @@ export function ReaderWorkspace({
 }: ReaderWorkspaceProps) {
   const readerTopbarBookTitle = activeItem.book || activeItem.title
   const readerTopbarChapterTitle = activeItem.ep && activeItem.ep !== activeItem.book ? activeItem.ep : ''
+  const readerTopbarBookSource = readerTopbarChapterTitle ? null : activeItem.meta?.source || null
   const toolbarPosition = readerSettings.toolbarPosition === 'bottom' ? 'bottom' : 'top'
   const topbar = readerToolbarVisible ? (
     <ReaderTopbar
       bookTitle={readerTopbarBookTitle}
       chapterTitle={readerTopbarChapterTitle}
+      bookSource={readerTopbarBookSource}
       onBack={onBack}
       openReaderNeighbor={openReaderNeighbor}
       setReaderSettingsOpen={setReaderSettingsOpen}
@@ -253,16 +252,13 @@ export function ReaderWorkspace({
           deleteHardMode={deleteHardMode}
           readerAutoScrolling={readerAutoScrolling}
           readerFloatingControlPosition={readerFloatingControlPosition}
-          readerFloatingControlUnlocked={readerFloatingControlUnlocked}
-          acceptReaderFloatingControlPosition={acceptReaderFloatingControlPosition}
-          cancelReaderFloatingControlPosition={cancelReaderFloatingControlPosition}
+          finishReaderFloatingControlDrag={finishReaderFloatingControlDrag}
           jumpReaderScrollByDrag={jumpReaderScrollByDrag}
           moveReaderFloatingControl={moveReaderFloatingControl}
           readerBookHandle={readerBookHandle}
           scrollReaderToTop={scrollReaderToTop}
           showReaderChromeControls={showReaderChromeControls}
           stopReaderAutoScroll={stopReaderAutoScroll}
-          unlockReaderFloatingControl={unlockReaderFloatingControl}
         />
       )}
 

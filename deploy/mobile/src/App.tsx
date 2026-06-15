@@ -1,10 +1,12 @@
-import { AlertCircle, Check, Menu, X } from 'lucide-react'
+import { AlertCircle, Check, X } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { LeftDrawer } from './app-shell/LeftDrawer'
 import { LocksModal } from './app-shell/LocksModal'
+import { CustomSettingsModal } from './app-shell/CustomSettingsModal'
 import { useAppState } from './app-shell/useAppState'
 import { useMobileAppModel, type ToastTone } from './app-shell/useMobileAppModel'
+import { MENU_LOGO_SRC } from './app-shell/appMeta'
 import { AcquireWorkspace } from './acquire-workspace/AcquireWorkspace'
 import { DetailWorkspace } from './detail-workspace/DetailWorkspace'
 import { LibraryWorkspace } from './library-workspace/LibraryWorkspace'
@@ -13,24 +15,71 @@ import { ReaderWorkspace } from './reader-workspace/ReaderWorkspace'
 function MicroHeader({
   drawerOpen,
   onOpenDrawer,
+  menuImgSrc,
+  menuEffectSrc,
+  menuEffectDuration = 1000,
   head,
   rail,
 }: {
   drawerOpen: boolean
   onOpenDrawer: () => void
+  menuImgSrc: string
+  menuEffectSrc?: string
+  menuEffectDuration?: number
   head?: ReactNode
   rail?: ReactNode
 }) {
+  const [showEffect, setShowEffect] = useState(false)
+  const pendingOpenTimerRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (pendingOpenTimerRef.current === null) return
+      window.clearTimeout(pendingOpenTimerRef.current)
+      pendingOpenTimerRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!drawerOpen) return
+    if (pendingOpenTimerRef.current !== null) {
+      window.clearTimeout(pendingOpenTimerRef.current)
+      pendingOpenTimerRef.current = null
+    }
+    setShowEffect(false)
+  }, [drawerOpen])
+
+  const handleMenuClick = () => {
+    if (drawerOpen) return
+    if (pendingOpenTimerRef.current !== null) {
+      window.clearTimeout(pendingOpenTimerRef.current)
+      pendingOpenTimerRef.current = null
+    }
+    if (menuEffectSrc && !drawerOpen) {
+      setShowEffect(true)
+      pendingOpenTimerRef.current = window.setTimeout(() => {
+        pendingOpenTimerRef.current = null
+        setShowEffect(false)
+        onOpenDrawer()
+      }, menuEffectDuration)
+    } else {
+      onOpenDrawer()
+    }
+  }
+
   return (
     <>
       <button
-        className="micro-menu-button"
-        onClick={onOpenDrawer}
+        className={`micro-menu-strip ${showEffect ? 'effect-active' : ''}`}
+        onClick={handleMenuClick}
         aria-hidden={drawerOpen}
         aria-label="打开菜单"
         tabIndex={drawerOpen ? -1 : 0}
       >
-        <Menu size={18} />
+        <img className="menu-img" src={menuImgSrc} alt="" />
+        {menuEffectSrc && showEffect && (
+          <img className="menu-effect" src={menuEffectSrc} alt="" />
+        )}
       </button>
       <header className="micro-header">
         <div className="micro-status-head">
@@ -66,8 +115,12 @@ export function App() {
   const [locksModalOpen, setLocksModalOpen] = useState(false)
   const {
     acquireWorkspace,
+    customSettingsModalProps,
     drawerOpen,
     leftDrawerProps,
+    menuImgSrc,
+    menuEffectSrc,
+    menuEffectDuration,
     microHeaderStatus,
     readerWorkspaceProps,
     selectedBook,
@@ -90,6 +143,9 @@ export function App() {
           <MicroHeader
             drawerOpen={drawerOpen}
             onOpenDrawer={() => setDrawerOpen(true)}
+            menuImgSrc={menuImgSrc || MENU_LOGO_SRC}
+            menuEffectSrc={menuEffectSrc}
+            menuEffectDuration={menuEffectDuration}
             head={microHeaderStatus.head}
             rail={microHeaderStatus.rail}
           />
@@ -102,6 +158,8 @@ export function App() {
             onLocksUpdate={setLocksState}
             backendUrl={appState.backendUrl}
           />
+
+          <CustomSettingsModal {...customSettingsModalProps} />
         </>
       )}
 

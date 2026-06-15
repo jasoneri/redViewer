@@ -40,6 +40,8 @@ type LibraryReaderActionsDeps = {
   cachedById: Map<string, CachedItem>
   connection: ConnectionState
   episodePageSize: number
+  filteredLibraryShelf: ShelfBook[]
+  filteredOfflineShelf: ShelfBook[]
   offlineShelf: ShelfBook[]
   readerReturnView: View
   readerSettings: ReaderSettings
@@ -197,8 +199,8 @@ export function useLibraryReaderActions(deps: LibraryReaderActionsDeps) {
   }
 
   function findShelfBookForItem(item: ReaderItem | LibraryItem): ShelfBook | undefined {
-    const sourceShelf = deps.readerShelfSource === 'downloads' ? deps.offlineShelf : deps.shelf
-    return sourceShelf.find((book) => {
+    const filteredShelf = deps.readerShelfSource === 'downloads' ? deps.filteredOfflineShelf : deps.filteredLibraryShelf
+    return filteredShelf.find((book) => {
       if (book.kind === 'single') return book.book === item.book && book.ep === item.ep
       return book.book === item.book && book.episodes.some((episode) => episode.ep === item.ep)
     })
@@ -212,8 +214,8 @@ export function useLibraryReaderActions(deps: LibraryReaderActionsDeps) {
       const next = currentBook.episodes[index + direction]
       return next || null
     }
-    const sourceShelf = deps.readerShelfSource === 'downloads' ? deps.offlineShelf : deps.shelf
-    const singles = sourceShelf.filter((book) => book.kind === 'single')
+    const filteredShelf = deps.readerShelfSource === 'downloads' ? deps.filteredOfflineShelf : deps.filteredLibraryShelf
+    const singles = filteredShelf.filter((book) => book.kind === 'single')
     const index = singles.findIndex((book) => book.book === deps.activeItem?.book && book.ep === deps.activeItem?.ep)
     return singles[index + direction] || null
   }
@@ -312,6 +314,16 @@ export function useLibraryReaderActions(deps: LibraryReaderActionsDeps) {
     }
   }
 
+  function findShelfItemByIdentity(book: string, ep: string): LibraryItem | undefined {
+    for (const shelfBook of deps.shelf) {
+      if (shelfBook.book !== book) continue
+      if (shelfBook.kind === 'single' && shelfBook.ep === ep) return shelfBook
+      const episode = shelfBook.episodes.find((row) => row.ep === ep)
+      if (episode) return episode
+    }
+    return undefined
+  }
+
   function openReader(
     item: ReaderItem,
     pages: string[],
@@ -352,6 +364,7 @@ export function useLibraryReaderActions(deps: LibraryReaderActionsDeps) {
       const manifest = await loadManifest(item)
       const progress = await loadProgress(manifest.book, manifest.ep)
       const pages = manifest.pages.map((page) => buildUrl(deps.backendUrl, page))
+      const meta = mergeLibraryMeta(manifest.meta, item.meta, manifest.page_count)
       openReader({
         id: manifest.id,
         book: manifest.book,
@@ -359,6 +372,7 @@ export function useLibraryReaderActions(deps: LibraryReaderActionsDeps) {
         title: manifest.title,
         page_count: manifest.page_count,
         source: 'remote',
+        meta,
       }, pages, progress, 'remote', 'library')
     } catch (error) {
       deps.show('error', error instanceof Error ? error.message : '打开失败')
@@ -373,6 +387,8 @@ export function useLibraryReaderActions(deps: LibraryReaderActionsDeps) {
       const latest = (await getCachedItem(item.id)) || item
       const pages = await getCachedPages(latest)
       const progress = await loadProgress(latest.book, latest.ep)
+      const fallbackItem = findShelfItemByIdentity(latest.book, latest.ep)
+      const meta = mergeLibraryMeta(latest.meta, fallbackItem?.meta, latest.page_count)
       openReader({
         id: latest.id,
         book: latest.book,
@@ -380,6 +396,7 @@ export function useLibraryReaderActions(deps: LibraryReaderActionsDeps) {
         title: latest.title,
         page_count: latest.page_count,
         source: 'cache',
+        meta,
       }, pages, progress, 'cache', returnView)
     } catch (error) {
       deps.show('error', error instanceof Error ? error.message : '打开缓存失败')

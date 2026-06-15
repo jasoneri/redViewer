@@ -53,7 +53,6 @@ type ReaderRuntimeDeps = {
   pageTouchStartRef: MutableRefObject<{ x: number; y: number }>
   pageTouchSuppressClickRef: MutableRefObject<boolean>
   pendingReaderProgressRef: MutableRefObject<ReaderProgress>
-  readerFloatingControlRestoreRef: MutableRefObject<ReaderFloatingControlPosition | null>
   readerInitialRestorePendingRef: MutableRefObject<boolean>
   readerPageFlipActiveRef: MutableRefObject<boolean>
   readerPageFlipKeyRef: MutableRefObject<number>
@@ -67,7 +66,6 @@ type ReaderRuntimeDeps = {
   setReaderAutoScrolling: Dispatch<SetStateAction<boolean>>
   setReaderChromeVisible: Dispatch<SetStateAction<boolean>>
   setReaderFloatingControlPosition: Dispatch<SetStateAction<ReaderFloatingControlPosition>>
-  setReaderFloatingControlUnlocked: Dispatch<SetStateAction<boolean>>
   setReaderLoadedImages: Dispatch<SetStateAction<number>>
   setReaderMaxScrollTop: Dispatch<SetStateAction<number>>
   setReaderMode: Dispatch<SetStateAction<ReaderMode>>
@@ -328,25 +326,9 @@ export function useReaderRuntime(deps: ReaderRuntimeDeps) {
     deps.setReaderFloatingControlPosition(clampReaderFloatingControlPosition(position))
   }
 
-  function unlockReaderFloatingControl() {
-    if (deps.readerMode !== 'scroll') return
-    deps.readerFloatingControlRestoreRef.current = deps.readerFloatingControlPosition
-    deps.setReaderFloatingControlUnlocked(true)
-    deps.setReaderChromeVisible(true)
-    deps.setReaderSettingsOpen(false)
-  }
-
-  function acceptReaderFloatingControlPosition() {
-    const next = saveReaderFloatingControlPosition(deps.readerFloatingControlPosition)
+  function finishReaderFloatingControlDrag(position: ReaderFloatingControlPosition) {
+    const next = saveReaderFloatingControlPosition(position)
     deps.setReaderFloatingControlPosition(next)
-    deps.setReaderFloatingControlUnlocked(false)
-    deps.readerFloatingControlRestoreRef.current = null
-  }
-
-  function cancelReaderFloatingControlPosition() {
-    deps.setReaderFloatingControlPosition(deps.readerFloatingControlRestoreRef.current || loadReaderFloatingControlPosition())
-    deps.setReaderFloatingControlUnlocked(false)
-    deps.readerFloatingControlRestoreRef.current = null
   }
 
   function pageIndexFromScrollTop(scroller: HTMLDivElement, scrollTop: number): number {
@@ -553,9 +535,7 @@ export function useReaderRuntime(deps: ReaderRuntimeDeps) {
   }
 
   return {
-    acceptReaderFloatingControlPosition,
     calculateReaderScrollHeight,
-    cancelReaderFloatingControlPosition,
     changeReaderMode,
     changeReaderPageFlipDuration,
     changeReaderScrollDragStepPercent,
@@ -564,6 +544,7 @@ export function useReaderRuntime(deps: ReaderRuntimeDeps) {
     changeReaderShowCenterNextPrev,
     changeReaderToolbarPosition,
     clearReaderPageFlip,
+    finishReaderFloatingControlDrag,
     handleReaderPageClick,
     handleReaderPageTouchEnd,
     handleReaderPageTouchStart,
@@ -583,7 +564,6 @@ export function useReaderRuntime(deps: ReaderRuntimeDeps) {
     showReaderChromeControls,
     stopReaderAutoScroll,
     toggleReaderAutoScroll,
-    unlockReaderFloatingControl,
   }
 }
 
@@ -609,7 +589,6 @@ export function useMobileReaderRuntimeModel(appState: AppState) {
     pageTouchStartRef,
     pageTouchSuppressClickRef,
     pendingReaderProgressRef,
-    readerFloatingControlRestoreRef,
     readerInitialRestorePendingRef,
     readerPageFlipActiveRef,
     readerPageFlipKeyRef,
@@ -623,7 +602,6 @@ export function useMobileReaderRuntimeModel(appState: AppState) {
     setReaderAutoScrolling,
     setReaderChromeVisible,
     setReaderFloatingControlPosition,
-    setReaderFloatingControlUnlocked,
     setReaderLoadedImages,
     setReaderMaxScrollTop,
     setReaderMode,
@@ -657,7 +635,6 @@ export function useMobileReaderRuntimeModel(appState: AppState) {
     pageTouchStartRef,
     pageTouchSuppressClickRef,
     pendingReaderProgressRef,
-    readerFloatingControlRestoreRef,
     readerInitialRestorePendingRef,
     readerPageFlipActiveRef,
     readerPageFlipKeyRef,
@@ -671,7 +648,6 @@ export function useMobileReaderRuntimeModel(appState: AppState) {
     setReaderAutoScrolling,
     setReaderChromeVisible,
     setReaderFloatingControlPosition,
-    setReaderFloatingControlUnlocked,
     setReaderLoadedImages,
     setReaderMaxScrollTop,
     setReaderMode,

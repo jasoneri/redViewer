@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode, RefObject } from 'react'
-import { Eraser, Move, PlugZap, WifiOff } from 'lucide-react'
+import { Eraser, LoaderCircle, Move, PlugZap, WifiOff } from 'lucide-react'
 import { CustomIcon } from '../icons/CustomIcon'
 import type {
   AcquireWorkspaceActions,
@@ -14,9 +14,9 @@ export function AcquireFlowSteps({ label, steps }: { label: string; steps: CgsSt
   return (
     <div className="flow-strip flow-steps" aria-label={label}>
       {steps.map((step, index) => (
-        <div className={`flow-step ${step.state}`} key={step.key}>
+        <div className={`flow-step ${step.state}`} key={step.key} aria-label={step.ariaLabel}>
           <div className="flow-step-icon" aria-hidden="true">
-            {step.icon}
+            {step.loading ? <LoaderCircle className="spin" size={15} /> : step.icon}
           </div>
           <span>{step.title}</span>
           {index < steps.length - 1 && <i className="flow-step-line" aria-hidden="true" />}
