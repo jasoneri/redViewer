@@ -4,7 +4,10 @@ import type { useMobileAppShellControllerModel } from './useAppShellController'
 import {
   APP_VERSION_FALLBACK,
   downloadAuthorAvatarToLocalStorage,
+  warmSkinBundle,
+  readStoredSkinAssets,
   queryParam,
+  type SkinAssets,
 } from './appMeta'
 import {
   READER_SETTINGS_KEY,
@@ -75,6 +78,7 @@ type AppWorkspaceLifecycleDeps = {
   readerSettingsOpen: boolean
   requestedBook: string
   selectedBook: ShelfBook | null
+  selectedSkin: string
   shelf: ShelfBook[]
   statusInfo: { ero?: boolean | number }
   toolMenuOpen: boolean
@@ -110,6 +114,7 @@ type AppWorkspaceLifecycleDeps = {
   setReaderLoadedImages: Dispatch<SetStateAction<number>>
   setReaderMaxScrollTop: Dispatch<SetStateAction<number>>
   setSelectedBook: Dispatch<SetStateAction<ShelfBook | null>>
+  setSkinAssets: Dispatch<SetStateAction<SkinAssets>>
   setAppVersion: Dispatch<SetStateAction<string>>
 }
 
@@ -128,6 +133,23 @@ export function useAppWorkspaceLifecycle(deps: AppWorkspaceLifecycleDeps) {
       cancelled = true
     }
   }, [deps.authorAvatarSrc, deps.backendUrl])
+
+  useEffect(() => {
+    let cancelled = false
+    const cached = readStoredSkinAssets(deps.selectedSkin)
+    if (cached) deps.setSkinAssets(cached)
+
+    void warmSkinBundle(deps.selectedSkin).then((bundle) => {
+      if (!cancelled) {
+        const assets = bundle[deps.selectedSkin]
+        if (assets) deps.setSkinAssets(assets)
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [deps.selectedSkin])
 
   useEffect(() => {
     let cancelled = false
@@ -466,7 +488,6 @@ export function useMobileWorkspaceLifecycleModel(appState: AppState, deps: Mobil
     libraryPage,
     openOpsId,
     pageIndex,
-    readerFloatingControlUnlocked,
     readerMaxScrollTop,
     readerMode,
     readerPages,
@@ -474,6 +495,7 @@ export function useMobileWorkspaceLifecycleModel(appState: AppState, deps: Mobil
     readerSettings,
     readerSettingsOpen,
     selectedBook,
+    selectedSkin,
     shelf,
     statusInfo,
     toolMenuOpen,
@@ -489,7 +511,6 @@ export function useMobileWorkspaceLifecycleModel(appState: AppState, deps: Mobil
     setAuthorAvatarSrc,
     setAutoOpenConsumed,
     setDoujinTagPanel,
-    setEdgeTipAction,
     setEpisodePage,
     setEpisodePageCounts,
     setLibraryPage,
@@ -501,6 +522,7 @@ export function useMobileWorkspaceLifecycleModel(appState: AppState, deps: Mobil
     setReaderLoadedImages,
     setReaderMaxScrollTop,
     setSelectedBook,
+    setSkinAssets,
   } = appState
   const requestedBook = useMemo(() => queryParam('book'), [])
   const openFirstBook = useMemo(() => queryParam('openFirst') === '1', [])
@@ -530,7 +552,7 @@ export function useMobileWorkspaceLifecycleModel(appState: AppState, deps: Mobil
     pagedEpisodes: deps.shelfModel.pagedEpisodes,
     pagedShelf: deps.shelfModel.pagedShelf,
     pageIndex,
-    readerFloatingControlUnlocked,
+    readerFloatingControlUnlocked: false,
     readerMaxScrollTop,
     readerMode,
     readerPages,
@@ -539,6 +561,7 @@ export function useMobileWorkspaceLifecycleModel(appState: AppState, deps: Mobil
     readerSettingsOpen,
     requestedBook,
     selectedBook,
+    selectedSkin,
     shelf,
     statusInfo,
     toolMenuOpen,
@@ -562,7 +585,7 @@ export function useMobileWorkspaceLifecycleModel(appState: AppState, deps: Mobil
     setAuthorAvatarSrc,
     setAutoOpenConsumed,
     setDoujinTagPanel,
-    setEdgeTipAction,
+    setEdgeTipAction: () => {},
     setEpisodePage,
     setEpisodePageCounts,
     setLibraryPage,
@@ -574,6 +597,7 @@ export function useMobileWorkspaceLifecycleModel(appState: AppState, deps: Mobil
     setReaderLoadedImages,
     setReaderMaxScrollTop,
     setSelectedBook,
+    setSkinAssets,
     setAppVersion,
   })
 }

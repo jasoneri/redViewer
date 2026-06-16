@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronRight, CircleHelp, History, LoaderCircle, Save, Send, Square } from 'lucide-react'
+import { Check, ChevronRight, CircleHelp, History, LoaderCircle, Save, Send, Square, X } from 'lucide-react'
 import { CustomIcon } from '../../icons/CustomIcon'
 import { ProgressMeter } from '../../shared/Cover'
 import { AcquireFlowSteps, CgsGateLayer } from '../acquireUi'
@@ -102,6 +102,37 @@ function CgsMcpTimeline({
   )
 }
 
+function CgsMcpAttachedBook({
+  mcpView,
+  mcpActions,
+}: {
+  mcpView: CgsMcpPanelView
+  mcpActions: Pick<CgsMcpPanelActions, 'detachBook'>
+}) {
+  if (!mcpView.bookAttached || !mcpView.searchBookInfo) return null
+
+  const attachedBookTitle = mcpView.searchBookInfo.book || mcpView.searchBookInfo.title || ''
+
+  return (
+    <div className="cgs-search-source mcp-attached-book" aria-label={`${attachedBookTitle} 已附加`}>
+      <div className="cgs-search-source-title">
+        <CustomIcon name="detailSearch" size={15} />
+        <span className="cgs-search-source-name" title={attachedBookTitle}>{attachedBookTitle}</span>
+        {mcpView.searchBookInfo.source && <span className="cgs-search-source-badge" title={`源站：${mcpView.searchBookInfo.source}`}>{mcpView.searchBookInfo.source}</span>}
+        <button
+          type="button"
+          className="icon-only mcp-attached-book-remove"
+          onClick={mcpActions.detachBook}
+          aria-label="移除附加书籍"
+          title="移除"
+        >
+          <X size={14} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function CgsMcpComposer({
   mcpView,
   mcpActions,
@@ -195,6 +226,9 @@ export function CgsMcpPanel({
       <AcquireFlowSteps label="MCP 获取流程" steps={mcpView.steps} />
 
       <div className="mcp-chat-panel">
+        <div className="mcp-chat-top">
+          <CgsMcpAttachedBook mcpView={mcpView} mcpActions={mcpActions} />
+        </div>
         <CgsMcpTimeline mcpView={mcpView} mcpSelectors={mcpSelectors} mcpActions={mcpActions} acquireRefs={{ mcpScroll: acquireRefs.mcpScroll }} />
         <CgsMcpComposer mcpView={mcpView} mcpActions={mcpActions} />
       </div>
@@ -277,7 +311,7 @@ export function CgsMcpDrawerSettings({
       </div>
       <div className="drawer-card-body">
         <label className="cgs-conf-field">
-          <div className="cgs-conf-btn-group cgs-conf-prefixed-group">
+          <div className="cgs-conf-btn-group cgs-conf-prefixed-group cgs-conf-clear-group">
             <button type="button" className="cgs-conf-text-btn" disabled>baseurl</button>
             <input
               value={drawerView.draft.base_url}
@@ -285,10 +319,20 @@ export function CgsMcpDrawerSettings({
               placeholder="https://example.com"
               aria-label="LLM base URL"
             />
+            <button
+              type="button"
+              className="icon-only cgs-conf-icon-btn accept-clear"
+              onClick={() => drawerActions.setDraft((draft) => ({ ...draft, base_url: '' }))}
+              disabled={!drawerView.draft.base_url}
+              aria-label="清空 LLM base URL"
+              title="清空 LLM base URL"
+            >
+              <X size={16} />
+            </button>
           </div>
         </label>
         <label className="cgs-conf-field">
-          <div className="cgs-conf-btn-group cgs-conf-prefixed-group">
+          <div className="cgs-conf-btn-group cgs-conf-prefixed-group cgs-conf-clear-group">
             <button type="button" className="cgs-conf-text-btn" disabled>API Key</button>
             <input
               value={drawerView.draft.api_key}
@@ -298,6 +342,16 @@ export function CgsMcpDrawerSettings({
               placeholder="sk-..."
               aria-label="LLM API key"
             />
+            <button
+              type="button"
+              className="icon-only cgs-conf-icon-btn accept-clear"
+              onClick={() => drawerActions.setDraft((draft) => ({ ...draft, api_key: '' }))}
+              disabled={!drawerView.draft.api_key}
+              aria-label="清空 LLM API Key"
+              title="清空 LLM API Key"
+            >
+              <X size={16} />
+            </button>
           </div>
         </label>
         <label className={`cgs-conf-field secret-field ${drawerView.modelHelpOpen ? 'help-open' : ''}`} aria-label="LLM model">
@@ -306,7 +360,7 @@ export function CgsMcpDrawerSettings({
             <input
               value={drawerView.draft.model}
               onChange={(event) => drawerActions.setDraft((draft) => ({ ...draft, model: event.target.value }))}
-              placeholder="gpt-5.4-mini"
+              placeholder="deepseek-ai/DeepSeek-V4-Pro"
               aria-label="LLM model"
               aria-describedby={drawerView.modelHelpOpen ? 'cgs-mcp-model-teachtip' : undefined}
             />
@@ -324,8 +378,8 @@ export function CgsMcpDrawerSettings({
           </div>
           {drawerView.modelHelpOpen && (
             <div id="cgs-mcp-model-teachtip" className="secret-help-popover tail-top-right" role="note" aria-label="Model 支持说明">
-              <strong>Model 支持说明</strong>
-              <span>只支持 openai-chat 模型</span>
+              <span>仅支持 openai-chat 模型</span>
+              <span>可能有帮助：baseurl 尝试加 <code>/v1</code>; 最后不要带 <code>/</code></span>
             </div>
           )}
         </label>

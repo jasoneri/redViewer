@@ -386,10 +386,11 @@ export function useAppShellController(deps: AppShellControllerDeps) {
     }
   }
 
-  async function refreshLibrary(url = deps.backendUrl, nextSort: SortMode = deps.sort, resetPage = true, showLoading = true) {
+  async function refreshLibrary(url = deps.backendUrl, nextSort: SortMode = deps.sort, resetPage = true, showLoading = true, sync = false) {
     if (showLoading) deps.setBusy('library')
     try {
-      const response = await apiGet<LibraryResponse>(url, `/mobile/library?sort=${encodeURIComponent(nextSort)}&compact=1`)
+      const syncQuery = sync ? '&sync=1' : ''
+      const response = await apiGet<LibraryResponse>(url, `/mobile/library?sort=${encodeURIComponent(nextSort)}&compact=1${syncQuery}`)
       const books = response.books?.length !== undefined ? response.books : buildShelf(response.items || [])
       deps.setShelf(books)
       if (resetPage) deps.setLibraryPage(1)
@@ -409,6 +410,7 @@ export function useAppShellController(deps: AppShellControllerDeps) {
       }
       deps.setConnection('backend_unreachable')
       deps.show('error', error instanceof Error ? error.message : '读取书库失败')
+      if (sync) throw error
     } finally {
       if (showLoading) deps.setBusy('')
     }

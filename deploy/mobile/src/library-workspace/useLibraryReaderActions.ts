@@ -1,4 +1,4 @@
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import { useRef, type Dispatch, type MutableRefObject, type PointerEvent, type SetStateAction } from 'react'
 import {
   readerChromeShouldShowPage,
   type ReaderItem,
@@ -6,6 +6,7 @@ import {
   type ReaderProgress,
   type ReaderSettings,
 } from '../reader-workspace/readerCore'
+import { clampCgsSubmitPosition, loadCgsSubmitPosition, saveCgsSubmitPosition, MULTI_CHECK_FLOAT_POSITION_KEY } from '../acquire-workspace/acquireCore'
 import {
   isMissingMobileContract,
   legacyItemId,
@@ -31,7 +32,16 @@ import {
 type View = 'library' | 'downloads' | 'reader' | 'acquire'
 type ShelfSource = 'library' | 'downloads'
 type BookHandle = 'save' | 'remove' | 'del'
+export type MultiCheckBatchAction = 'cacheAdd' | 'save' | 'del'
 type ShowToast = (tone: 'ok' | 'warn' | 'error', text: string) => void
+type MultiCheckFloatDragState = {
+  pointerId: number
+  startX: number
+  startY: number
+  originX: number
+  originY: number
+  lastPosition: { x: number; y: number }
+}
 
 type LibraryReaderActionsDeps = {
   activeItem: ReaderItem | null
@@ -39,10 +49,14 @@ type LibraryReaderActionsDeps = {
   cached: CachedItem[]
   cachedById: Map<string, CachedItem>
   connection: ConnectionState
+  deleteHardMode: boolean
   episodePageSize: number
   filteredLibraryShelf: ShelfBook[]
   filteredOfflineShelf: ShelfBook[]
   offlineShelf: ShelfBook[]
+  multiCheckMode: boolean
+  multiCheckedIds: string[]
+  multiCheckFloatPosition: { x: number; y: number }
   readerReturnView: View
   readerSettings: ReaderSettings
   readerShelfSource: ShelfSource
@@ -54,7 +68,7 @@ type LibraryReaderActionsDeps = {
   readerUserScrolledRef: MutableRefObject<boolean>
   restoredScrollRef: MutableRefObject<string>
   refreshCache: () => Promise<CachedItem[]>
-  refreshLibrary: (url?: string, nextSort?: SortMode, resetPage?: boolean, showLoading?: boolean) => Promise<void>
+  refreshLibrary: (url?: string, nextSort?: SortMode, resetPage?: boolean, showLoading?: boolean, sync?: boolean) => Promise<void>
   restoreReaderScrollTop: () => void
   show: ShowToast
   stopReaderAutoScroll: () => void
@@ -63,6 +77,9 @@ type LibraryReaderActionsDeps = {
   setCacheProgress: Dispatch<SetStateAction<Record<string, string>>>
   setEpisodePage: Dispatch<SetStateAction<number>>
   setPageIndex: Dispatch<SetStateAction<number>>
+  setMultiCheckMode: Dispatch<SetStateAction<boolean>>
+  setMultiCheckedIds: Dispatch<SetStateAction<string[]>>
+  setMultiCheckFloatPosition: Dispatch<SetStateAction<{ x: number; y: number }>>
   setReaderChromeVisible: Dispatch<SetStateAction<boolean>>
   setReaderLoadedImages: Dispatch<SetStateAction<number>>
   setReaderMaxScrollTop: Dispatch<SetStateAction<number>>
@@ -84,14 +101,18 @@ export function useLibraryReaderActions(deps: LibraryReaderActionsDeps) {
     else deps.show(handle === 'del' ? 'error' : 'warn', handle === 'del' ? '已彻底删除' : '已移至回收')
   }
 
+  async function applyBookHandle(item: LibraryItem, handle: BookHandle) {
+    await apiPost(deps.backendUrl, '/comic/handle', {
+      handle,
+      book: item.book,
+      ep: item.ep || null,
+    })
+  }
+
   async function handleBookAction(item: LibraryItem, handle: BookHandle) {
     deps.setBusy(`handle:${item.id}:${handle}`)
     try {
-      await apiPost(deps.backendUrl, '/comic/handle', {
-        handle,
-        book: item.book,
-        ep: item.ep || null,
-      })
+      await applyBookHandle(item, handle)
       await deps.refreshLibrary(deps.backendUrl, deps.sort, false, false)
       if (deps.selectedBook?.book === item.book) deps.setSelectedBook(null)
       showBookHandleResult(handle)
@@ -108,11 +129,7 @@ export function useLibraryReaderActions(deps: LibraryReaderActionsDeps) {
       : null
     deps.setBusy(`handle:${item.id}:${handle}`)
     try {
-      await apiPost(deps.backendUrl, '/comic/handle', {
-        handle,
-        book: item.book,
-        ep: item.ep || null,
-      })
+      await applyBookHandle(item, handle)
       await deps.refreshLibrary(deps.backendUrl, deps.sort, false, false)
       if (nextEpisodes) {
         if (nextEpisodes.length > 0) {
@@ -196,6 +213,95 @@ export function useLibraryReaderActions(deps: LibraryReaderActionsDeps) {
     } finally {
       deps.setBusy('')
     }
+  }
+
+  const multiCheckDragRef = useRef<MultiCheckFloatDragState | null>(null)
+
+  async function runMultiCheckBatch(action: MultiCheckBatchAction) {
+    const books = deps.filteredLibraryShelf.filter((book) => deps.multiCheckedIds.includes(book.id))
+    if (!books.length) {
+      if (deps.multiCheckedIds.length) {
+        deps.setMultiCheckedIds([])
+        deps.show('warn', '选中项已失效')
+      }
+      return
+    }
+    if (action === 'cacheAdd' && deps.connection !== 'online') {
+      deps.show('warn', '当前不在线，无法缓存')
+      return
+    }
+    deps.setBusy('multi-check')
+    let ok = 0
+    let fail = 0
+    try {
+      for (const book of books) {
+        deps.setCacheProgress((state) => ({ ...state, 'multi-check': `${ok + fail + 1}/${books.length}` }))
+        try {
+          if (action === 'cacheAdd') {
+            if (book.kind === 'series') {
+              const targets = book.episodes.filter((episode) => !deps.cachedById.has(episode.id))
+              for (const episode of targets) await fetchAndCache(episode)
+            } else {
+              await fetchAndCache(book)
+            }
+          } else {
+            const handle: BookHandle = action === 'save' ? 'save' : deps.deleteHardMode ? 'del' : 'remove'
+            await applyBookHandle(book, handle)
+          }
+          ok += 1
+        } catch {
+          fail += 1
+        }
+      }
+      if (action === 'cacheAdd') await deps.refreshCache()
+      else await deps.refreshLibrary(deps.backendUrl, deps.sort, false, false)
+      const label = action === 'cacheAdd' ? '缓存' : action === 'save' ? '保留' : deps.deleteHardMode ? '删除' : '移除'
+      deps.show(fail ? 'warn' : 'ok', fail ? `${label}成功 ${ok}，失败 ${fail}` : `已${label} ${ok} 项`)
+    } catch (error) {
+      deps.show('error', error instanceof Error ? error.message : '刷新失败')
+    } finally {
+      deps.setCacheProgress((state) => {
+        const next = { ...state }
+        delete next['multi-check']
+        return next
+      })
+      deps.setMultiCheckedIds([])
+      deps.setBusy('')
+    }
+  }
+
+  function startMultiCheckDrag(event: PointerEvent<HTMLButtonElement>) {
+    event.preventDefault()
+    const origin = clampCgsSubmitPosition(deps.multiCheckFloatPosition)
+    multiCheckDragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: origin.x,
+      originY: origin.y,
+      lastPosition: origin,
+    }
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  function moveMultiCheckDrag(event: PointerEvent<HTMLButtonElement>) {
+    const drag = multiCheckDragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    event.preventDefault()
+    const next = clampCgsSubmitPosition({
+      x: drag.originX + event.clientX - drag.startX,
+      y: drag.originY + event.clientY - drag.startY,
+    })
+    drag.lastPosition = next
+    deps.setMultiCheckFloatPosition(next)
+  }
+
+  function finishMultiCheckDrag(event: PointerEvent<HTMLButtonElement>) {
+    const drag = multiCheckDragRef.current
+    if (!drag || drag.pointerId !== event.pointerId) return
+    multiCheckDragRef.current = null
+    deps.setMultiCheckFloatPosition(saveCgsSubmitPosition(drag.lastPosition, MULTI_CHECK_FLOAT_POSITION_KEY))
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
   }
 
   function findShelfBookForItem(item: ReaderItem | LibraryItem): ShelfBook | undefined {
@@ -428,14 +534,18 @@ export function useLibraryReaderActions(deps: LibraryReaderActionsDeps) {
   return {
     cacheItem,
     cacheSeries,
+    finishMultiCheckDrag,
     handleBookAction,
     handleDetailBookAction,
     loadManifest,
+    moveMultiCheckDrag,
     openReaderNeighbor,
     openShelfBook,
     openSourceItem,
     readerBookHandle,
     removeCached,
     removeCachedBook,
+    runMultiCheckBatch,
+    startMultiCheckDrag,
   }
 }

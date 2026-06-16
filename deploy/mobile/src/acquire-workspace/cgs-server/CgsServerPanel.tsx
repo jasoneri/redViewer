@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BookOpen, Check, FolderOpen, LoaderCircle, PlugZap, RefreshCw, Save, Search, Tags, X } from 'lucide-react'
+import { BookOpen, Check, FolderOpen, LoaderCircle, PlugZap, RefreshCw, Save, Search, Tags, UserRound, X } from 'lucide-react'
 import { Tag } from 'antd'
 import { CustomIcon } from '../../icons/CustomIcon'
 import { Cover } from '../../shared/Cover'
@@ -118,6 +118,12 @@ function CgsSearchControls({
   )
 }
 
+function renderCgsSearchCandidateIcon(candidate: CgsSearchCandidate) {
+  if (candidate.key === 'title') return <BookOpen size={14} />
+  if (candidate.key === 'artist') return <UserRound size={14} />
+  return <Tags size={14} />
+}
+
 function CgsSearchSource({
   bookTitle,
   source,
@@ -148,7 +154,7 @@ function CgsSearchSource({
             title={candidate.value}
             aria-pressed={keyword === candidate.value}
           >
-            <Tags size={14} />
+            {renderCgsSearchCandidateIcon(candidate)}
             <span>{candidate.label}</span>
           </button>
         ))}

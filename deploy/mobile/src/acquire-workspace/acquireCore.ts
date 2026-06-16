@@ -16,6 +16,7 @@ import type {
 } from './acquireTypes'
 
 const CGS_SUBMIT_POSITION_KEY = 'rv_mobile_cgs_submit_position'
+export const MULTI_CHECK_FLOAT_POSITION_KEY = 'rv_mobile_multicheck_float_position'
 const CGS_SUBMIT_CONTROL_WIDTH = 108
 const CGS_SUBMIT_CONTROL_HEIGHT = 36
 const CGS_SUBMIT_CONTROL_SAFE_BOTTOM = 84
@@ -64,9 +65,9 @@ export function clampCgsSubmitPosition(position: CgsSubmitPosition): CgsSubmitPo
   }
 }
 
-export function loadCgsSubmitPosition(): CgsSubmitPosition {
+export function loadCgsSubmitPosition(storageKey = CGS_SUBMIT_POSITION_KEY): CgsSubmitPosition {
   try {
-    const raw = localStorage.getItem(CGS_SUBMIT_POSITION_KEY)
+    const raw = localStorage.getItem(storageKey)
     if (!raw) return defaultCgsSubmitPosition()
     const parsed = JSON.parse(raw) as Partial<CgsSubmitPosition>
     if (typeof parsed.x !== 'number' || typeof parsed.y !== 'number') return defaultCgsSubmitPosition()
@@ -77,9 +78,9 @@ export function loadCgsSubmitPosition(): CgsSubmitPosition {
   }
 }
 
-export function saveCgsSubmitPosition(position: CgsSubmitPosition): CgsSubmitPosition {
+export function saveCgsSubmitPosition(position: CgsSubmitPosition, storageKey = CGS_SUBMIT_POSITION_KEY): CgsSubmitPosition {
   const next = clampCgsSubmitPosition(position)
-  localStorage.setItem(CGS_SUBMIT_POSITION_KEY, JSON.stringify(next))
+  localStorage.setItem(storageKey, JSON.stringify(next))
   return next
 }
 

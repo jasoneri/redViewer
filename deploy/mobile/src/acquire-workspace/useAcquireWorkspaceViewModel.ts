@@ -49,8 +49,10 @@ type AcquireWorkspaceViewModelDeps = {
   cgsGatePhase: CgsGatePhase
   cgsHeadGateFlight: CgsGateFlight | null
   chapterPanelBookKey: string
+  cgsMcpBookAttached: boolean
   cgsMcpExpandedToolId: string | null
   cgsMcpHistoryOpen: boolean
+  cgsMcpLibrarySyncing: boolean
   cgsMcpLlmDraft: CgsMcpLlmConfig
   cgsMcpModelHelpOpen: boolean
   cgsMcpPrompt: string
@@ -102,6 +104,7 @@ type AcquireWorkspaceViewModelDeps = {
   syncCgsSavePathFromBookshelf: () => void
   updateCgsConfig: () => Promise<boolean> | boolean
   setCgsConfigDraft: Dispatch<SetStateAction<CgsConfigDraft>>
+  setCgsMcpBookAttached: Dispatch<SetStateAction<boolean>>
   setCgsMcpExpandedToolId: Dispatch<SetStateAction<string | null>>
   setCgsMcpHistoryOpen: Dispatch<SetStateAction<boolean>>
   setCgsMcpLlmDraft: Dispatch<SetStateAction<CgsMcpLlmConfig>>
@@ -170,7 +173,14 @@ export function useAcquireWorkspaceViewModel(deps: AcquireWorkspaceViewModelDeps
     { key: 'site', title: '站点', state: cgsMcpSiteTone === 'error' ? 'error' : cgsMcpSiteDone ? 'done' : deps.cgsMcpRunning ? 'current' : 'pending', icon: createElement(CustomIcon, { name: 'cgsSite', size: 15 }) },
     { key: 'search', title: '搜索', state: cgsMcpSearchTone === 'error' ? 'error' : cgsMcpSiteTone === 'error' ? 'pending' : cgsMcpSearchDone ? 'done' : cgsMcpSiteDone ? 'current' : 'pending', icon: createElement(Search, { size: 15 }) },
     { key: 'submit', title: '提交', state: cgsMcpSubmitTone === 'error' ? 'error' : cgsMcpSiteTone === 'error' || cgsMcpSearchTone === 'error' ? 'pending' : cgsMcpSubmitDone ? 'done' : cgsMcpSearchDone ? 'current' : 'pending', icon: createElement(CustomIcon, { name: 'cgsSubmit', size: 15 }) },
-    { key: 'library', title: '入库', state: cgsMcpFinal?.success && !cgsMcpToolErrored ? 'done' : cgsMcpFailed && !cgsMcpMappedStepErrored ? 'error' : cgsMcpSubmitDone ? 'current' : 'pending', icon: createElement(CustomIcon, { name: 'cgsLibrary', size: 15 }) },
+    {
+      key: 'library',
+      title: '入库',
+      state: deps.cgsMcpLibrarySyncing ? 'current' : cgsMcpFinal?.success && !cgsMcpToolErrored ? 'done' : cgsMcpFailed && !cgsMcpMappedStepErrored ? 'error' : cgsMcpSubmitDone ? 'current' : 'pending',
+      icon: createElement(CustomIcon, { name: 'cgsLibrary', size: 15 }),
+      loading: deps.cgsMcpLibrarySyncing,
+      ariaLabel: deps.cgsMcpLibrarySyncing ? '同步书库中' : undefined,
+    },
   ]
 
   const workspaceProps: AcquireWorkspaceProps = {
@@ -236,6 +246,7 @@ export function useAcquireWorkspaceViewModel(deps: AcquireWorkspaceViewModelDeps
     },
     mcpView: {
       active: deps.cgsWorkspaceMode === 'mcp',
+      bookAttached: Boolean(deps.cgsSearchBookInfo && deps.cgsMcpBookAttached),
       busy: deps.busy,
       canSend: cgsMcpCanSend,
       disabled: false,
@@ -247,6 +258,7 @@ export function useAcquireWorkspaceViewModel(deps: AcquireWorkspaceViewModelDeps
       prompt: deps.cgsMcpPrompt,
       promptHistory: deps.cgsMcpPromptHistory,
       running: deps.cgsMcpRunning,
+      searchBookInfo: deps.cgsSearchBookInfo,
       showGate: showMcpGate,
       steps: cgsMcpSteps,
       timeline: deps.cgsMcpTimeline,
@@ -257,6 +269,7 @@ export function useAcquireWorkspaceViewModel(deps: AcquireWorkspaceViewModelDeps
       toolTone: cgsMcpToolTone,
     },
     mcpActions: {
+      detachBook: () => deps.setCgsMcpBookAttached(false),
       endPromptComposition: () => { deps.cgsMcpComposerRef.current = false },
       handlePromptKeyDown: deps.handleCgsMcpPromptKeyDown,
       runGateLoad: deps.runCgsGateLoad,

@@ -127,7 +127,7 @@ export function StatusBadgeIcon({
 
 const SHELF_PAGER_THEME = {
   algorithm: theme.darkAlgorithm,
-  token: { colorPrimary: '#d9b35f' },
+  token: { colorPrimary: '#f77' },
 }
 
 export function ShelfPager({

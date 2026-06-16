@@ -4,7 +4,7 @@
 
 ## [📱rv-app](/guide/mobile)
 
-## rv-desktop
+## rv-web
 
 ### 📚 列表/网格预览
 

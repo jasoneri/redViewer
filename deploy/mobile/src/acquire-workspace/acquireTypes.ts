@@ -159,6 +159,7 @@ export type CgsMcpToolTone = 'ok' | 'warn' | 'error'
 
 export type CgsMcpPanelView = {
   active: boolean
+  bookAttached: boolean
   busy: string
   canSend: boolean
   disabled: boolean
@@ -170,6 +171,7 @@ export type CgsMcpPanelView = {
   prompt: string
   promptHistory: string[]
   running: boolean
+  searchBookInfo: CgsSearchBookInfo | null
   showGate: boolean
   steps: CgsStep[]
   timeline: CgsMcpTimelineItem[]
@@ -182,6 +184,7 @@ export type CgsMcpPanelSelectors = {
 }
 
 export type CgsMcpPanelActions = {
+  detachBook: () => void
   endPromptComposition: () => void
   handlePromptKeyDown: (event: ReactKeyboardEvent<HTMLTextAreaElement>) => void
   runGateLoad: (mode: CgsWorkspaceMode) => Promise<void> | void

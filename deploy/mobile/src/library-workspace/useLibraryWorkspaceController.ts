@@ -34,7 +34,7 @@ type LibraryWorkspaceControllerDeps = {
   statusInfo: StatusInfo
   view: View
   refreshCache: () => Promise<unknown>
-  refreshLibrary: (url?: string, nextSort?: SortMode, resetPage?: boolean, showLoading?: boolean) => Promise<void>
+  refreshLibrary: (url?: string, nextSort?: SortMode, resetPage?: boolean, showLoading?: boolean, sync?: boolean) => Promise<void>
   show: ShowToast
   setActiveToolPanel: Dispatch<SetStateAction<'filter' | 'sort' | null>>
   setBusy: Dispatch<SetStateAction<string>>
@@ -52,6 +52,8 @@ type LibraryWorkspaceControllerDeps = {
   setFilterDraft: Dispatch<SetStateAction<string>>
   setKeyword: Dispatch<SetStateAction<string>>
   setLibraryPage: Dispatch<SetStateAction<number>>
+  setMultiCheckMode: Dispatch<SetStateAction<boolean>>
+  setMultiCheckedIds: Dispatch<SetStateAction<string[]>>
   setQuery: Dispatch<SetStateAction<string>>
   setSelectedBook: Dispatch<SetStateAction<ShelfBook | null>>
   setSelectedShelfSource: Dispatch<SetStateAction<ShelfSource>>
@@ -194,6 +196,7 @@ export function useLibraryWorkspaceController(deps: LibraryWorkspaceControllerDe
 
   async function switchDoujinMode() {
     const next = !Boolean(deps.statusInfo.ero)
+    exitMultiCheck()
     deps.setBusy('switch-ero')
     try {
       const response = await fetch(buildUrl(deps.backendUrl, `/comic/switch_ero?enable=${String(next)}`), { method: 'POST' })
@@ -208,6 +211,40 @@ export function useLibraryWorkspaceController(deps: LibraryWorkspaceControllerDe
     }
   }
 
+  function exitMultiCheck() {
+    deps.setMultiCheckMode(false)
+    deps.setMultiCheckedIds([])
+  }
+
+  function toggleMultiCheckMode() {
+    deps.setMultiCheckMode((prev) => {
+      if (prev) deps.setMultiCheckedIds([])
+      return !prev
+    })
+  }
+
+  function toggleMultiCheckId(id: string) {
+    deps.setMultiCheckedIds((ids) => (ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id]))
+  }
+
+  function clearMultiCheck() {
+    deps.setMultiCheckedIds([])
+  }
+
+  function selectAllCurrentPage(pageIds: string[]) {
+    if (!pageIds.length) return
+    deps.setMultiCheckedIds((current) => {
+      const allSelected = pageIds.every((id) => current.includes(id))
+      if (allSelected) {
+        const pageSet = new Set(pageIds)
+        return current.filter((id) => !pageSet.has(id))
+      }
+      const merged = new Set(current)
+      pageIds.forEach((id) => merged.add(id))
+      return [...merged]
+    })
+  }
+
   function runEdgeAction(action: EdgeAction) {
     if (action === 'filter' || action === 'sort') {
       openToolPanel(action)
@@ -217,6 +254,7 @@ export function useLibraryWorkspaceController(deps: LibraryWorkspaceControllerDe
     if (action === 'refresh' && !deps.activeSourceIsOffline && deps.busy !== 'library') void deps.refreshLibrary()
     if (action === 'delete-mode') toggleDeleteMode()
     if (action === 'doujin') void switchDoujinMode()
+    if (action === 'multi-check') toggleMultiCheckMode()
   }
 
   function openEdgeMenu() {
@@ -228,6 +266,7 @@ export function useLibraryWorkspaceController(deps: LibraryWorkspaceControllerDe
   }
 
   function openTab(next: View) {
+    exitMultiCheck()
     if (next === 'acquire') {
       void openAcquireTab()
       return
@@ -314,6 +353,11 @@ export function useLibraryWorkspaceController(deps: LibraryWorkspaceControllerDe
     selectFilterKeyword,
     openTab,
     toggleDeleteMode,
+    toggleMultiCheckId,
+    toggleMultiCheckMode,
     toggleSeriesOnly,
+    clearMultiCheck,
+    exitMultiCheck,
+    selectAllCurrentPage,
   }
 }

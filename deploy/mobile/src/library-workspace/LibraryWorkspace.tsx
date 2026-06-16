@@ -1,10 +1,12 @@
 import { Filter, X } from 'lucide-react'
-import type { ReactNode, RefObject } from 'react'
+import type { PointerEventHandler, ReactNode, RefObject } from 'react'
 import { ShelfPager, type CoverOverlayTag } from '../shared/Cover'
 import type { ConnectionState, LibraryMeta, Progress, ShelfBook } from '../mobileStore'
 import { BookTile } from './BookTile'
 import { EdgeTools, type EdgeAction } from './EdgeTools'
+import { MultiCheckFloat } from './MultiCheckFloat'
 import { ShelfToolPanel } from './ShelfToolPanel'
+import type { MultiCheckBatchAction } from './useLibraryReaderActions'
 
 type ShelfSource = 'library' | 'downloads'
 type SortMode = 'time_desc' | 'time_asc' | 'name_asc' | 'name_desc'
@@ -36,6 +38,9 @@ export type ShelfWorkspaceView = {
   isDoujinMode: boolean
   libraryPageSafe: number
   libraryPageSize: number
+  multiCheckFloatPosition: { x: number; y: number }
+  multiCheckMode: boolean
+  multiCheckedIds: string[]
   openOpsId: string
   pagedShelf: ShelfBook[]
   query: string
@@ -82,6 +87,14 @@ export type ShelfWorkspaceActions = {
   selectDoujinTag: (tag: string) => void
   selectFilterKeyword: (keyword: string) => void
   setFilterDraft: (value: string) => void
+  clearMultiCheck: () => void
+  exitMultiCheck: () => void
+  runMultiCheckBatch: (action: MultiCheckBatchAction) => void | Promise<void>
+  startMultiCheckDrag: PointerEventHandler<HTMLButtonElement>
+  moveMultiCheckDrag: PointerEventHandler<HTMLButtonElement>
+  finishMultiCheckDrag: PointerEventHandler<HTMLButtonElement>
+  selectAllCurrentPage: (pageIds: string[]) => void
+  toggleMultiCheckId: (id: string) => void
   toggleOps: (bookId: string) => void
   toggleSeriesOnly: () => void
 }
@@ -217,10 +230,14 @@ export function LibraryWorkspace({
         comicMode={shelfView.comicMode}
         deleteHardMode={shelfView.deleteHardMode}
         showDoujinAction={!shelfView.activeSourceIsOffline}
+        showMultiCheckAction={shelfView.isDoujinMode && !shelfView.activeSourceIsOffline}
+        multiCheckActive={shelfView.multiCheckMode}
         onAction={shelfActions.runEdgeAction}
         onOpenMenu={shelfActions.openEdgeMenu}
         onCloseMenu={shelfActions.closeEdgeMenu}
       />
+
+      <MultiCheckFloat shelfView={shelfView} shelfActions={shelfActions} />
 
       {shelfView.activeToolPanel && (
         <ShelfToolPanel

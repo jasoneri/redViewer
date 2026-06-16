@@ -7,12 +7,15 @@ import {
   APP_AUTHOR,
   CHANGELOG_URL,
   CURRENT_LANGUAGE_LABEL,
+  DEFAULT_BACKEND,
   DOCS_URL,
   FAQ_URL,
   ISSUES_URL,
+  MENU_LOGO_SRC,
   RELEASES_URL,
 } from './appMeta'
 import { compactPathTail, useMobileAppShellControllerModel } from './useAppShellController'
+import { clearSkinAssetsCache, restoreCustomSettingsStorage, setSelectedSkinId } from './customSettingsStorage'
 import { getCgsStatusKey, getCgsStatusPercent } from '../acquire-workspace/acquireCore'
 import { AcquireDrawerSettings } from '../acquire-workspace/AcquireWorkspace'
 import { useMobileAcquireModel } from '../acquire-workspace/useMobileAcquireModel'
@@ -88,11 +91,11 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
     cgsMcpLlmConfig, cgsMcpLlmDraft, cgsMcpModelHelpOpen, cgsMcpPrompt, cgsMcpPromptHistory, cgsMcpRunning, cgsMcpScrollRef,
     cgsMcpSubmittedRef, cgsMcpTimeline, cgsModeSwap, cgsSearchBookInfo, cgsSessionId, cgsStatus, cgsStatusDotRef, cgsStatusHeadRef,
     cgsSubmitDragRef, cgsSubmitPosition, cgsWorkspaceMode, comicConfig, comicPathDraft, connection, deleteHardMode, deviceId,
-    doujinTagLinkButtonRef, doujinTagPanel, drawerOpen, edgePointerActiveRef, edgeTipAction, episodePage, episodePageCounts,
+    doujinTagLinkButtonRef, doujinTagPanel, drawerOpen, episodePage, episodePageCounts,
     filesystemBusy, filesystemExpandedKeys, filesystemTree, filterDraft, keyword, libraryPage, offlineCoverUrls, offlineCoverUrlsRef,
     openOpsId, pageIndex, pageTouchStartRef, pageTouchSuppressClickRef, pathBusy, pathSegments, pendingReaderProgressRef,
-    progressByKey, query, readerAutoScrolling, readerChromeVisible, readerFit, readerFloatingControlPosition, readerFloatingControlRestoreRef,
-    readerFloatingControlUnlocked, readerInitialRestorePendingRef, readerLoadedImages, readerMaxScrollTop, readerMode, readerPageFlip,
+    progressByKey, query, readerAutoScrolling, readerChromeVisible, readerFit, readerFloatingControlPosition,
+    readerInitialRestorePendingRef, readerLoadedImages, readerMaxScrollTop, readerMode, readerPageFlip,
     readerPageFlipActiveRef, readerPageFlipKeyRef, readerPageJumpOpen, readerPages, readerProgrammaticScrollRef, readerReturnView,
     readerScrollRenderNonce, readerScrollTop, readerSettings, readerSettingsOpen, readerShelfSource, readerUserScrolledRef,
     restoredScrollRef, rootSecretAuthorized, rootSecretConfigured, rootSecretDraft, rootSecretHelpOpen, scrollProgressTimerRef, scrollReaderRef, selectedBook,
@@ -102,14 +105,14 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
     setCgsGateLoadingMode, setCgsGatePhase, setCgsHeadGateFlight, setCgsMcpExpandedToolId, setCgsMcpHistoryOpen, setCgsMcpLlmConfig,
     setCgsMcpLlmDraft, setCgsMcpModelHelpOpen, setCgsMcpPrompt, setCgsMcpPromptHistory, setCgsMcpRunning, setCgsMcpTimeline,
     setCgsModeSwap, setCgsSearchBookInfo, setCgsSessionId, setCgsStatus, setCgsSubmitPosition, setCgsWorkspaceMode, setComicConfig,
-    setComicPathDraft, setConnection, setDeleteHardMode, setDoujinTagPanel, setDrawerOpen, setEdgeTipAction, setEpisodePage,
+    setComicPathDraft, setConnection, setDeleteHardMode, setDoujinTagPanel, setDrawerOpen, setEpisodePage,
     setEpisodePageCounts, setFilesystemBusy, setFilesystemExpandedKeys, setFilesystemTree, setFilterDraft, setKeyword, setLibraryPage,
     setOfflineCoverUrls, setOpenOpsId, setPageIndex, setPathBusy, setPathSegments, setProgressByKey, setQuery, setReaderAutoScrolling,
-    setReaderChromeVisible, setReaderFit, setReaderFloatingControlPosition, setReaderFloatingControlUnlocked, setReaderLoadedImages,
+    setReaderChromeVisible, setReaderFit, setReaderFloatingControlPosition, setReaderLoadedImages,
     setReaderMaxScrollTop, setReaderMode, setReaderPageFlip, setReaderPageJumpOpen, setReaderPages, setReaderReturnView,
     setReaderScrollTop, setReaderSettings, setReaderSettingsOpen, setReaderShelfSource, setRootSecretAuthorized, setRootSecretConfigured, setRootSecretDraft,
     setRootSecretHelpOpen, setSelectedBook, setSelectedKeys, setSelectedShelfSource, setSelectedSite, setSeriesOnly, setShelf, setSites,
-    setSort, setStatusInfo, setStorageBusy, setToolMenuOpen, setView, shelf, sites, sort, statusInfo, storageBusy, toolMenuOpen, view,
+    setSort, setStatusInfo, setStorageBusy, setView, shelf, sites, sort, statusInfo, storageBusy, view,
   } = appState
   const {
     cgsStatusToastKeyRef,
@@ -207,11 +210,28 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
   const booksPathCurrent = pathSegments[pathSegments.length - 1]?.path || ''
   const comicMode = statusInfo.ero ? 'doujin' : 'manga'
   const comicModeLabel = statusInfo.ero ? '同人志' : '漫画'
-  const readerWorkspaceProps: ReaderWorkspaceProps | null = activeItem ? {
-    activeItem,
+  const activeReaderShelfItem = activeItem
+    ? shelf.find((book) => {
+      if (book.book !== activeItem.book) return false
+      if (book.kind === 'single') return book.ep === activeItem.ep
+      return book.episodes.some((episode) => episode.ep === activeItem.ep)
+    })
+    : undefined
+  const activeReaderShelfEpisode = activeReaderShelfItem?.episodes.find((episode) => episode.ep === activeItem?.ep)
+  const activeReaderFallbackMeta = activeReaderShelfEpisode?.meta || activeReaderShelfItem?.meta
+  const activeReaderItem = activeItem ? {
+    ...activeItem,
+    meta: {
+      ...activeItem.meta,
+      source: activeItem.meta?.source || activeReaderFallbackMeta?.source || null,
+      btype: activeItem.meta?.btype || activeReaderFallbackMeta?.btype || null,
+    },
+  } : null
+  const readerWorkspaceProps: ReaderWorkspaceProps | null = activeReaderItem ? {
+    activeItem: activeReaderItem,
     activeProgress: readerMode === 'scroll'
       ? `${Math.round(readerMaxScrollTop > 0 ? clamp((readerScrollTop / readerMaxScrollTop) * 100, 0, 100) : 0)}%`
-      : `${pageIndex + 1} / ${Math.max(readerPages.length || activeItem.page_count, 1)}`,
+      : `${pageIndex + 1} / ${Math.max(readerPages.length || activeReaderItem.page_count, 1)}`,
     pageIndex,
     readerAutoScrolling,
     readerChromeVisible,
@@ -228,7 +248,6 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
     readerIntervalTimeBounds: readerIntervalTimeBoundsForMode(readerMode),
     readerPageFlipDurationBounds: READER_PAGE_FLIP_DURATION_BOUNDS,
     readerFloatingControlPosition,
-    readerFloatingControlUnlocked,
     readerToolbarVisible: readerChromeVisible,
     scrollReaderRef,
     changeReaderMode: readerRuntime.changeReaderMode,
@@ -254,9 +273,7 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
     readerBookHandle: (handle) => void readerBookHandle(handle),
     scrollReaderToTop: readerRuntime.scrollReaderToTop,
     showReaderChromeControls: readerRuntime.showReaderChromeControls,
-    acceptReaderFloatingControlPosition: readerRuntime.acceptReaderFloatingControlPosition,
-    cancelReaderFloatingControlPosition: readerRuntime.cancelReaderFloatingControlPosition,
-    unlockReaderFloatingControl: readerRuntime.unlockReaderFloatingControl,
+    finishReaderFloatingControlDrag: readerRuntime.finishReaderFloatingControlDrag,
     deleteHardMode,
     setReaderFit,
     setReaderPageJumpOpen,
@@ -291,6 +308,57 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
     switchCgsWorkspaceMode,
   })
 
+  const settingsClickCountRef = useRef(0)
+  const settingsClickTimerRef = useRef<number | null>(null)
+
+  function openCustomSettingsFromBackground() {
+    if (settingsClickTimerRef.current) {
+      window.clearTimeout(settingsClickTimerRef.current)
+    }
+    
+    const nextCount = settingsClickCountRef.current + 1
+    
+    if (nextCount >= 3) {
+      settingsClickCountRef.current = 0
+      settingsClickTimerRef.current = null
+      setDrawerOpen(false)
+      appState.setCustomSettingsModalOpen(true)
+    } else {
+      settingsClickCountRef.current = nextCount
+      const timer = window.setTimeout(() => {
+        settingsClickCountRef.current = 0
+        settingsClickTimerRef.current = null
+      }, 2000)
+      settingsClickTimerRef.current = timer
+    }
+  }
+
+  function handleSkinChange(skinId: string) {
+    appState.setSelectedSkin(skinId)
+    setSelectedSkinId(skinId)
+    show('ok', '皮肤已切换')
+  }
+
+  function handleRestoreSettings() {
+    if (!confirm('确定要还原所有设置吗？这将清除后端配置、阅读设置、皮肤缓存等，但不会删除离线缓存内容。')) {
+      return
+    }
+    
+    restoreCustomSettingsStorage()
+    
+    setBackendUrl(DEFAULT_BACKEND)
+    setBackendDraft(DEFAULT_BACKEND)
+    setBackendUrlHistory([DEFAULT_BACKEND])
+    setRootSecretConfigured(false)
+    setRootSecretDraft('')
+    appState.setSelectedSkin('default')
+    setAuthorAvatarSrc('')
+    setDeleteHardMode(false)
+    
+    show('ok', '设置已还原')
+    appState.setCustomSettingsModalOpen(false)
+  }
+
   function guardedOpenDrawerTab(next: Parameters<typeof openDrawerTab>[0]) {
     openDrawerTab(next)
   }
@@ -304,6 +372,7 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
       appAuthor: APP_AUTHOR,
       appVersion,
       authorAvatarSrc,
+      settingsBottomGifSrc: appState.skinAssets.settingsBottomGifSrc,
       backendAvailable,
       backendDraft,
       backendInputRef,
@@ -345,6 +414,7 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
       handleBooksPathChange,
       loadFilesystemNode,
       moveBackendCaretToEnd,
+      openCustomSettingsFromBackground,
       openExternalLink,
       refreshFilesystem,
       saveBackend,
@@ -358,8 +428,19 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
   }
   return {
     acquireWorkspace,
+    customSettingsModalProps: {
+      open: appState.customSettingsModalOpen,
+      selectedSkin: appState.selectedSkin,
+      availableSkins: ['default'],
+      onClose: () => appState.setCustomSettingsModalOpen(false),
+      onSkinChange: handleSkinChange,
+      onRestoreSettings: handleRestoreSettings,
+    },
     drawerOpen,
     leftDrawerProps,
+    menuImgSrc: appState.skinAssets.menuImgSrc || MENU_LOGO_SRC,
+    menuEffectSrc: appState.skinAssets.menuEffectSrc,
+    menuEffectDuration: appState.skinAssets.menuEffectDuration,
     microHeaderStatus,
     readerWorkspaceProps,
     selectedBook,

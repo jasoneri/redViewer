@@ -35,6 +35,7 @@ export type ReaderSettings = {
 }
 export type ReaderFloatingControlPosition = {
   x: number
+  /** Distance from the reader bottom edge in pixels. */
   y: number
 }
 export type ReaderPageFlipDirection = 'next' | 'prev'
@@ -67,10 +68,12 @@ const READER_PAGE_FLIP_DURATION_STEP = 50
 const READER_PAGE_FLIP_DURATION_DEFAULT = 900
 const READER_FLOATING_CONTROL_POSITION_KEY = 'rv_mobile_reader_floating_control_position'
 const READER_FLOATING_CONTROL_EDGE_GAP = 8
-const READER_FLOATING_CONTROL_DEFAULT_LEFT_RATIO = 0.15
-const READER_FLOATING_CONTROL_DEFAULT_BOTTOM_RATIO = 0.1
-const READER_FLOATING_CONTROL_WIDTH = 113
-const READER_FLOATING_CONTROL_HEIGHT = 44
+const READER_FLOATING_CONTROL_DEFAULT_LEFT_RATIO = 0.12
+const READER_FLOATING_CONTROL_DEFAULT_BOTTOM_RATIO = 0.16
+const READER_FLOATING_CONTROL_WIDTH = 75
+const READER_FLOATING_CONTROL_HEIGHT = 25
+const READER_FLOATING_CONTROL_WIDTH_PROPERTY = '--reader-floating-control-width'
+const READER_FLOATING_CONTROL_HEIGHT_PROPERTY = '--reader-floating-control-height'
 const READER_SCROLL_DRAG_STEP_PERCENT_MIN = 2
 const READER_SCROLL_DRAG_STEP_PERCENT_MAX = 12
 const READER_SCROLL_DRAG_STEP_PERCENT_DEFAULT = 8
@@ -171,13 +174,9 @@ export function loadReaderSettings(): ReaderSettings {
 function defaultReaderFloatingControlPosition(): ReaderFloatingControlPosition {
   if (typeof window === 'undefined') return { x: READER_FLOATING_CONTROL_EDGE_GAP, y: READER_FLOATING_CONTROL_EDGE_GAP }
   const container = readerFloatingControlContainerSize()
-  const controlHeight = readerFloatingControlHeight()
   return {
     x: Math.max(READER_FLOATING_CONTROL_EDGE_GAP, container.width * READER_FLOATING_CONTROL_DEFAULT_LEFT_RATIO),
-    y: Math.max(
-      READER_FLOATING_CONTROL_EDGE_GAP,
-      container.height - controlHeight - container.height * READER_FLOATING_CONTROL_DEFAULT_BOTTOM_RATIO,
-    ),
+    y: Math.max(READER_FLOATING_CONTROL_EDGE_GAP, container.height * READER_FLOATING_CONTROL_DEFAULT_BOTTOM_RATIO),
   }
 }
 
@@ -190,12 +189,20 @@ function readerFloatingControlContainerSize(): { width: number; height: number }
   }
 }
 
+function readerFloatingControlCssPixelValue(propertyName: string, fallback: number): number {
+  if (typeof window === 'undefined') return fallback
+  // RVLAY001: JS clamp/default geometry follows the CSS variables that size the DOM.
+  const rawValue = window.getComputedStyle(document.documentElement).getPropertyValue(propertyName)
+  const value = Number.parseFloat(rawValue)
+  return Number.isFinite(value) && value > 0 ? value : fallback
+}
+
 function readerFloatingControlWidth(): number {
-  return READER_FLOATING_CONTROL_WIDTH
+  return readerFloatingControlCssPixelValue(READER_FLOATING_CONTROL_WIDTH_PROPERTY, READER_FLOATING_CONTROL_WIDTH)
 }
 
 function readerFloatingControlHeight(): number {
-  return READER_FLOATING_CONTROL_HEIGHT
+  return readerFloatingControlCssPixelValue(READER_FLOATING_CONTROL_HEIGHT_PROPERTY, READER_FLOATING_CONTROL_HEIGHT)
 }
 
 export function clampReaderFloatingControlPosition(position: ReaderFloatingControlPosition): ReaderFloatingControlPosition {
@@ -222,7 +229,7 @@ export function loadReaderFloatingControlPosition(): ReaderFloatingControlPositi
     const parsed = JSON.parse(raw) as Partial<ReaderFloatingControlPosition>
     if (typeof parsed.x !== 'number' || typeof parsed.y !== 'number') return defaultReaderFloatingControlPosition()
     const container = readerFloatingControlContainerSize()
-    if (parsed.x > container.width * 0.5 && parsed.y < container.height * 0.3) return defaultReaderFloatingControlPosition()
+    if (parsed.x > container.width * 0.5 && parsed.y > container.height * 0.7) return defaultReaderFloatingControlPosition()
     return clampReaderFloatingControlPosition({ x: parsed.x, y: parsed.y })
   } catch {
     return defaultReaderFloatingControlPosition()

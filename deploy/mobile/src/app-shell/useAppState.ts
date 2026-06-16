@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { CgsBook, CgsBookEpisode, CgsConfig, CgsSite, ConnectionState, CachedItem, ShelfBook } from '../mobileStore'
 import { BACKEND_URL_KEY, ensureDeviceId } from '../mobileStore'
 import type {
@@ -15,8 +15,7 @@ import type {
   CgsSubmitPosition,
   CgsWorkspaceMode,
 } from '../acquire-workspace/acquireTypes'
-import { loadCgsMcpLlmConfig, loadCgsMcpPromptHistory, loadCgsSubmitPosition } from '../acquire-workspace/acquireCore'
-import type { EdgeAction } from '../library-workspace/EdgeTools'
+import { loadCgsMcpLlmConfig, loadCgsMcpPromptHistory, loadCgsSubmitPosition, MULTI_CHECK_FLOAT_POSITION_KEY } from '../acquire-workspace/acquireCore'
 import type { ProgressMap, SortMode } from '../library-workspace/libraryCore'
 import type {
   ReaderFit,
@@ -31,8 +30,12 @@ import { loadReaderFloatingControlPosition, loadReaderSettings } from '../reader
 import {
   APP_VERSION_FALLBACK,
   DEFAULT_BACKEND,
+  EMPTY_SKIN_ASSETS,
   readStoredAuthorAvatar,
+  readStoredSkinAssets,
+  type SkinAssets,
 } from './appMeta'
+import { getSelectedSkinId } from './customSettingsStorage'
 import {
   hasRootSecret,
   loadBackendUrlHistory,
@@ -90,7 +93,6 @@ export function useAppState() {
   const [readerPageFlip, setReaderPageFlip] = useState<ReaderPageFlipState | null>(null)
   const [readerScrollRenderNonce, setReaderScrollRenderNonce] = useState(0)
   const [readerFloatingControlPosition, setReaderFloatingControlPosition] = useState<ReaderFloatingControlPosition>(() => loadReaderFloatingControlPosition())
-  const [readerFloatingControlUnlocked, setReaderFloatingControlUnlocked] = useState(false)
   const [busy, setBusy] = useState('')
   const [cacheProgress, setCacheProgress] = useState<Record<string, string>>({})
   const [episodePageCounts, setEpisodePageCounts] = useState<Record<string, number>>({})
@@ -103,7 +105,6 @@ export function useAppState() {
   const [episodePage, setEpisodePage] = useState(1)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [toolMenuOpen, setToolMenuOpen] = useState(false)
-  const [edgeTipAction, setEdgeTipAction] = useState<EdgeAction | null>(null)
   const [activeToolPanel, setActiveToolPanel] = useState<'filter' | 'sort' | null>(null)
   const [comicConfig, setComicConfig] = useState<ComicConfig | null>(null)
   const [comicPathDraft, setComicPathDraft] = useState('')
@@ -117,6 +118,7 @@ export function useAppState() {
   const [selectedSite, setSelectedSite] = useState('')
   const [keyword, setKeyword] = useState('')
   const [cgsSearchBookInfo, setCgsSearchBookInfo] = useState<CgsSearchBookInfo | null>(null)
+  const [cgsMcpBookAttached, setCgsMcpBookAttached] = useState(false)
   const [autoOpenConsumed, setAutoOpenConsumed] = useState(false)
   const [cgsBooks, setCgsBooks] = useState<CgsBook[]>([])
   const [selectedKeys, setSelectedKeys] = useState<string[]>([])
@@ -137,6 +139,9 @@ export function useAppState() {
   const [cgsHeadGateFlight, setCgsHeadGateFlight] = useState<CgsGateFlight | null>(null)
   const [cgsModeSwap, setCgsModeSwap] = useState<CgsModeSwap | null>(null)
   const [cgsSubmitPosition, setCgsSubmitPosition] = useState<CgsSubmitPosition>(() => loadCgsSubmitPosition())
+  const [multiCheckMode, setMultiCheckMode] = useState(false)
+  const [multiCheckedIds, setMultiCheckedIds] = useState<string[]>([])
+  const [multiCheckFloatPosition, setMultiCheckFloatPosition] = useState<CgsSubmitPosition>(() => loadCgsSubmitPosition(MULTI_CHECK_FLOAT_POSITION_KEY))
   const [cgsMcpLlmConfig, setCgsMcpLlmConfig] = useState<CgsMcpLlmConfig>(() => loadCgsMcpLlmConfig())
   const [cgsMcpLlmDraft, setCgsMcpLlmDraft] = useState<CgsMcpLlmConfig>(() => loadCgsMcpLlmConfig())
   const [cgsMcpModelHelpOpen, setCgsMcpModelHelpOpen] = useState(false)
@@ -146,8 +151,14 @@ export function useAppState() {
   const [cgsMcpExpandedToolId, setCgsMcpExpandedToolId] = useState<string | null>(null)
   const [cgsMcpTimeline, setCgsMcpTimeline] = useState<CgsMcpTimelineItem[]>([])
   const [cgsMcpRunning, setCgsMcpRunning] = useState(false)
+  const [cgsMcpLibrarySyncing, setCgsMcpLibrarySyncing] = useState(false)
   const [appVersion, setAppVersion] = useState(APP_VERSION_FALLBACK)
   const [authorAvatarSrc, setAuthorAvatarSrc] = useState(readStoredAuthorAvatar)
+  const [selectedSkin, setSelectedSkin] = useState(() => getSelectedSkinId())
+  const [customSettingsModalOpen, setCustomSettingsModalOpen] = useState(false)
+  const [settingsBottomClickCount, setSettingsBottomClickCount] = useState(0)
+  const [settingsBottomClickTimer, setSettingsBottomClickTimer] = useState<number | null>(null)
+  const [skinAssets, setSkinAssets] = useState<SkinAssets>(() => readStoredSkinAssets(getSelectedSkinId()) || EMPTY_SKIN_ASSETS)
   const [cacheSummaryText, setCacheSummaryText] = useState('--')
   const [cacheSummaryHint, setCacheSummaryHint] = useState('离线缓存占用')
   const [storageBusy, setStorageBusy] = useState('')
@@ -158,7 +169,6 @@ export function useAppState() {
   const readerInitialRestorePendingRef = useRef(false)
   const readerUserScrolledRef = useRef(false)
   const readerProgrammaticScrollRef = useRef(false)
-  const readerFloatingControlRestoreRef = useRef<ReaderFloatingControlPosition | null>(null)
   const pageTouchStartRef = useRef({ x: 0, y: 0 })
   const pageTouchSuppressClickRef = useRef(false)
   const readerPageFlipActiveRef = useRef(false)
@@ -166,7 +176,6 @@ export function useAppState() {
   const autoScrollingRef = useRef(false)
   const autoScrollFrameRef = useRef<number | null>(null)
   const autoScrollIntervalRef = useRef<number | null>(null)
-  const edgePointerActiveRef = useRef(false)
   const backendInputRef = useRef<HTMLInputElement | null>(null)
   const doujinTagLinkButtonRef = useRef<HTMLButtonElement | null>(null)
   const cgsManualGateRef = useRef<HTMLButtonElement | null>(null)
@@ -181,37 +190,41 @@ export function useAppState() {
   const cgsMcpFailedRef = useRef(false)
   const offlineCoverUrlsRef = useRef<Record<string, string>>({})
 
+  useEffect(() => {
+    setCgsMcpBookAttached(Boolean(cgsSearchBookInfo))
+  }, [cgsSearchBookInfo])
+
   return {
     activeItem, activeToolPanel, appVersion, authorAvatarSrc, autoOpenConsumed, autoScrollFrameRef, autoScrollIntervalRef, autoScrollingRef,
     backendDraft, backendInputRef, backendUrl, backendUrlHistory, busy, cached, cacheProgress, cacheSummaryHint, cacheSummaryText,
     cgsBooks, cgsConfig, cgsConfigBusy, cgsConfigDraft, cgsConnection, cgsGateFlight, cgsGateLoadingMode, cgsGatePhase, cgsHeadGateFlight,
-    chapterPanelBookKey, episodeLoadByBook, episodesByBook,
+    chapterPanelBookKey, customSettingsModalOpen, episodeLoadByBook, episodesByBook,
     cgsManualGateRef, cgsMcpAbortRef, cgsMcpComposerRef, cgsMcpExpandedToolId, cgsMcpFailedRef, cgsMcpGateRef, cgsMcpHistoryOpen,
-    cgsMcpLlmConfig, cgsMcpLlmDraft, cgsMcpModelHelpOpen, cgsMcpPrompt, cgsMcpPromptHistory, cgsMcpRunning, cgsMcpScrollRef,
+    cgsMcpBookAttached, cgsMcpLibrarySyncing, cgsMcpLlmConfig, cgsMcpLlmDraft, cgsMcpModelHelpOpen, cgsMcpPrompt, cgsMcpPromptHistory, cgsMcpRunning, cgsMcpScrollRef,
     cgsMcpSubmittedRef, cgsMcpTimeline, cgsModeSwap, cgsSearchBookInfo, cgsSessionId, cgsStatus, cgsStatusDotRef, cgsStatusHeadRef,
     cgsSubmitDragRef, cgsSubmitPosition, cgsWorkspaceMode, comicConfig, comicPathDraft, connection, deleteHardMode, deviceId,
-    doujinTagLinkButtonRef, doujinTagPanel, drawerOpen, edgePointerActiveRef, edgeTipAction, episodePage, episodePageCounts,
-    filesystemBusy, filesystemExpandedKeys, filesystemTree, filterDraft, keyword, libraryPage, offlineCoverUrls, offlineCoverUrlsRef,
+    doujinTagLinkButtonRef, doujinTagPanel, drawerOpen, episodePage, episodePageCounts,
+    filesystemBusy, filesystemExpandedKeys, filesystemTree, filterDraft, keyword, libraryPage, multiCheckFloatPosition, multiCheckedIds, multiCheckMode, offlineCoverUrls, offlineCoverUrlsRef,
     openOpsId, pageIndex, pageTouchStartRef, pageTouchSuppressClickRef, pathBusy, pathSegments, pendingReaderProgressRef,
-    progressByKey, query, readerAutoScrolling, readerChromeVisible, readerFit, readerFloatingControlPosition, readerFloatingControlRestoreRef,
-    readerFloatingControlUnlocked, readerInitialRestorePendingRef, readerLoadedImages, readerMaxScrollTop, readerMode, readerPageFlip,
+    progressByKey, query, readerAutoScrolling, readerChromeVisible, readerFit, readerFloatingControlPosition,
+    readerInitialRestorePendingRef, readerLoadedImages, readerMaxScrollTop, readerMode, readerPageFlip,
     readerPageFlipActiveRef, readerPageFlipKeyRef, readerPageJumpOpen, readerPages, readerProgrammaticScrollRef, readerReturnView,
     readerScrollRenderNonce, readerScrollTop, readerSettings, readerSettingsOpen, readerShelfSource, readerUserScrolledRef,
     restoredScrollRef, rootSecretAuthorized, rootSecretConfigured, rootSecretDraft, rootSecretHelpOpen, scrollProgressTimerRef, scrollReaderRef, selectedBook,
-    selectedEpisodeKeysByBook, selectedKeys, selectedShelfSource, selectedSite, seriesOnly, setActiveItem, setActiveToolPanel, setAppVersion, setAuthorAvatarSrc,
+    selectedEpisodeKeysByBook, selectedKeys, selectedShelfSource, selectedSite, selectedSkin, seriesOnly, setActiveItem, setActiveToolPanel, setAppVersion, setAuthorAvatarSrc,
     setAutoOpenConsumed, setBackendDraft, setBackendUrl, setBackendUrlHistory, setBusy, setCached, setCacheProgress, setCacheSummaryHint,
     setCacheSummaryText, setCgsBooks, setCgsConfig, setCgsConfigBusy, setCgsConfigDraft, setCgsConnection, setCgsGateFlight,
-    setCgsGateLoadingMode, setCgsGatePhase, setCgsHeadGateFlight, setCgsMcpExpandedToolId, setCgsMcpHistoryOpen, setCgsMcpLlmConfig,
-    setCgsMcpLlmDraft, setCgsMcpModelHelpOpen, setCgsMcpPrompt, setCgsMcpPromptHistory, setCgsMcpRunning, setCgsMcpTimeline,
+    setCgsGateLoadingMode, setCgsGatePhase, setCgsHeadGateFlight, setCgsMcpBookAttached, setCgsMcpExpandedToolId, setCgsMcpHistoryOpen, setCgsMcpLlmConfig,
+    setCgsMcpLibrarySyncing, setCgsMcpLlmDraft, setCgsMcpModelHelpOpen, setCgsMcpPrompt, setCgsMcpPromptHistory, setCgsMcpRunning, setCgsMcpTimeline,
     setChapterPanelBookKey, setCgsModeSwap, setCgsSearchBookInfo, setCgsSessionId, setCgsStatus, setCgsSubmitPosition, setCgsWorkspaceMode, setComicConfig,
-    setComicPathDraft, setConnection, setDeleteHardMode, setDoujinTagPanel, setDrawerOpen, setEdgeTipAction, setEpisodePage,
+    setComicPathDraft, setConnection, setCustomSettingsModalOpen, setDeleteHardMode, setDoujinTagPanel, setDrawerOpen, setEpisodePage,
     setEpisodeLoadByBook, setEpisodePageCounts, setEpisodesByBook, setFilesystemBusy, setFilesystemExpandedKeys, setFilesystemTree, setFilterDraft, setKeyword, setLibraryPage,
-    setOfflineCoverUrls, setOpenOpsId, setPageIndex, setPathBusy, setPathSegments, setProgressByKey, setQuery, setReaderAutoScrolling,
-    setReaderChromeVisible, setReaderFit, setReaderFloatingControlPosition, setReaderFloatingControlUnlocked, setReaderLoadedImages,
+    setMultiCheckFloatPosition, setMultiCheckedIds, setMultiCheckMode, setOfflineCoverUrls, setOpenOpsId, setPageIndex, setPathBusy, setPathSegments, setProgressByKey, setQuery, setReaderAutoScrolling,
+    setReaderChromeVisible, setReaderFit, setReaderFloatingControlPosition, setReaderLoadedImages,
     setReaderMaxScrollTop, setReaderMode, setReaderPageFlip, setReaderPageJumpOpen, setReaderPages, setReaderReturnView,
     setReaderScrollTop, setReaderSettings, setReaderSettingsOpen, setReaderShelfSource, setRootSecretAuthorized, setRootSecretConfigured, setRootSecretDraft,
-    setRootSecretHelpOpen, setSelectedBook, setSelectedEpisodeKeysByBook, setSelectedKeys, setSelectedShelfSource, setSelectedSite, setSeriesOnly, setShelf, setSites,
-    setSort, setStatusInfo, setStorageBusy, setToolMenuOpen, setView, shelf, sites, sort, statusInfo, storageBusy, toolMenuOpen, view,
+    setRootSecretHelpOpen, setSelectedBook, setSelectedEpisodeKeysByBook, setSelectedKeys, setSelectedShelfSource, setSelectedSite, setSelectedSkin, setSeriesOnly, setSettingsBottomClickCount, setSettingsBottomClickTimer, setShelf, setSites,
+    setSkinAssets, setSort, setStatusInfo, setStorageBusy, setToolMenuOpen, setView, settingsBottomClickCount, settingsBottomClickTimer, shelf, sites, skinAssets, sort, statusInfo, storageBusy, toolMenuOpen, view,
   }
 }
 

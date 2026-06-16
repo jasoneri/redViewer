@@ -143,7 +143,7 @@ export function ReaderFloatingControl({
     const deltaY = event.clientY - drag.startY
     moveReaderFloatingControl({
       x: clamp(drag.startPosition.x + deltaX, 0, window.innerWidth),
-      y: clamp(drag.startPosition.y + deltaY, 0, window.innerHeight),
+      y: clamp(drag.startPosition.y - deltaY, 0, window.innerHeight),
     })
   }
 
@@ -161,10 +161,10 @@ export function ReaderFloatingControl({
   const viewportWidth = readerRect?.width || (typeof window !== 'undefined' ? window.innerWidth : 0)
   const viewportHeight = readerRect?.height || (typeof window !== 'undefined' ? window.innerHeight : 0)
   const menuAlign = viewportWidth && readerFloatingControlPosition.x > viewportWidth / 2 ? 'align-right' : 'align-left'
-  const menuSide = viewportHeight && readerFloatingControlPosition.y + 22 > viewportHeight / 2 ? 'open-up' : 'open-down'
+  const menuSide = viewportHeight && readerFloatingControlPosition.y < viewportHeight / 2 ? 'open-up' : 'open-down'
 
   return (
-    <div className="reader-floating-wrap" style={{ left: readerFloatingControlPosition.x, top: readerFloatingControlPosition.y }}>
+    <div className="reader-floating-wrap" style={{ left: readerFloatingControlPosition.x, bottom: readerFloatingControlPosition.y }}>
       <button
         className="reader-floating-control"
         onPointerDown={handleFloatingPointerDown}

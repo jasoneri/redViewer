@@ -41,6 +41,7 @@ import type {
   CgsMcpSseEvent,
   CgsMcpTimelineItem,
   CgsModeSwap,
+  CgsSearchBookInfo,
   CgsSubmitDragState,
   CgsSubmitPosition,
   CgsWorkspaceMode,
@@ -69,7 +70,7 @@ type MobileAcquireControllerDeps = {
   cgsBookshelfPath: string
   cgsGateBusy: boolean
   cgsStatusToastKeyRef: MutableRefObject<string>
-  refreshLibrary: (url?: string, nextSort?: SortMode, resetPage?: boolean, showLoading?: boolean) => Promise<void>
+  refreshLibrary: (url?: string, nextSort?: SortMode, resetPage?: boolean, showLoading?: boolean, sync?: boolean) => Promise<void>
   show: ShowToast
   showCgsStatusToast: ShowCgsStatusToast
 }
@@ -83,16 +84,19 @@ type AcquireWorkspaceControllerDeps = {
   cgsGatePhase: CgsGatePhase
   cgsMcpLlmConfig: CgsMcpLlmConfig
   cgsMcpLlmDraft: CgsMcpLlmConfig
+  cgsMcpBookAttached: boolean
+  cgsMcpLibrarySyncing: boolean
   cgsMcpPrompt: string
   cgsMcpRunning: boolean
   cgsModeSwap: CgsModeSwap | null
+  cgsSearchBookInfo: CgsSearchBookInfo | null
   cgsSessionId: string
   cgsSubmitPosition: CgsSubmitPosition
   cgsWorkspaceMode: CgsWorkspaceMode | null
   episodesByBook: Record<string, CgsBookEpisode[]>
   hasRootSecret: () => boolean
   keyword: string
-  refreshLibrary: (url?: string, nextSort?: SortMode, resetPage?: boolean, showLoading?: boolean) => Promise<void>
+  refreshLibrary: (url?: string, nextSort?: SortMode, resetPage?: boolean, showLoading?: boolean, sync?: boolean) => Promise<void>
   rootSecretHeaders: () => Promise<Record<string, string>>
   selectedEpisodeKeysByBook: Record<string, string[]>
   selectedKeys: string[]
@@ -123,6 +127,7 @@ type AcquireWorkspaceControllerDeps = {
   setCgsHeadGateFlight: Dispatch<SetStateAction<CgsGateFlight | null>>
   setCgsMcpExpandedToolId: Dispatch<SetStateAction<string | null>>
   setCgsMcpHistoryOpen: Dispatch<SetStateAction<boolean>>
+  setCgsMcpLibrarySyncing: Dispatch<SetStateAction<boolean>>
   setCgsMcpLlmConfig: Dispatch<SetStateAction<CgsMcpLlmConfig>>
   setCgsMcpPrompt: Dispatch<SetStateAction<string>>
   setCgsMcpPromptHistory: Dispatch<SetStateAction<string[]>>
@@ -352,6 +357,29 @@ export function useAcquireWorkspaceController(deps: AcquireWorkspaceControllerDe
     deps.setCgsMcpLlmConfig(next)
   }
 
+  async function syncCgsLibraryAfterMcp() {
+    deps.setCgsMcpLibrarySyncing(true)
+    deps.show('ok', 'MCP 已提交，正在同步书库')
+    deps.setCgsMcpTimeline((rows) => [
+      ...rows,
+      { id: nextTimelineId('mcp-progress'), type: 'progress', percent: null, status: 'syncing', summary: '正在同步书库' },
+    ])
+    try {
+      await deps.refreshLibrary(deps.backendUrl, deps.sort, false, false, true)
+      deps.showCgsStatusToast({ status: 'completed' })
+      deps.setCgsMcpTimeline((rows) => [
+        ...rows,
+        { id: nextTimelineId('mcp-final'), type: 'final', success: true, summary: '书库已刷新' },
+      ])
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '书库同步失败'
+      deps.show('error', message)
+      deps.setCgsMcpTimeline((rows) => appendCgsMcpFinalFailure(rows, message))
+    } finally {
+      deps.setCgsMcpLibrarySyncing(false)
+    }
+  }
+
   function applyCgsMcpEvent(item: CgsMcpSseEvent) {
     if (item.event === 'assistant_delta') {
       const text = cgsMcpDataText(item.data, 'text')
@@ -386,9 +414,12 @@ export function useAcquireWorkspaceController(deps: AcquireWorkspaceControllerDe
       const success = item.data.success !== false && !deps.cgsMcpFailedRef.current
       const reportedSummary = cgsMcpDataText(item.data, 'summary')
       const summary = success ? reportedSummary || '完成' : reportedSummary && reportedSummary !== '完成' ? reportedSummary : '失败'
-      deps.setCgsMcpTimeline((rows) => [...rows, { id: nextTimelineId('mcp-final'), type: 'final', success, summary }])
       deps.setCgsMcpRunning(false)
-      if (success && deps.cgsMcpSubmittedRef.current) void deps.refreshLibrary(deps.backendUrl, deps.sort, false, false)
+      if (success && deps.cgsMcpSubmittedRef.current) {
+        void syncCgsLibraryAfterMcp()
+      } else {
+        deps.setCgsMcpTimeline((rows) => [...rows, { id: nextTimelineId('mcp-final'), type: 'final', success, summary }])
+      }
       return
     }
     if (item.event === 'error') {
@@ -411,6 +442,8 @@ export function useAcquireWorkspaceController(deps: AcquireWorkspaceControllerDe
     deps.cgsMcpAbortRef.current = abort
     deps.cgsMcpSubmittedRef.current = false
     deps.cgsMcpFailedRef.current = false
+    deps.cgsStatusToastKeyRef.current = ''
+    deps.setCgsStatus(null)
     deps.setCgsWorkspaceMode('mcp')
     deps.setCgsMcpRunning(true)
     deps.setCgsMcpHistoryOpen(false)
@@ -418,6 +451,20 @@ export function useAcquireWorkspaceController(deps: AcquireWorkspaceControllerDe
     deps.setCgsMcpPromptHistory((history) => saveCgsMcpPromptHistory(prompt, history))
     deps.setCgsMcpPrompt('')
     deps.setCgsMcpTimeline((rows) => [...rows, { id: nextTimelineId('mcp-user'), type: 'user', text: prompt }])
+    const attachedBook = deps.cgsSearchBookInfo && deps.cgsMcpBookAttached ? deps.cgsSearchBookInfo : null
+    const payload: { prompt: string; llm: CgsMcpLlmConfig; book_context?: { book: string; title: string | null; artist: string | null; source: string | null; tags: string[] } } = {
+      prompt,
+      llm: deps.cgsMcpLlmConfig,
+    }
+    if (attachedBook) {
+      payload.book_context = {
+        book: attachedBook.book,
+        title: attachedBook.title,
+        artist: attachedBook.artist,
+        source: attachedBook.source,
+        tags: attachedBook.tags,
+      }
+    }
     try {
       const response = await fetch(buildUrl(deps.backendUrl, '/root/cgs/mcp/chat'), {
         method: 'POST',
@@ -425,7 +472,7 @@ export function useAcquireWorkspaceController(deps: AcquireWorkspaceControllerDe
           'Content-Type': 'application/json',
           ...await deps.rootSecretHeaders(),
         },
-        body: JSON.stringify({ prompt, llm: deps.cgsMcpLlmConfig }),
+        body: JSON.stringify(payload),
         signal: abort.signal,
       })
       if (!response.ok) throw new Error(`${response.status} ${await response.text()}`)
@@ -570,7 +617,11 @@ export function useAcquireWorkspaceController(deps: AcquireWorkspaceControllerDe
       deps.show('ok', '已提交')
       const finalStatus = await pollCgsStatusUntilTerminal()
       if (getCgsStatusKey(finalStatus) === 'completed') {
-        await deps.refreshLibrary(deps.backendUrl, deps.sort, false, false)
+        try {
+          await deps.refreshLibrary(deps.backendUrl, deps.sort, false, false, true)
+        } catch (error) {
+          deps.show('error', error instanceof Error ? error.message : '书库同步失败')
+        }
       }
     } catch (error) {
       deps.setCgsConnection('unreachable')
@@ -645,11 +696,14 @@ export function useMobileAcquireControllerModel(appState: AppState, deps: Mobile
     busy,
     cgsConfigDraft,
     cgsGatePhase,
+    cgsMcpBookAttached,
     cgsMcpLlmConfig,
     cgsMcpLlmDraft,
+    cgsMcpLibrarySyncing,
     cgsMcpPrompt,
     cgsMcpRunning,
     cgsModeSwap,
+    cgsSearchBookInfo,
     cgsSessionId,
     cgsSubmitPosition,
     cgsWorkspaceMode,
@@ -681,6 +735,7 @@ export function useMobileAcquireControllerModel(appState: AppState, deps: Mobile
     setCgsHeadGateFlight,
     setCgsMcpExpandedToolId,
     setCgsMcpHistoryOpen,
+    setCgsMcpLibrarySyncing,
     setCgsMcpLlmConfig,
     setCgsMcpPrompt,
     setCgsMcpPromptHistory,
@@ -706,11 +761,14 @@ export function useMobileAcquireControllerModel(appState: AppState, deps: Mobile
     cgsConfigDraft,
     cgsGateBusy: deps.cgsGateBusy,
     cgsGatePhase,
+    cgsMcpBookAttached,
     cgsMcpLlmConfig,
     cgsMcpLlmDraft,
+    cgsMcpLibrarySyncing,
     cgsMcpPrompt,
     cgsMcpRunning,
     cgsModeSwap,
+    cgsSearchBookInfo,
     cgsSessionId,
     cgsSubmitPosition,
     cgsWorkspaceMode,
@@ -748,6 +806,7 @@ export function useMobileAcquireControllerModel(appState: AppState, deps: Mobile
     setCgsHeadGateFlight,
     setCgsMcpExpandedToolId,
     setCgsMcpHistoryOpen,
+    setCgsMcpLibrarySyncing,
     setCgsMcpLlmConfig,
     setCgsMcpPrompt,
     setCgsMcpPromptHistory,

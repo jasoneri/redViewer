@@ -14,7 +14,7 @@ type MobileAcquireModelDeps = {
   cgsStatusToastKeyRef: MutableRefObject<string>
   closeDoujinTagPanel: ShelfModel['closeDoujinTagPanel']
   openCgsTagPanel: ShelfModel['openCgsTagPanel']
-  refreshLibrary: (url?: string, nextSort?: SortMode, resetPage?: boolean, showLoading?: boolean) => Promise<void>
+  refreshLibrary: (url?: string, nextSort?: SortMode, resetPage?: boolean, showLoading?: boolean, sync?: boolean) => Promise<void>
   selectCgsSearchCandidate: ShelfModel['selectCgsSearchCandidate']
   selectDoujinTag: ShelfModel['selectDoujinTag']
   show: ShowToast
@@ -36,10 +36,12 @@ export function useMobileAcquireModel(appState: AppState, deps: MobileAcquireMod
     cgsHeadGateFlight,
     chapterPanelBookKey,
     cgsManualGateRef,
+    cgsMcpBookAttached,
     cgsMcpComposerRef,
     cgsMcpExpandedToolId,
     cgsMcpGateRef,
     cgsMcpHistoryOpen,
+    cgsMcpLibrarySyncing,
     cgsMcpLlmDraft,
     cgsMcpModelHelpOpen,
     cgsMcpPrompt,
@@ -65,6 +67,7 @@ export function useMobileAcquireModel(appState: AppState, deps: MobileAcquireMod
     sites,
     view,
     setCgsConfigDraft,
+    setCgsMcpBookAttached,
     setCgsMcpExpandedToolId,
     setCgsMcpHistoryOpen,
     setCgsMcpLlmDraft,
@@ -127,8 +130,10 @@ export function useMobileAcquireModel(appState: AppState, deps: MobileAcquireMod
     cgsGatePhase,
     cgsHeadGateFlight,
     chapterPanelBookKey,
+    cgsMcpBookAttached,
     cgsMcpExpandedToolId,
     cgsMcpHistoryOpen,
+    cgsMcpLibrarySyncing,
     cgsMcpLlmDraft,
     cgsMcpModelHelpOpen,
     cgsMcpPrompt,
@@ -183,6 +188,7 @@ export function useMobileAcquireModel(appState: AppState, deps: MobileAcquireMod
     syncCgsSavePathFromBookshelf,
     updateCgsConfig,
     setCgsConfigDraft,
+    setCgsMcpBookAttached,
     setCgsMcpExpandedToolId,
     setCgsMcpHistoryOpen,
     setCgsMcpLlmDraft,

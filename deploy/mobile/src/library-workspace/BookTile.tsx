@@ -32,29 +32,43 @@ export function BookTile({
   const cachedCount = shelfSelectors.bookCachedCount(book)
   const coverSrc = shelfSelectors.coverSrc(book)
   const cardOpen = () => shelfActions.openShelfBook(book, shelfView.activeShelfSource)
+  const multiCheck = shelfView.multiCheckMode && shelfView.isDoujinMode && !shelfView.activeSourceIsOffline
+  const isChecked = multiCheck && shelfView.multiCheckedIds.includes(book.id)
 
   return (
-    <article className={`book-tile ${cachedCount ? 'is-cached' : ''} ${bookProgress ? 'has-progress' : ''} ${book.kind}-card`}>
-      <div className={`poster-card ${showCoverOps ? 'has-dogEaredCover' : ''}`}>
-        <button className="cover-button" onClick={cardOpen} aria-label={`打开 ${book.book}`}>
+    <article className={`book-tile ${cachedCount ? 'is-cached' : ''} ${bookProgress ? 'has-progress' : ''} ${book.kind}-card ${isChecked ? 'is-checked' : ''}`}>
+      <div className={`poster-card ${showCoverOps ? 'has-dogEaredCover' : ''} ${multiCheck ? 'is-multi-check' : ''}`}>
+        <button
+          className="cover-button"
+          onClick={multiCheck ? () => shelfActions.toggleMultiCheckId(book.id) : cardOpen}
+          aria-label={multiCheck ? `选择 ${book.book}` : `打开 ${book.book}`}
+        >
           <Cover src={coverSrc} title={book.book} badge={null} overlayTags={coverMetaTags} />
         </button>
         {showCoverOps && (
-          <div className={`cover-ops ${shelfView.openOpsId === book.id ? 'ops-open' : ''}`} role="menu" aria-label={`${book.book} 操作菜单`}>
+          <div
+            className={`cover-ops ${multiCheck ? 'multi-check' : shelfView.openOpsId === book.id ? 'ops-open' : ''}`}
+            role={multiCheck ? 'group' : 'menu'}
+            aria-label={`${book.book} ${multiCheck ? '选择' : '操作菜单'}`}
+          >
             <button
-              className={`dogEaredCover ${cachedCount ? 'is-cached' : ''}`}
-              aria-label={`${book.book} dogEaredCover 操作`}
-              aria-haspopup="menu"
-              aria-expanded={shelfView.openOpsId === book.id}
-              onClick={() => shelfActions.toggleOps(book.id)}
+              className={`dogEaredCover ${cachedCount ? 'is-cached' : ''} ${multiCheck ? 'mc-check' : ''} ${isChecked ? 'is-checked' : ''}`}
+              aria-label={multiCheck ? `选择 ${book.book}` : `${book.book} dogEaredCover 操作`}
+              role={multiCheck ? 'checkbox' : undefined}
+              aria-checked={multiCheck ? isChecked : undefined}
+              aria-haspopup={multiCheck ? undefined : 'menu'}
+              aria-expanded={multiCheck ? undefined : shelfView.openOpsId === book.id}
+              onClick={multiCheck ? () => shelfActions.toggleMultiCheckId(book.id) : () => shelfActions.toggleOps(book.id)}
             >
               <span className="dogEaredCoverGroup" aria-hidden="true">
                 <span className="dogEaredCoverMiddle" />
                 <span className="dogEaredCoverTop" />
-                <img className="dogEaredCoverSee" src="./assets/see.png" alt="" draggable={false} />
+                {multiCheck
+                  ? <span className="mc-cbx" />
+                  : <img className="dogEaredCoverSee" src="./assets/see.png" alt="" draggable={false} />}
               </span>
             </button>
-            {!shelfView.activeSourceIsOffline && (
+            {!multiCheck && !shelfView.activeSourceIsOffline && (
               <button
                 className="op-action op-addCache"
                 onClick={() => {
@@ -71,20 +85,22 @@ export function BookTile({
                   : <CustomIcon name="cacheAdd" size={15} className="cache-add-icon" />}
               </button>
             )}
-            <button
-              className={`op-action op-del handle-btn ${shelfView.activeSourceIsOffline || !shelfView.deleteHardMode ? 'handle-removeBtn' : 'handle-delBtn'} ${shelfView.deleteHardMode ? 'is-hard' : ''}`}
-              onClick={() => {
-                shelfActions.closeOps()
-                if (shelfView.activeSourceIsOffline) void shelfActions.removeCachedBook(book)
-                else void shelfActions.handleBookAction(book, shelfView.deleteHardMode ? 'del' : 'remove')
-              }}
-              disabled={!!shelfView.busy}
-              aria-label={`${shelfView.activeSourceIsOffline ? '删除缓存' : shelfView.deleteHardMode ? '彻底删除' : '移至回收'} ${book.book}`}
-              title={shelfView.activeSourceIsOffline ? '删除缓存' : shelfView.deleteHardMode ? '彻底删除' : '移至回收'}
-            >
-              <Trash2 size={15} />
-            </button>
-            {!shelfView.activeSourceIsOffline && (
+            {!multiCheck && (
+              <button
+                className={`op-action op-del handle-btn ${shelfView.activeSourceIsOffline || !shelfView.deleteHardMode ? 'handle-removeBtn' : 'handle-delBtn'} ${shelfView.deleteHardMode ? 'is-hard' : ''}`}
+                onClick={() => {
+                  shelfActions.closeOps()
+                  if (shelfView.activeSourceIsOffline) void shelfActions.removeCachedBook(book)
+                  else void shelfActions.handleBookAction(book, shelfView.deleteHardMode ? 'del' : 'remove')
+                }}
+                disabled={!!shelfView.busy}
+                aria-label={`${shelfView.activeSourceIsOffline ? '删除缓存' : shelfView.deleteHardMode ? '彻底删除' : '移至回收'} ${book.book}`}
+                title={shelfView.activeSourceIsOffline ? '删除缓存' : shelfView.deleteHardMode ? '彻底删除' : '移至回收'}
+              >
+                <Trash2 size={15} />
+              </button>
+            )}
+            {!multiCheck && !shelfView.activeSourceIsOffline && (
               <button
                 className="op-action op-save handle-btn handle-saveBtn"
                 onClick={() => {
@@ -98,7 +114,7 @@ export function BookTile({
                 <Save size={15} />
               </button>
             )}
-            {!shelfView.activeSourceIsOffline && shelfView.isDoujinMode && (
+            {!multiCheck && !shelfView.activeSourceIsOffline && shelfView.isDoujinMode && (
               <button
                 className="op-action op-search"
                 onClick={() => {

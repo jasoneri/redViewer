@@ -1,9 +1,9 @@
-import { Filter, LoaderCircle, RefreshCw, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { Filter, ListChecks, LoaderCircle, RefreshCw, SlidersHorizontal, Trash2 } from 'lucide-react'
 import type { MouseEventHandler } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { CustomIcon } from '../icons/CustomIcon'
 
-export const edgeActions = ['filter', 'sort', 'refresh', 'delete-mode', 'doujin'] as const
+export const edgeActions = ['filter', 'sort', 'refresh', 'delete-mode', 'doujin', 'multi-check'] as const
 export type EdgeAction = typeof edgeActions[number]
 
 export function isEdgeAction(value: string | undefined): value is EdgeAction {
@@ -17,6 +17,8 @@ export function EdgeTools({
   comicMode,
   deleteHardMode,
   showDoujinAction,
+  showMultiCheckAction,
+  multiCheckActive,
   onAction,
   onOpenMenu,
   onCloseMenu,
@@ -29,6 +31,8 @@ export function EdgeTools({
   comicMode: string
   deleteHardMode: boolean
   showDoujinAction: boolean
+  showMultiCheckAction: boolean
+  multiCheckActive: boolean
   onAction: (action: EdgeAction) => void
   onOpenMenu: () => void
   onCloseMenu: () => void
@@ -134,6 +138,17 @@ export function EdgeTools({
           {busy === 'library' ? <LoaderCircle className="spin" size={iconSize} /> : <RefreshCw size={iconSize} />}
           <span className="span-tip">刷新</span>
         </button>
+        {showMultiCheckAction && (
+          <button
+            className={`menu-card ${multiCheckActive ? 'is-active' : ''}`}
+            data-edge-action="multi-check"
+            onClick={runAction}
+            aria-pressed={multiCheckActive}
+          >
+            <ListChecks size={iconSize} />
+            <span className="span-tip">多选</span>
+          </button>
+        )}
         {showDoujinAction && (
           <button
             className="menu-card"

@@ -18,6 +18,7 @@ type CustomIconName =
   | 'feedback'
   | 'key'
   | 'mcp'
+  | 'menuExit'
   | 'offline'
   | 'releaseCheck'
   | 'reset'
@@ -52,6 +53,7 @@ export function CustomIcon({ name, ...props }: CustomIconProps) {
   if (name === 'feedback') return <FeedbackIcon {...props} />
   if (name === 'key') return <KeyIcon {...props} />
   if (name === 'mcp') return <McpIcon {...props} />
+  if (name === 'menuExit') return <MenuExitIcon {...props} />
   if (name === 'offline') return <OfflineIcon {...props} />
   if (name === 'releaseCheck') return <ReleaseCheckIcon {...props} />
   if (name === 'reset') return <ResetIcon {...props} />
@@ -153,6 +155,15 @@ function McpIcon({ className, size = 16 }: IconSvgProps) {
         <path d="M5.85 1.24a3.263 3.263 0 0 1 5.534 2.654a3.262 3.262 0 0 1 2.568 5.574L9.117 14.23l.208.212a.75.75 0 0 1-1.07 1.053l-.734-.746a.75.75 0 0 1 .01-1.061l5.37-5.288a1.762 1.762 0 0 0-2.473-2.51L7.445 8.825a.751.751 0 0 1-1.22-.823a.8.8 0 0 1 .167-.246L9.376 4.82a1.763 1.763 0 0 0-2.473-2.512l-5.37 5.287A.75.75 0 0 1 .48 6.527z" />
         <path d="M7.22 3.467a.751.751 0 0 1 1.052 1.07L5.6 7.167A1.743 1.743 0 0 0 8.045 9.65l2.673-2.63a.75.75 0 0 1 1.052 1.07l-2.672 2.63a3.243 3.243 0 0 1-4.55-4.622z" />
       </g>
+    </svg>
+  )
+}
+
+function MenuExitIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 512 512" aria-hidden="true" focusable="false">
+      <path d="M0 0h512v512H0z" fill="none" />
+      <path fill="currentColor" d="M469.3 469.3H42.7V42.7H256L298.7 0h-256C19.1 0 0 19.1 0 42.7v426.7C0 492.9 19.1 512 42.7 512h426.7c23.6 0 42.7-19.1 42.7-42.7V320l-42.7 42.7v106.6zm-384-42.6C149.1 255.7 234.7 256 362.7 256v85.3L512 192L362.7 42.7V128C85.3 128 85.1 341.1 85.3 426.7" />
     </svg>
   )
 }

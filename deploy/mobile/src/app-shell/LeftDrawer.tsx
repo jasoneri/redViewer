@@ -189,7 +189,7 @@ function LibraryDrawerCards({
         </div>
         <div className="drawer-card-body">
           <label aria-label="api-url">
-            <div className="accept-field">
+            <div className="accept-field accept-field-inline-clear">
               <StatusBadgeIcon
                 Icon={drawerView.backendScanning ? LoaderCircle : Radar}
                 ok={drawerView.backendAvailable}
@@ -213,7 +213,7 @@ function LibraryDrawerCards({
                   if (event.key === 'Enter') void actions.saveBackend()
                 }}
               />
-              <button className="accept-clear" onClick={actions.clearBackendDraft} disabled={!drawerView.backendDraft} aria-label="清空服务地址">
+              <button className="accept-clear accept-clear-inline" onClick={actions.clearBackendDraft} disabled={!drawerView.backendDraft} aria-label="清空服务地址">
                 <X size={16} />
               </button>
               <button className="accept-submit" onClick={() => void actions.saveBackend()} aria-label="保存并检测服务地址">
