@@ -18,7 +18,9 @@
 + 随便点击一个特大 gateBtn 进入 cgs-server/mcp 连通后，点击左上角小图标能互换模式
 + 一般同人本用 server ，表漫用 mcp  
 mcp 有 agent 加持且做了接口会自动处理所以能处理 server 还没做的章节交互
-::: info mcp-llm 去 [硅基流动](https://cloud.siliconflow.cn/i/j0SGXRO6) 注册个号用 deepseek-ai/DeepSeek-V4-Pro 单玩能玩到优惠券额度过期  
+::: info 相关事项
++ cgs-server 无法并发 session
++ mcp-llm 去 [硅基流动](https://cloud.siliconflow.cn/i/j0SGXRO6) 注册个号用 deepseek-ai/DeepSeek-V4-Pro 单玩能玩到优惠券额度过期  
 :::
 
 4. 自动下滑进行中可点击悬浮球停止，自动翻页则点击页数按钮停止

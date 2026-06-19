@@ -14,6 +14,7 @@
 
 mod args;
 mod i18n;
+mod lan_diagnostics;
 mod main_window;
 mod python;
 mod resources;
@@ -25,7 +26,7 @@ use rv_lib::{resolve_paths, resolve_uv_paths, ensure_dirs, init_logging};
 use serde_json::json;
 use std::sync::{
     atomic::{AtomicBool, AtomicU8, Ordering},
-    Mutex,
+    Arc, Mutex,
 };
 use tauri::{Emitter, Manager};
 
@@ -412,6 +413,8 @@ fn main() {
                     return Err(e.into());
                 }
             };
+            let pyproject_dir_for_diag = uv_paths.pyproject_dir.clone();
+            let uv_for_diag = uv_paths.uv.clone();
 
             // Create Python manager (don't start yet)
             let pm = PythonManager::new(
@@ -422,6 +425,7 @@ fn main() {
 
             // Store PythonManager early so other handlers can access it
             app.manage(pm.clone());
+            app.manage(Arc::new(lan_diagnostics::LanDiagnosticsState::default()));
 
             // Resolve frontend dist directory
             let resource_dir = match app.path().resource_dir() {
@@ -537,6 +541,13 @@ fn main() {
                         if let Err(e) = app_handle.emit("backend-ready", payload) {
                             tracing::warn!("Failed to emit backend-ready: {}", e);
                         }
+                        if ok {
+                            lan_diagnostics::spawn_lan_diagnostics(
+                                app_handle.clone(),
+                                pyproject_dir_for_diag,
+                                uv_for_diag,
+                            );
+                        }
                     }
                     Err(e) => {
                         let error = format!("Backend task join error: {}", e);
@@ -555,6 +566,7 @@ fn main() {
             main_window::main_window_open_browser,
             main_window::main_window_close,
             main_window::get_lan_url,
+            lan_diagnostics::get_lan_diagnostics,
             get_backend_status,
             get_system_theme,
             desktop_admin_get_state,

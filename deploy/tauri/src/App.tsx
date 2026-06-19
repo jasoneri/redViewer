@@ -22,6 +22,11 @@ declare global {
 }
 
 type BackendStatus = 'STARTING' | 'RUNNING' | 'ERROR';
+type LanDiagnosticsPayload = {
+  status: 'ok' | 'warning';
+  message?: string;
+  code?: string;
+};
 type DesktopView = 'main' | 'settings';
 
 type DesktopAdminSecretResponse = {
@@ -42,6 +47,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lanUrl, setLanUrl] = useState<string | null>(null);
+  const [lanDiagnostics, setLanDiagnostics] = useState<LanDiagnosticsPayload | null>(null);
   const [status, setStatus] = useState<BackendStatus>('STARTING');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [view, setView] = useState<DesktopView>('main');
@@ -59,6 +65,22 @@ function App() {
   const resetDragState = useCallback(() => {
     dragStartPos.current = null;
     isDragInitiated.current = false;
+  }, []);
+
+  useEffect(() => {
+    invoke<LanDiagnosticsPayload | null>('get_lan_diagnostics')
+      .then((res) => {
+        if (res) setLanDiagnostics(res);
+      })
+      .catch(console.error);
+
+    const unlistenPromise = listen<LanDiagnosticsPayload>('lan-diagnostics', (event) => {
+      setLanDiagnostics(event.payload);
+    });
+
+    return () => {
+      unlistenPromise.then((unlisten) => unlisten());
+    };
   }, []);
 
   const loadDesktopAdminState = useCallback(async () => {
@@ -310,6 +332,12 @@ function App() {
         ) : (
           <>
             {lanUrl && <div className="show-lan">{lanUrl}</div>}
+            {lanDiagnostics?.status === 'warning' && (
+              <div className="lan-warning" role="alert" aria-live="polite">
+                <AlertTriangle size={14} aria-hidden="true" />
+                <span>{lanDiagnostics.message || '局域网可能受阻'}</span>
+              </div>
+            )}
 
             <div className="secret-btn-group" aria-label="Secret 快捷操作">
               <button

@@ -5,8 +5,7 @@
 #   Stage 2 (Bundle):    Build app bundle with all resources (requires: cargo, bun, uv)
 #
 # Usage:
-#   ./build-desktop.sh                       # Build all (reuse existing installer + Stage 2)
-#   ./build-desktop.sh --rebuild-installer   # Force rebuild installer even if it already exists
+#   ./build-desktop.sh                       # Build all (Stage 1 + Stage 2)
 #   ./build-desktop.sh -t installer          # Stage 1 only: build rvInstaller
 #   ./build-desktop.sh -t bundle             # Stage 2 only: build app (requires Stage 1 output)
 #   ./build-desktop.sh -s                    # Skip frontend build
@@ -16,7 +15,64 @@ set -euo pipefail
 SKIP_FRONTEND=false
 TARGET="all"  # all, installer, bundle
 CROSS_TARGET=""
-REBUILD_INSTALLER=false
+
+find_windows_command() {
+    local name="$1"
+    local ps_name=""
+
+    case "$name" in
+        cargo) ps_name="cargo.exe" ;;
+        bun) ps_name="bun.exe" ;;
+        uv) ps_name="uv.exe" ;;
+        *) ps_name="$name.exe" ;;
+    esac
+
+    powershell.exe -NoProfile -Command \
+        "(Get-Command '$ps_name' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)" \
+        2>/dev/null | tr -d '\r' | tail -n 1
+}
+
+windows_path_to_unix() {
+    local win_path="$1"
+
+    if command -v wslpath >/dev/null 2>&1; then
+        wslpath -u "$win_path"
+        return 0
+    fi
+
+    # Fallback for simple drive-letter paths when wslpath is unavailable.
+    if [[ "$win_path" =~ ^([A-Za-z]):\\(.*)$ ]]; then
+        local drive="${BASH_REMATCH[1],,}"
+        local rest="${BASH_REMATCH[2]//\\//}"
+        printf '/mnt/%s/%s\n' "$drive" "$rest"
+        return 0
+    fi
+
+    return 1
+}
+
+ensure_tool_on_path() {
+    local name="$1"
+    if command -v "$name" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    local win_path=""
+    win_path="$(find_windows_command "$name")"
+    if [ -z "$win_path" ]; then
+        return 1
+    fi
+
+    local win_dir=""
+    win_dir="$(dirname "$win_path")"
+    local unix_dir=""
+    unix_dir="$(windows_path_to_unix "$win_dir")"
+    export PATH="$unix_dir:$PATH"
+}
+
+ensure_tool_on_path cargo || true
+ensure_tool_on_path bun || true
+ensure_tool_on_path uv || true
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -33,13 +89,9 @@ while [[ $# -gt 0 ]]; do
             CROSS_TARGET="$2"
             shift 2
             ;;
-        --rebuild-installer)
-            REBUILD_INSTALLER=true
-            shift
-            ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: ./build-desktop.sh [-s|--skip-frontend] [-t|--target all|installer|bundle] [--rebuild-installer]"
+            echo "Usage: ./build-desktop.sh [-s|--skip-frontend] [-t|--target all|installer|bundle]"
             exit 1
             ;;
     esac
@@ -268,27 +320,32 @@ copy_uv_binary() {
     local uv_path
     uv_path=$(command -v uv)
 
-    # Detect target triple for Sidecar naming
+    # Detect target triple for Sidecar naming.
+    # Prefer the explicit cross target so staged artifacts match the bundle target.
     local target_triple=""
-    local os_type="$(uname -s)"
-    local arch="$(uname -m)"
+    if [ -n "$CROSS_TARGET" ]; then
+        target_triple="$CROSS_TARGET"
+    else
+        local os_type="$(uname -s)"
+        local arch="$(uname -m)"
 
-    case "$os_type" in
-        Linux)
-            target_triple="x86_64-unknown-linux-gnu"
-            ;;
-        Darwin)
-            if [ "$arch" = "arm64" ] || [ "$arch" = "aarch64" ]; then
-                target_triple="aarch64-apple-darwin"
-            else
-                target_triple="x86_64-apple-darwin"
-            fi
-            ;;
-        *)
-            echo "Unknown OS: $os_type, using generic naming"
-            target_triple="unknown"
-            ;;
-    esac
+        case "$os_type" in
+            Linux)
+                target_triple="x86_64-unknown-linux-gnu"
+                ;;
+            Darwin)
+                if [ "$arch" = "arm64" ] || [ "$arch" = "aarch64" ]; then
+                    target_triple="aarch64-apple-darwin"
+                else
+                    target_triple="x86_64-apple-darwin"
+                fi
+                ;;
+            *)
+                echo "Unknown OS: $os_type, using generic naming"
+                target_triple="unknown"
+                ;;
+        esac
+    fi
 
     local sidecar_name="uv-${target_triple}"
     local dest_path="$STAGE_DIR/$sidecar_name"
@@ -395,22 +452,8 @@ if [[ "$TARGET" == "installer" || "$TARGET" == "all" ]]; then
     echo "  STAGE 1: BUILD INSTALLER             "
     echo "========================================"
 
-    # Installer crate rarely changes: reuse the prebuilt binary unless explicitly
-    # targeting installer or forcing a rebuild. Build automatically on first run.
-    if [ -n "$CROSS_TARGET" ]; then
-        existing_installer="$TAURI_DIR/target/$CROSS_TARGET/release/rvInstaller"
-    else
-        existing_installer="$TAURI_DIR/target/release/rvInstaller"
-    fi
-
-    if [ "$REBUILD_INSTALLER" = false ] && [ "$TARGET" != "installer" ] && [ -f "$existing_installer" ]; then
-        echo "Reusing existing rvInstaller (use --rebuild-installer to force rebuild)"
-        echo "  -> $existing_installer"
-        INSTALLER_PATH="$existing_installer"
-    else
-        check_dependencies_stage1
-        build_installer
-    fi
+    check_dependencies_stage1
+    build_installer
 
     if [ "$TARGET" == "installer" ]; then
         echo ""

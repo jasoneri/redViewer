@@ -36,15 +36,25 @@
       "../../assets/configs/global.toml": "res/conf/global.toml"
     },
     "windows": {
+      "wix": {
+        "fragmentPaths": ["./windows/firewall.wxs"],
+        "componentRefs": ["RvMsiFirewallMarker"]
+      },
       "nsis": {
         "template": "./windows/installer.nsi",
         "installerHooks": "./windows/hooks.nsh",
-        "installMode": "currentUser",
+        // RVBASE004: firewall setup opens ports used by rV.exe and the Python backend child process.
+        // Keep the installer elevation-capable; currentUser mode makes netsh firewall rules fail silently.
+        "installMode": "both",
         "languages": ["English", "SimpChinese"],
         "displayLanguageSelector": true,
         "sidebarImage": "../../assets/icons/setup.bmp",
         "installerIcon": "../../assets/icons/setup.ico"
       }
+    },
+    "macOS": {
+      // Ad-hoc signing keeps Intel macOS CI builds working without Apple certs.
+      "signingIdentity": "-"
     }
   },
   "plugins": {}
