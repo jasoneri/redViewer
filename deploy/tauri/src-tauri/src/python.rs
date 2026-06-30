@@ -3,6 +3,6 @@
 //! Re-exports lib::PythonManager with additional Tauri-specific functionality.
 
 pub use rv_lib::{
-    BackendConfig, DesktopAdminSecretResponse, DesktopAdminState, DesktopLocksState,
-    DesktopLocksUpdate, PythonManager,
+    BackendConfig, DesktopAdminLogLevelResponse, DesktopAdminSecretResponse, DesktopAdminState,
+    DesktopLocksState, DesktopLocksUpdate, PythonManager,
 };

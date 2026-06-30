@@ -31,8 +31,8 @@ use std::sync::{
 use tauri::{Emitter, Manager};
 
 use crate::python::{
-    DesktopAdminSecretResponse, DesktopAdminState, DesktopLocksState, DesktopLocksUpdate,
-    PythonManager,
+    DesktopAdminLogLevelResponse, DesktopAdminSecretResponse, DesktopAdminState,
+    DesktopLocksState, DesktopLocksUpdate, PythonManager,
 };
 use crate::webserver::{WebServer, WebServerConfig};
 
@@ -170,6 +170,48 @@ async fn desktop_admin_update_locks(
             .map(|response| response.locks)
     })
     .await
+}
+
+#[tauri::command]
+async fn desktop_admin_update_log_level(
+    app: tauri::AppHandle,
+    level: String,
+) -> Result<DesktopAdminLogLevelResponse, String> {
+    let pm = get_python_manager(&app)?;
+    let response = run_backend_call("desktop admin log-level update", move || {
+        pm.desktop_admin_update_log_level(&level)
+    })
+    .await?;
+
+    set_backend_status(BackendStatus::Starting, None);
+    if let Err(e) = app.emit("backend-ready", build_backend_status_payload()) {
+        tracing::warn!("Failed to emit backend-ready: {}", e);
+    }
+
+    let pm = get_python_manager(&app)?;
+    let restart_result = run_backend_call("backend restart", move || {
+        pm.restart()?;
+        pm.wait_until_healthy(std::time::Duration::from_secs(20))?;
+        Ok(())
+    })
+    .await;
+
+    match restart_result {
+        Ok(()) => {
+            set_backend_status(BackendStatus::Running, None);
+            if let Err(e) = app.emit("backend-ready", build_backend_status_payload()) {
+                tracing::warn!("Failed to emit backend-ready: {}", e);
+            }
+            Ok(response)
+        }
+        Err(e) => {
+            set_backend_status(BackendStatus::Error, Some(e.clone()));
+            if let Err(emit_error) = app.emit("backend-ready", build_backend_status_payload()) {
+                tracing::warn!("Failed to emit backend-ready: {}", emit_error);
+            }
+            Err(e)
+        }
+    }
 }
 
 /// Get the fonts directory path in AppData
@@ -566,12 +608,14 @@ fn main() {
             main_window::main_window_open_browser,
             main_window::main_window_close,
             main_window::get_lan_url,
+            main_window::get_backend_base_url,
             lan_diagnostics::get_lan_diagnostics,
             get_backend_status,
             get_system_theme,
             desktop_admin_get_state,
             desktop_admin_update_secret,
             desktop_admin_update_locks,
+            desktop_admin_update_log_level,
             get_fonts_dir,
             list_fonts,
             get_font_path,

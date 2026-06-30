@@ -188,3 +188,9 @@ pub fn get_lan_url(app: tauri::AppHandle) -> Option<String> {
     app.try_state::<WebServer>()
         .and_then(|ws| ws.lan_url().map(String::from))
 }
+
+#[tauri::command]
+pub fn get_backend_base_url(app: tauri::AppHandle) -> Option<String> {
+    app.try_state::<WebServer>()
+        .map(|ws| ws.url().to_string())
+}

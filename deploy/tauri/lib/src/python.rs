@@ -65,9 +65,21 @@ pub struct DesktopAdminSecretResponse {
     pub has_secret: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DesktopAdminLogLevelResponse {
+    pub success: bool,
+    pub log_level: String,
+    pub restart_required: bool,
+}
+
 #[derive(Serialize)]
 struct DesktopSecretPayload<'a> {
     secret: &'a str,
+}
+
+#[derive(Serialize)]
+struct DesktopLogLevelPayload<'a> {
+    log_level: &'a str,
 }
 
 /// Python process manager - handles starting, stopping, and monitoring the backend
@@ -238,6 +250,21 @@ impl PythonManager {
             .body_mut()
             .read_json::<DesktopAdminLocksResponse>()
             .context("parse desktop admin locks response")
+    }
+
+    pub fn desktop_admin_update_log_level(
+        &self,
+        log_level: &str,
+    ) -> anyhow::Result<DesktopAdminLogLevelResponse> {
+        let base_url = self.desktop_admin_base_url();
+        let mut response = desktop_admin_request(
+            ureq::post(format!("{}/root/desktop-admin/log-level", base_url))
+                .send_json(DesktopLogLevelPayload { log_level }),
+        )?;
+        response
+            .body_mut()
+            .read_json::<DesktopAdminLogLevelResponse>()
+            .context("parse desktop admin log-level response")
     }
 
     fn desktop_admin_base_url(&self) -> String {

@@ -2,7 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { Loader2, ChevronsLeft, AlertTriangle, KeyRound } from 'lucide-react';
+import { Loader2, ChevronsLeft, AlertTriangle, SlidersHorizontal } from 'lucide-react';
 import { cn } from './lib/utils';
 import SettingsView from './settings';
 import { useDynamicFonts } from './hooks/useDynamicFonts';
@@ -11,6 +11,7 @@ import type {
   DesktopLocksState,
   DesktopLocksUpdate,
   LockKey,
+  LogLevel,
   SecretSavePhase,
 } from './settings';
 import packageJson from '../package.json';
@@ -34,6 +35,56 @@ type DesktopAdminSecretResponse = {
   has_secret: boolean;
 };
 
+type DesktopAdminLogLevelResponse = {
+  success: boolean;
+  log_level: string;
+  restart_required: boolean;
+};
+
+type DesktopConfResponse = {
+  log_level: string;
+};
+
+const LOG_LEVELS: LogLevel[] = ['trace', 'debug', 'info', 'warning', 'error', 'critical'];
+
+function toLogLevel(value: string | null | undefined): LogLevel {
+  const nextValue = value?.toLowerCase();
+  return LOG_LEVELS.includes(nextValue as LogLevel) ? (nextValue as LogLevel) : 'info';
+}
+
+function buildBackendUrl(baseUrl: string, path: string) {
+  const trimmedBaseUrl = baseUrl.trim();
+  if (!trimmedBaseUrl) throw new Error('后端地址不可用，无法读取配置');
+  const normalizedBaseUrl = /^[a-z][a-z\d+\-.]*:\/\//i.test(trimmedBaseUrl)
+    ? trimmedBaseUrl
+    : `http://${trimmedBaseUrl}`;
+  return new URL(path, normalizedBaseUrl.endsWith('/') ? normalizedBaseUrl : `${normalizedBaseUrl}/`).toString();
+}
+
+async function readBackendJson<T>(response: Response): Promise<T> {
+  if (response.ok) {
+    return response.json() as Promise<T>;
+  }
+
+  const fallbackMessage = response.statusText || `HTTP ${response.status}`;
+  const text = await response.text();
+  if (!text) throw new Error(fallbackMessage);
+
+  let payload: unknown;
+  try {
+    payload = JSON.parse(text) as unknown;
+  } catch {
+    throw new Error(text || fallbackMessage);
+  }
+
+  if (typeof payload === 'string') throw new Error(payload);
+  if (payload && typeof payload === 'object' && 'detail' in payload) {
+    throw new Error(String((payload as { detail?: unknown }).detail ?? fallbackMessage));
+  }
+
+  throw new Error(text || fallbackMessage);
+}
+
 const LOCK_KEYS: LockKey[] = ['config_path', 'book_handle', 'switch_doujin', 'force_rescan'];
 const DESKTOP_FONT_FILES = [
   'Inter-Regular.woff2',
@@ -52,8 +103,10 @@ function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [view, setView] = useState<DesktopView>('main');
   const [settingsState, setSettingsState] = useState<DesktopAdminState | null>(null);
+  const [desktopLogLevel, setDesktopLogLevel] = useState<LogLevel>('info');
   const [settingsBusy, setSettingsBusy] = useState<string | null>(null);
-  const [, setSettingsError] = useState<string | null>(null);
+  const [logsCleanupBusy, setLogsCleanupBusy] = useState(false);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
   const [secretSavePhase, setSecretSavePhase] = useState<SecretSavePhase>('idle');
 
   // Load fonts from AppData.
@@ -96,12 +149,31 @@ function App() {
     }
   }, []);
 
+  const getBackendBaseUrl = useCallback(async () => {
+    const nextUrl = await invoke<string | null>('get_backend_base_url');
+    if (!nextUrl) throw new Error('后端地址不可用，无法读取配置');
+    return nextUrl;
+  }, []);
+
+  const loadDesktopConf = useCallback(async () => {
+    setSettingsError(null);
+    try {
+      const backendUrl = await getBackendBaseUrl();
+      const response = await fetch(buildBackendUrl(backendUrl, '/comic/conf'), { cache: 'no-store' });
+      const conf = await readBackendJson<DesktopConfResponse>(response);
+      setDesktopLogLevel(toLogLevel(conf.log_level));
+    } catch (e) {
+      setSettingsError(String(e));
+    }
+  }, [getBackendBaseUrl]);
+
   const openSettingsView = useCallback(() => {
     setView('settings');
     setError(null);
     setSecretSavePhase('idle');
     void loadDesktopAdminState();
-  }, [loadDesktopAdminState]);
+    void loadDesktopConf();
+  }, [loadDesktopAdminState, loadDesktopConf]);
 
   const returnToMainView = useCallback(() => {
     setView('main');
@@ -232,6 +304,43 @@ function App() {
     }
   }, [secretSavePhase]);
 
+  const handleChangeLogLevel = useCallback(async (level: LogLevel) => {
+    if (desktopLogLevel === level) return;
+
+    const previousLevel = desktopLogLevel;
+    setSettingsError(null);
+    setDesktopLogLevel(level);
+
+    try {
+      const response = await invoke<DesktopAdminLogLevelResponse>('desktop_admin_update_log_level', {
+        level,
+      });
+      setDesktopLogLevel(toLogLevel(response.log_level));
+      await loadDesktopConf();
+    } catch (e) {
+      setSettingsError(String(e));
+      setDesktopLogLevel(previousLevel);
+    }
+  }, [desktopLogLevel, loadDesktopConf]);
+
+  const handleCleanupLogs = useCallback(async () => {
+    if (logsCleanupBusy) return;
+
+    setSettingsError(null);
+    setLogsCleanupBusy(true);
+    try {
+      const backendUrl = await getBackendBaseUrl();
+      const response = await fetch(buildBackendUrl(backendUrl, '/comic/logs/cleanup'), {
+        method: 'POST',
+      });
+      await readBackendJson<unknown>(response);
+    } catch (e) {
+      setSettingsError(String(e));
+    } finally {
+      setLogsCleanupBusy(false);
+    }
+  }, [getBackendBaseUrl, logsCleanupBusy]);
+
   const applyLockUpdates = useCallback(async (updates: DesktopLocksUpdate) => {
     setSettingsError(null);
     setSettingsBusy('locks');
@@ -321,11 +430,16 @@ function App() {
         view === 'settings' ? (
           <SettingsView
             state={settingsState}
+            logLevel={desktopLogLevel}
+            error={settingsError}
             busy={settingsBusy}
+            logsCleanupBusy={logsCleanupBusy}
             secretSavePhase={secretSavePhase}
             onBack={returnToMainView}
             onSecretEdit={handleSecretEdit}
             onSaveSecret={handleSaveSecret}
+            onChangeLogLevel={handleChangeLogLevel}
+            onCleanupLogs={handleCleanupLogs}
             onToggleLock={handleToggleLock}
             onToggleReadOnly={handleToggleReadOnly}
           />
@@ -347,13 +461,13 @@ function App() {
                 disabled={closing}
                 aria-label="更新 secret 与锁控制"
               >
-                <KeyRound 
-                  size={22} 
+                <SlidersHorizontal 
+                  size={30} 
                   aria-hidden="true" 
                   style={{ 
                     fill: 'white', 
                     stroke: 'red', 
-                    strokeWidth: '1px' 
+                    strokeWidth: '2px' 
                   }} 
                 />
               </button>

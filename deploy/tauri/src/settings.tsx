@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
-import { Check, Loader2, Save, Undo2 } from 'lucide-react';
+import { BrushCleaning, Check, Loader2, Save, Undo2 } from 'lucide-react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { Divider } from '@mui/material';
 
@@ -20,6 +20,7 @@ export type DesktopAdminState = {
 
 export type LockKey = keyof DesktopLocksState;
 export type SecretSavePhase = 'idle' | 'loading' | 'success';
+export type LogLevel = 'trace' | 'debug' | 'info' | 'warning' | 'error' | 'critical';
 
 const LOCK_ROWS: Array<{ key: LockKey; label: string }> = [
   { key: 'config_path', label: '锁定路径配置' },
@@ -35,13 +36,27 @@ const EMPTY_LOCKS: DesktopLocksState = {
   force_rescan: false,
 };
 
+const LOG_LEVEL_OPTIONS: Array<{ value: LogLevel; label: string }> = [
+  { value: 'trace', label: 'TRACE' },
+  { value: 'debug', label: 'DEBUG' },
+  { value: 'info', label: 'INFO' },
+  { value: 'warning', label: 'WARNING' },
+  { value: 'error', label: 'ERROR' },
+  { value: 'critical', label: 'CRITICAL' },
+];
+
 type SettingsViewProps = {
   state: DesktopAdminState | null;
+  logLevel: LogLevel;
+  error: string | null;
   busy: string | null;
+  logsCleanupBusy: boolean;
   secretSavePhase: SecretSavePhase;
   onBack: () => void;
   onSecretEdit: () => void;
   onSaveSecret: (secret: string) => Promise<boolean>;
+  onChangeLogLevel: (level: LogLevel) => Promise<void>;
+  onCleanupLogs: () => Promise<void>;
   onToggleLock: (key: LockKey, value: boolean) => Promise<void>;
   onToggleReadOnly: (value: boolean) => Promise<void>;
 };
@@ -82,11 +97,16 @@ function RockerSwitch({
 
 export default function SettingsView({
   state,
+  logLevel,
+  error,
   busy,
+  logsCleanupBusy,
   secretSavePhase,
   onBack,
   onSecretEdit,
   onSaveSecret,
+  onChangeLogLevel,
+  onCleanupLogs,
   onToggleLock,
   onToggleReadOnly,
 }: SettingsViewProps) {
@@ -105,12 +125,12 @@ export default function SettingsView({
   };
 
   return (
-    <section className="settings-view" aria-label="Secret 与锁控制">
+    <section className="settings-view" aria-label="Secret、配置与锁控制">
       <Tabs.Root defaultValue="secret-lock" className="tabs-root">
         <header className="nav-headers">
           <Tabs.List className="tabs-list" aria-label="设置导航">
             <Tabs.Trigger className="tabs-trigger" value="secret-lock">
-              Secret & Lock
+              Settings
             </Tabs.Trigger>
           </Tabs.List>
           <button
@@ -153,6 +173,50 @@ export default function SettingsView({
                 </button>
               </div>
             </form>
+
+            <section className="conf-panel" aria-label="配置">
+              <h2>Conf</h2>
+              <div className="log-level-group">
+                <label className="log-level-label" htmlFor="desktop-log-level">
+                  Log level
+                </label>
+                <div className="log-level-select-row">
+                  <select
+                    id="desktop-log-level"
+                    value={logLevel}
+                    onChange={(event) => {
+                      void onChangeLogLevel(event.currentTarget.value as LogLevel);
+                    }}
+                  >
+                    {LOG_LEVEL_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    className="log-cleanup-button"
+                    disabled={logsCleanupBusy}
+                    onClick={() => {
+                      void onCleanupLogs();
+                    }}
+                    aria-label={logsCleanupBusy ? '正在清理日志' : '清理日志'}
+                  >
+                    {logsCleanupBusy ? (
+                      <Loader2 className="log-cleanup-spinner" size={14} aria-hidden="true" />
+                    ) : (
+                      <BrushCleaning size={14} aria-hidden="true" />
+                    )}
+                  </button>
+                </div>
+                {error && (
+                  <div className="settings-inline-error" role="alert">
+                    {error}
+                  </div>
+                )}
+              </div>
+            </section>
 
             <div className="lock-panel" aria-label="锁控制">
               <div className="lock-row read-only-row">
