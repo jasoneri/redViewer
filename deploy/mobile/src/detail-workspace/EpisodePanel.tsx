@@ -105,7 +105,6 @@ function EpisodeTile({
               }}
               disabled={detailView.connection !== 'online' || !!detailView.busy}
               aria-label={`${cachedEpisode ? '更新缓存' : '缓存章节'} ${title}`}
-              title={cachedEpisode ? '更新缓存' : '缓存章节'}
             >
               {detailView.busy === `cache:${episode.id}`
                 ? <LoaderCircle className="spin" size={15} />
@@ -121,7 +120,6 @@ function EpisodeTile({
             }}
             disabled={detailView.detailSourceIsOffline ? !cachedEpisode || !!detailView.busy : !!detailView.busy}
             aria-label={`${detailView.detailSourceIsOffline ? '删除缓存' : detailView.deleteHardMode ? '彻底删除' : '移至回收'} ${title}`}
-            title={detailView.detailSourceIsOffline ? '删除缓存' : detailView.deleteHardMode ? '彻底删除' : '移至回收'}
           >
             <Trash2 size={15} />
           </button>
@@ -134,7 +132,6 @@ function EpisodeTile({
               }}
               disabled={!!detailView.busy}
               aria-label={`保留 ${title}`}
-              title="移至保留"
             >
               <Save size={15} />
             </button>
@@ -144,7 +141,7 @@ function EpisodeTile({
       <div className="episode-card-copy">
         <div className="episode-card-title-row">
           <div className="episode-card-title-stack">
-            <span className="episode-card-title" title={title}>
+            <span className="episode-card-title">
               {title}
             </span>
             <ProgressMeter value={episodeProgress ? detailSelectors.progressMeterValue(episodeProgress, episodePageCount ?? undefined) : 0} />

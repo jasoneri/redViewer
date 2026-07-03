@@ -3,8 +3,11 @@ skinBaseUrl: https://img-cgs.101114105.xyz/file/rv/skin
 skin:
   default:
     _act:
-      edge: [assets/skin.d/default/edge_effect.gif, 600]
-      menu: [assets/skin.d/default/menu_effect.gif, 500]
-    edge: 1781365855145_edge.png
-    menu: 1781444636248_menu-strip.png
+      edge: [1782235577604_edge_effect.gif, 600]
+      menu: [1782158934547_menu_effect.gif, 500]
+    edge: [1781365855145_edge.png, 60]
+    menu: [1782158919159_menu-strip.png, 66]
     settings_bg: 1781363766171_settings-bottom.gif
+    toast_err: 1782136444091_toastErr.png
+    toast_success: 1782142003707_toastSuccess.png
+    toast_warn: 1782136488525_toastWarn.png

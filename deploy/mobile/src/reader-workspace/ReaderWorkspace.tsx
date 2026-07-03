@@ -1,5 +1,5 @@
 import { ArrowLeft, ChevronsLeft, ChevronsRight, Settings } from 'lucide-react'
-import type { Dispatch, MouseEvent, RefObject, SetStateAction, TouchEvent } from 'react'
+import { useCallback, useEffect, useRef, type Dispatch, type MouseEvent, type RefObject, type SetStateAction, type TouchEvent } from 'react'
 import { ReaderFloatingControl } from './ReaderFloatingControl'
 import { ReaderPageMode } from './ReaderPageMode'
 import { ReaderSettingsPanel } from './ReaderSettingsPanel'
@@ -56,6 +56,7 @@ export type ReaderWorkspaceProps = {
   onBack: () => void
   openReaderNeighbor: (direction: number) => void
   readerBookHandle: (handle: 'save' | 'remove' | 'del') => void
+  saveReaderImageToGallery: (imageUrl: string, imagePageIndex: number) => void
   scrollReaderToTop: () => void
   showReaderChromeControls: () => void
   finishReaderFloatingControlDrag: (position: ReaderFloatingControlPosition) => void
@@ -154,6 +155,7 @@ export function ReaderWorkspace({
   onBack,
   openReaderNeighbor,
   readerBookHandle,
+  saveReaderImageToGallery,
   scrollReaderToTop,
   showReaderChromeControls,
   finishReaderFloatingControlDrag,
@@ -163,6 +165,9 @@ export function ReaderWorkspace({
   stopReaderAutoScroll,
   toggleReaderAutoScroll,
 }: ReaderWorkspaceProps) {
+  const scrollLongPressTimerRef = useRef<number | null>(null)
+  const scrollLongPressStartRef = useRef<{ x: number; y: number } | null>(null)
+  const scrollLongPressHandledRef = useRef(false)
   const readerTopbarBookTitle = activeItem.book || activeItem.title
   const readerTopbarChapterTitle = activeItem.ep && activeItem.ep !== activeItem.book ? activeItem.ep : ''
   const readerTopbarBookSource = readerTopbarChapterTitle ? null : activeItem.meta?.source || null
@@ -195,6 +200,49 @@ export function ReaderWorkspace({
     />
   ) : null
 
+  const clearScrollLongPressTimer = useCallback(() => {
+    if (scrollLongPressTimerRef.current === null) return
+    window.clearTimeout(scrollLongPressTimerRef.current)
+    scrollLongPressTimerRef.current = null
+  }, [])
+
+  useEffect(() => clearScrollLongPressTimer, [clearScrollLongPressTimer])
+
+  const handleScrollImageTouchStart = useCallback((event: TouchEvent<HTMLImageElement>, page: string, imagePageIndex: number) => {
+    const touch = event.touches[0]
+    if (!touch) return
+    scrollLongPressHandledRef.current = false
+    scrollLongPressStartRef.current = { x: touch.clientX, y: touch.clientY }
+    clearScrollLongPressTimer()
+    scrollLongPressTimerRef.current = window.setTimeout(() => {
+      scrollLongPressTimerRef.current = null
+      scrollLongPressHandledRef.current = true
+      saveReaderImageToGallery(page, imagePageIndex)
+    }, 600)
+  }, [clearScrollLongPressTimer, saveReaderImageToGallery])
+
+  const handleScrollImageTouchMove = useCallback((event: TouchEvent<HTMLImageElement>) => {
+    const start = scrollLongPressStartRef.current
+    const touch = event.touches[0]
+    if (!start || !touch) return
+    const moved = Math.abs(touch.clientX - start.x) > 10 || Math.abs(touch.clientY - start.y) > 10
+    if (moved) clearScrollLongPressTimer()
+  }, [clearScrollLongPressTimer])
+
+  const handleScrollImageTouchEnd = useCallback((event: TouchEvent<HTMLImageElement>) => {
+    clearScrollLongPressTimer()
+    scrollLongPressStartRef.current = null
+    if (!scrollLongPressHandledRef.current) return
+    event.stopPropagation()
+  }, [clearScrollLongPressTimer])
+
+  const handleScrollImageClick = useCallback((event: MouseEvent<HTMLImageElement>) => {
+    if (!scrollLongPressHandledRef.current) return
+    scrollLongPressHandledRef.current = false
+    event.preventDefault()
+    event.stopPropagation()
+  }, [])
+
   return (
     <section className={`reader mode-${readerMode} fit-${readerFit} toolbar-${toolbarPosition} ${readerChromeVisible ? 'chrome-on' : 'chrome-off'}`}>
       {toolbarPosition === 'top' && topbar}
@@ -218,6 +266,7 @@ export function ReaderWorkspace({
             jumpReaderFirstPage={jumpReaderFirstPage}
             jumpReaderLastPage={jumpReaderLastPage}
             readerBookHandle={readerBookHandle}
+            saveReaderImageToGallery={saveReaderImageToGallery}
             setReaderPageJumpOpen={setReaderPageJumpOpen}
             showReaderChromeControls={showReaderChromeControls}
             stopReaderAutoScroll={stopReaderAutoScroll}
@@ -234,7 +283,18 @@ export function ReaderWorkspace({
             onScroll={handleReaderScroll}
           >
             {readerPages.map((page, index) => (
-              <img key={page} src={page} alt={`${activeItem.title} ${index + 1}`} loading="lazy" onLoad={handleScrollImageLoad} />
+              <img
+                key={page}
+                src={page}
+                alt={`${activeItem.title} ${index + 1}`}
+                loading="lazy"
+                onLoad={handleScrollImageLoad}
+                onClick={handleScrollImageClick}
+                onTouchStart={(event) => handleScrollImageTouchStart(event, page, index)}
+                onTouchMove={handleScrollImageTouchMove}
+                onTouchEnd={handleScrollImageTouchEnd}
+                onTouchCancel={handleScrollImageTouchEnd}
+              />
             ))}
           </div>
         )}
@@ -255,22 +315,14 @@ export function ReaderWorkspace({
           finishReaderFloatingControlDrag={finishReaderFloatingControlDrag}
           jumpReaderScrollByDrag={jumpReaderScrollByDrag}
           moveReaderFloatingControl={moveReaderFloatingControl}
+          onBack={onBack}
+          openReaderNeighbor={openReaderNeighbor}
           readerBookHandle={readerBookHandle}
           scrollReaderToTop={scrollReaderToTop}
           showReaderChromeControls={showReaderChromeControls}
+          showFloatingNav={readerSettings.showCenterNextPrev}
           stopReaderAutoScroll={stopReaderAutoScroll}
         />
-      )}
-
-      {readerMode === 'scroll' && readerSettings.showCenterNextPrev && readerToolbarVisible && (
-        <div className="reader-center-nav" aria-label="章节导航">
-          <button onClick={() => openReaderNeighbor(-1)} aria-label="上一章">
-            <ChevronsLeft size={20} />
-          </button>
-          <button onClick={() => openReaderNeighbor(1)} aria-label="下一章">
-            <ChevronsRight size={20} />
-          </button>
-        </div>
       )}
 
       {toolbarPosition === 'bottom' && topbar}

@@ -1,5 +1,5 @@
-import { Filter, ListChecks, LoaderCircle, RefreshCw, SlidersHorizontal, Trash2 } from 'lucide-react'
-import type { MouseEventHandler } from 'react'
+import { ArrowDownWideNarrow, Filter, ListChecks, LoaderCircle, RefreshCw, Trash2 } from 'lucide-react'
+import type { CSSProperties, MouseEventHandler } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { CustomIcon } from '../icons/CustomIcon'
 
@@ -22,6 +22,7 @@ export function EdgeTools({
   onAction,
   onOpenMenu,
   onCloseMenu,
+  visiblePercent,
   effectSrc,
   effectDuration,
 }: {
@@ -36,6 +37,7 @@ export function EdgeTools({
   onAction: (action: EdgeAction) => void
   onOpenMenu: () => void
   onCloseMenu: () => void
+  visiblePercent: number
   effectSrc?: string
   effectDuration: number
 }) {
@@ -45,6 +47,7 @@ export function EdgeTools({
   const autoHideTimerRef = useRef<number | null>(null)
 
   const iconSize = 20.4
+  const rootStyle = { '--edge-visible-ratio': visiblePercent / 100 } as CSSProperties
   const runAction: MouseEventHandler<HTMLButtonElement> = (event) => {
     const action = event.currentTarget.dataset.edgeAction
     if (!isEdgeAction(action)) return
@@ -117,7 +120,7 @@ export function EdgeTools({
   }
 
   return (
-    <div ref={rootRef} className={`edge-tools ${open ? 'open' : ''} ${showEffect ? 'effect-active' : ''}`}>
+    <div ref={rootRef} className={`edge-tools ${open ? 'open' : ''} ${showEffect ? 'effect-active' : ''}`} style={rootStyle}>
       <button
         className="edge-strip"
         onClick={handleStripClick}
@@ -173,7 +176,7 @@ export function EdgeTools({
           data-edge-action="sort"
           onClick={runAction}
         >
-          <SlidersHorizontal size={iconSize} />
+          <ArrowDownWideNarrow size={iconSize} />
           <span className="span-tip">排序</span>
         </button>
         <button

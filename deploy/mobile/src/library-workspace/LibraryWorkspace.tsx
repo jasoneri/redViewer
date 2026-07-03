@@ -6,7 +6,7 @@ import { BookTile } from './BookTile'
 import { EdgeTools, type EdgeAction } from './EdgeTools'
 import { MultiCheckFloat } from './MultiCheckFloat'
 import { ShelfToolPanel } from './ShelfToolPanel'
-import type { MultiCheckBatchAction } from './useLibraryReaderActions'
+import type { MultiCheckBatchAction } from './libraryCore'
 
 type ShelfSource = 'library' | 'downloads'
 type SortMode = 'time_desc' | 'time_asc' | 'name_asc' | 'name_desc'
@@ -30,6 +30,7 @@ export type ShelfWorkspaceView = {
   deleteHardMode: boolean
   doujinTagPanel: DoujinTagPanel | null
   edgeLogoSrc: string
+  edgeVisiblePercent: number
   edgeEffectSrc: string
   edgeEffectDuration: number
   filterBoardKeywords: string[]
@@ -41,6 +42,7 @@ export type ShelfWorkspaceView = {
   multiCheckFloatPosition: { x: number; y: number }
   multiCheckMode: boolean
   multiCheckedIds: string[]
+  supportsMultiCheck: boolean
   openOpsId: string
   pagedShelf: ShelfBook[]
   query: string
@@ -137,7 +139,6 @@ function DoujinTagSheet({
               className={`doujin-tag-option ${doujinTagPanel.selectedTag === tag ? 'active' : ''}`}
               onClick={() => onSelect(tag)}
               aria-pressed={doujinTagPanel.selectedTag === tag}
-              title={tag}
             >
               {tag}
             </button>
@@ -159,7 +160,6 @@ function DoujinTagSheet({
             className="doujin-tag-close-btn ghost"
             onClick={onClose}
             aria-label="关闭标签面板"
-            title="关闭"
           >
             <X size={15} aria-hidden="true" />
           </button>
@@ -224,13 +224,14 @@ export function LibraryWorkspace({
       <EdgeTools
         open={shelfView.toolMenuOpen}
         logoSrc={shelfView.edgeLogoSrc}
+        visiblePercent={shelfView.edgeVisiblePercent}
         effectSrc={shelfView.edgeEffectSrc}
         effectDuration={shelfView.edgeEffectDuration}
         busy={shelfView.busy}
         comicMode={shelfView.comicMode}
         deleteHardMode={shelfView.deleteHardMode}
         showDoujinAction={!shelfView.activeSourceIsOffline}
-        showMultiCheckAction={shelfView.isDoujinMode && !shelfView.activeSourceIsOffline}
+        showMultiCheckAction={shelfView.supportsMultiCheck}
         multiCheckActive={shelfView.multiCheckMode}
         onAction={shelfActions.runEdgeAction}
         onOpenMenu={shelfActions.openEdgeMenu}

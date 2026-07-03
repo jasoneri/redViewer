@@ -1,5 +1,4 @@
-import { AlertCircle, Check, X } from 'lucide-react'
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { LeftDrawer } from './app-shell/LeftDrawer'
 import { LocksModal } from './app-shell/LocksModal'
@@ -7,15 +6,18 @@ import { CustomSettingsModal } from './app-shell/CustomSettingsModal'
 import { useAppState } from './app-shell/useAppState'
 import { useMobileAppModel, type ToastTone } from './app-shell/useMobileAppModel'
 import { MENU_LOGO_SRC } from './app-shell/appMeta'
+import { toastStyleVars, getSkinToastIconSrc } from './app-shell/skinToast'
 import { AcquireWorkspace } from './acquire-workspace/AcquireWorkspace'
 import { DetailWorkspace } from './detail-workspace/DetailWorkspace'
 import { LibraryWorkspace } from './library-workspace/LibraryWorkspace'
 import { ReaderWorkspace } from './reader-workspace/ReaderWorkspace'
+import type { SkinAssets } from './app-shell/appMeta'
 
 function MicroHeader({
   drawerOpen,
   onOpenDrawer,
   menuImgSrc,
+  menuVisiblePercent,
   menuEffectSrc,
   menuEffectDuration = 1000,
   head,
@@ -24,6 +26,7 @@ function MicroHeader({
   drawerOpen: boolean
   onOpenDrawer: () => void
   menuImgSrc: string
+  menuVisiblePercent: number
   menuEffectSrc?: string
   menuEffectDuration?: number
   head?: ReactNode
@@ -31,6 +34,7 @@ function MicroHeader({
 }) {
   const [showEffect, setShowEffect] = useState(false)
   const pendingOpenTimerRef = useRef<number | null>(null)
+  const menuStyle = { '--menu-visible-ratio': menuVisiblePercent / 100 } as CSSProperties
 
   useEffect(() => {
     return () => {
@@ -71,6 +75,7 @@ function MicroHeader({
     <>
       <button
         className={`micro-menu-strip ${showEffect ? 'effect-active' : ''}`}
+        style={menuStyle}
         onClick={handleMenuClick}
         aria-hidden={drawerOpen}
         aria-label="打开菜单"
@@ -93,21 +98,35 @@ function MicroHeader({
   )
 }
 
-function ToastViewport({ toast }: { toast: { tone: ToastTone; text: string } | null }) {
+function ToastViewport({ 
+  toast, 
+  skinAssets 
+}: { 
+  toast: { tone: ToastTone; text: string } | null
+  skinAssets: SkinAssets
+}) {
   if (!toast) return null
 
+  const iconSrc = getSkinToastIconSrc(toast.tone, skinAssets)
+  const styleVars = toastStyleVars(toast.text)
+
   return (
-    <div className={`toast ${toast.tone}`} role="status">
-      <span className="toast-mark" aria-hidden="true">{toastIcon(toast.tone)}</span>
-      <span>{toast.text}</span>
+    <div 
+      className={`toast ${toast.tone}`} 
+      role="status"
+      style={styleVars}
+    >
+      {iconSrc && (
+        <img 
+          className="toast-icon" 
+          src={iconSrc} 
+          alt="" 
+          aria-hidden="true"
+        />
+      )}
+      <span className="toast-text">{toast.text}</span>
     </div>
   )
-}
-
-function toastIcon(tone: ToastTone): ReactNode {
-  if (tone === 'ok') return <Check size={15} />
-  if (tone === 'warn') return <AlertCircle size={15} />
-  return <X size={15} />
 }
 
 export function App() {
@@ -119,6 +138,7 @@ export function App() {
     drawerOpen,
     leftDrawerProps,
     menuImgSrc,
+    menuVisiblePercent,
     menuEffectSrc,
     menuEffectDuration,
     microHeaderStatus,
@@ -144,6 +164,7 @@ export function App() {
             drawerOpen={drawerOpen}
             onOpenDrawer={() => setDrawerOpen(true)}
             menuImgSrc={menuImgSrc || MENU_LOGO_SRC}
+            menuVisiblePercent={menuVisiblePercent}
             menuEffectSrc={menuEffectSrc}
             menuEffectDuration={menuEffectDuration}
             head={microHeaderStatus.head}
@@ -175,7 +196,7 @@ export function App() {
         {view === 'acquire' && <AcquireWorkspace {...acquireWorkspace.workspaceProps} />}
       </main>
 
-      <ToastViewport toast={toast} />
+      <ToastViewport toast={toast} skinAssets={appState.skinAssets} />
     </div>
   )
 }

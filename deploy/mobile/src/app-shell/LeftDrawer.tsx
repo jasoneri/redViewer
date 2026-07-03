@@ -1,7 +1,9 @@
 import { TreeSelect, type TreeSelectProps } from 'antd'
 import { CircleHelp, CornerDownLeft, FolderOpen, Globe2, Grid2X2, LoaderCircle, Radar, Search, Settings, X } from 'lucide-react'
+import { useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import { CustomIcon } from '../icons/CustomIcon'
+import { ConfDrawerSaveButton, useConfDrawerSaveFeedback } from '../shared/confDrawerSaveFeedback'
 import { StatusBadgeIcon } from '../shared/Cover'
 import { InputHistoryMenu } from '../shared/NativeDropdownMenu'
 
@@ -54,6 +56,7 @@ export type LibraryDrawerView = {
 export type DownloadsDrawerView = {
   cacheSummaryHint: string
   cacheSummaryText: string
+  offlineDelAfterHourDraft: string
   storageBusy: string
 }
 
@@ -67,6 +70,7 @@ export type LibraryDrawerLinks = {
 
 export type LeftDrawerActions = {
   changeFilesystemExpandedKeys: (keys: FilesystemExpandedKeys) => void
+  clearCache: () => Promise<void> | void
   cleanupInvalidCache: () => Promise<void> | void
   clearBackendDraft: () => void
   discoverBackend: () => Promise<void> | void
@@ -75,10 +79,12 @@ export type LeftDrawerActions = {
   openCustomSettingsFromBackground: () => void
   openExternalLink: (url: string, label: string) => Promise<void> | void
   refreshFilesystem: (path?: string) => Promise<void> | void
+  saveOfflineConfig: () => Promise<void> | void
   saveBackend: () => Promise<void> | void
   saveComicPath: () => Promise<void> | void
   saveRootSecret: () => Promise<void> | void
   setBackendDraft: (value: string) => void
+  setOfflineDelAfterHourDraft: (value: string) => void
   setRootSecretDraft: (value: string) => void
   toggleRootSecretHelp: () => void
   loadFilesystemNode: FilesystemLoadData
@@ -135,7 +141,10 @@ export function LeftDrawer({
             <LibraryDrawerCards drawerView={libraryView} links={links} actions={actions} />
           )}
           {activeView === 'downloads' && (
-            <DownloadsDrawerCard drawerView={downloadsView} actions={actions} />
+            <>
+              <DownloadsDrawerCard drawerView={downloadsView} actions={actions} />
+              <OfflineConfigDrawerCard drawerView={downloadsView} actions={actions} />
+            </>
           )}
           {activeView === 'acquire' && acquireSettings}
         </div>
@@ -188,13 +197,12 @@ function LibraryDrawerCards({
           </div>
         </div>
         <div className="drawer-card-body">
-          <label aria-label="api-url">
+          <label className="drawer-config-field" aria-label="api-url">
             <div className="accept-field accept-field-inline-clear">
               <StatusBadgeIcon
                 Icon={drawerView.backendScanning ? LoaderCircle : Radar}
                 ok={drawerView.backendAvailable}
                 label={backendIconLabel}
-                title={backendIconLabel}
                 showBadge={drawerView.backendStatusKnown}
                 disabled={drawerView.backendScanning || backendIconOk}
                 onClick={() => void actions.discoverBackend()}
@@ -222,13 +230,12 @@ function LibraryDrawerCards({
             </div>
           </label>
 
-          <label className={`secret-field ${drawerView.rootSecretHelpOpen ? 'help-open' : ''}`} aria-label="redviewer-root-secret">
+          <label className={`drawer-config-field secret-field ${drawerView.rootSecretHelpOpen ? 'help-open' : ''}`} aria-label="redviewer-root-secret">
             <div className="accept-field">
               <StatusBadgeIcon
                 Icon={RootSecretStatusIcon}
                 ok={drawerView.rootSecretConfigured}
                 label={drawerView.rootSecretConfigured ? 'Root Secret 已配置' : 'Root Secret 未配置'}
-                title={drawerView.rootSecretConfigured ? 'Root Secret 已配置' : 'Root Secret 未配置'}
               />
               <input
                 value={drawerView.rootSecretDraft}
@@ -261,9 +268,9 @@ function LibraryDrawerCards({
             )}
           </label>
 
-          <label aria-label="books_path">
+          <label className="drawer-config-field" aria-label="books_path">
             <div className="accept-field">
-              <StatusBadgeIcon Icon={FolderOpen} ok={drawerView.pathConfigured} label={drawerView.pathStatusText} title={drawerView.pathStatusText} />
+              <StatusBadgeIcon Icon={FolderOpen} ok={drawerView.pathConfigured} label={drawerView.pathStatusText} />
               <TreeSelect<FilesystemSelectValue, FilesystemNode>
                 className="path-tree-select"
                 value={drawerView.comicPathDraft ? { value: drawerView.comicPathDraft, label: drawerView.comicPathDraft } : undefined}
@@ -402,15 +409,84 @@ function DownloadsDrawerCard({
           <button
             type="button"
             className="drawer-action-card"
-            onClick={() => void actions.cleanupInvalidCache()}
-            disabled={drawerView.storageBusy === 'cleanup-invalid-cache'}
+            onClick={() => void actions.clearCache()}
+            disabled={drawerView.storageBusy === 'clear-cache'}
           >
-            {drawerView.storageBusy === 'cleanup-invalid-cache'
+            {drawerView.storageBusy === 'clear-cache'
               ? <LoaderCircle className="spin" size={18} />
               : <CustomIcon name="cacheClean" size={18} />}
-            <span>清理缓存</span>
+            <span>清空缓存</span>
           </button>
         </div>
+      </div>
+    </section>
+  )
+}
+
+function OfflineConfigDrawerCard({
+  drawerView,
+  actions,
+}: {
+  drawerView: DownloadsDrawerView
+  actions: LeftDrawerActions
+}) {
+  const [helpOpen, setHelpOpen] = useState(false)
+  const saveFeedback = useConfDrawerSaveFeedback()
+  const saveOfflineConfig = () => {
+    void saveFeedback.runWithFeedback(() => actions.saveOfflineConfig(), { minimumBusyMs: 160 })
+  }
+
+  return (
+    <section className="drawer-card cgs-conf-drawer-card offline-conf-drawer-card">
+      <div className="drawer-card-header">
+        <div className="drawer-card-title">
+          <CustomIcon name="dataSetting" size={17} />
+          <strong>离线配置</strong>
+          <ConfDrawerSaveButton
+            className="icon-only cgs-conf-header-save offlineConfSvBtn"
+            onClick={saveOfflineConfig}
+            aria-label="保存离线配置"
+            busy={saveFeedback.busy}
+            feedback={saveFeedback.feedback}
+            iconSize={18}
+          />
+        </div>
+      </div>
+      <div className="drawer-card-body">
+        <label className={`drawer-config-field cgs-conf-field secret-field offline-conf-field ${helpOpen ? 'help-open' : ''}`} aria-label="阅后待焚">
+          <div className="cgs-conf-btn-group cgs-conf-help-group offline-conf-btn-group">
+            <span className="cgs-conf-prefix offline-conf-label">阅后待焚</span>
+            <input
+              className="delAfterHourInput offline-conf-hours-input"
+              min="0"
+              max="9999"
+              inputMode="numeric"
+              aria-label="阅后待焚小时数"
+              type="number"
+              value={drawerView.offlineDelAfterHourDraft}
+              onChange={(event) => actions.setOfflineDelAfterHourDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') saveOfflineConfig()
+              }}
+            />
+            <span className="offline-conf-unit">小时</span>
+            <button
+              type="button"
+              className="icon-only cgs-conf-icon-btn cgs-conf-teach-btn"
+              aria-label="查看阅后待焚说明"
+              aria-expanded={helpOpen}
+              aria-controls="offline-read-cleanup-teachtip"
+              onClick={() => setHelpOpen((open) => !open)}
+            >
+              <CircleHelp size={16} />
+            </button>
+          </div>
+          {helpOpen && (
+            <div id="offline-read-cleanup-teachtip" className="secret-help-popover tail-top-right" role="note" aria-label="阅后待焚说明">
+              <span>仅阅读进度100%触发；默认 0 不删除</span>
+            </div>
+          )}
+        </label>
       </div>
     </section>
   )

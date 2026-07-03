@@ -12,6 +12,8 @@ import {
 
 export type SortMode = 'time_desc' | 'time_asc' | 'name_asc' | 'name_desc'
 export type ProgressMap = Record<string, Progress>
+export const MULTI_CHECK_PRIMARY_BATCH_ACTIONS = ['cacheAdd', 'attachAdd', 'save', 'del'] as const
+export type MultiCheckBatchAction = typeof MULTI_CHECK_PRIMARY_BATCH_ACTIONS[number]
 export type BookProgressEntry = {
   item: LibraryItem
   progress: Progress

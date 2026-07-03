@@ -103,7 +103,7 @@ function DetailToolbar({
       >
         <ChevronLeft size={17} />
       </button>
-      <div className="detail-series-picker" title={selectedBook.book}>
+      <div className="detail-series-picker">
         <CustomIcon name="bookList" className="detail-series-picker-icon" size={17} />
         <NativeSelectMenu
           className="detail-series-select"
@@ -170,7 +170,6 @@ function DetailHero({
                   onClick={() => detailActions.openCgsSearchFromBook(selectedBook)}
                   disabled={!!detailView.busy}
                   aria-label={`CGS 搜索 ${selectedBook.book}`}
-                  title="CGS 搜索"
                 >
                   <CustomIcon name="detailSearch" size={16} />
                 </button>
@@ -180,7 +179,6 @@ function DetailHero({
                   onClick={() => void detailActions.cacheSeries(selectedBook)}
                   disabled={detailView.connection !== 'online' || !!detailView.busy}
                   aria-label={`缓存全集 ${selectedBook.book}`}
-                  title="缓存全集"
                 >
                   {detailView.busy === `series:${selectedBook.id}` ? <LoaderCircle className="spin" size={16} /> : <CustomIcon name="cacheAdd" size={16} className="cache-add-icon" />}
                 </button>

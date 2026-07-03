@@ -28,7 +28,7 @@
     "targets": "all",
     "publisher": "jasoneri",
     "icon": [
-      "../../../deploy/assets/icons/icon.png",
+      "../../../deploy/assets/icons/icon-mobile.png",
       "../../../deploy/assets/icons/icon.ico"
     ],
     "android": {

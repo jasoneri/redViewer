@@ -18,7 +18,8 @@ export function BookTile({
 }) {
   const bookProgress = shelfSelectors.latestBookProgress(book)
   const isSingle = book.kind === 'single'
-  const showCoverOps = shelfView.activeSourceIsOffline || isSingle || shelfView.isDoujinMode
+  const multiCheck = shelfView.multiCheckMode && shelfView.supportsMultiCheck
+  const showCoverOps = shelfView.activeSourceIsOffline || isSingle || shelfView.isDoujinMode || multiCheck
   const bookMeta = shelfSelectors.ensureMeta(book.meta)
   const coverMetaTags = !shelfView.activeSourceIsOffline && shelfView.isDoujinMode
     ? shelfSelectors.doujinCoverOverlayTags(bookMeta)
@@ -32,7 +33,6 @@ export function BookTile({
   const cachedCount = shelfSelectors.bookCachedCount(book)
   const coverSrc = shelfSelectors.coverSrc(book)
   const cardOpen = () => shelfActions.openShelfBook(book, shelfView.activeShelfSource)
-  const multiCheck = shelfView.multiCheckMode && shelfView.isDoujinMode && !shelfView.activeSourceIsOffline
   const isChecked = multiCheck && shelfView.multiCheckedIds.includes(book.id)
 
   return (
@@ -78,7 +78,6 @@ export function BookTile({
                 }}
                 disabled={shelfView.connection !== 'online' || !!shelfView.busy}
                 aria-label={`${cachedCount ? '更新缓存' : '缓存至离线看'} ${book.book}`}
-                title={cachedCount ? '更新缓存' : '缓存至离线看'}
               >
                 {shelfView.busy === `cache:${book.id}` || shelfView.busy === `series:${book.id}`
                   ? <LoaderCircle className="spin" size={15} />
@@ -95,7 +94,6 @@ export function BookTile({
                 }}
                 disabled={!!shelfView.busy}
                 aria-label={`${shelfView.activeSourceIsOffline ? '删除缓存' : shelfView.deleteHardMode ? '彻底删除' : '移至回收'} ${book.book}`}
-                title={shelfView.activeSourceIsOffline ? '删除缓存' : shelfView.deleteHardMode ? '彻底删除' : '移至回收'}
               >
                 <Trash2 size={15} />
               </button>
@@ -109,7 +107,6 @@ export function BookTile({
                 }}
                 disabled={!!shelfView.busy}
                 aria-label={`保留 ${book.book}`}
-                title="移至保留"
               >
                 <Save size={15} />
               </button>
@@ -123,7 +120,6 @@ export function BookTile({
                 }}
                 disabled={!!shelfView.busy}
                 aria-label={`CGS 搜索 ${book.book}`}
-                title="CGS 搜索"
               >
                 <CustomIcon name="detailSearch" size={15} />
               </button>
@@ -132,7 +128,7 @@ export function BookTile({
         )}
       </div>
       <div className="tile-copy">
-        <button className="link-title" onClick={cardOpen} title={book.book}>
+        <button className="link-title" onClick={cardOpen}>
           {book.book}
         </button>
         {shelfView.activeSourceIsOffline || shelfView.isDoujinMode ? (
@@ -146,7 +142,6 @@ export function BookTile({
                 aria-expanded={isDoujinTagPanelOpen}
                 aria-controls="doujin-tag-sheet"
                 aria-label={`${book.book} 标签`}
-                title={bookMeta.tags.join(' / ')}
               >
                 <span className="doujin-tag-row-label">
                   <Tags size={14} />

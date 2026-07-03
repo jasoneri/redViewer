@@ -1,5 +1,7 @@
 type CustomIconName =
   | 'about'
+  | 'arrowsHorizontal'
+  | 'arrowsVertical'
   | 'bookList'
   | 'cacheAdd'
   | 'cacheDownload'
@@ -9,8 +11,12 @@ type CustomIconName =
   | 'cgsLibrary'
   | 'cgsSearch'
   | 'cgsSite'
+  | 'cgsSubmitJump'
+  | 'cgsSubmitNext'
   | 'cgsSubmit'
+  | 'cursorPointer'
   | 'data'
+  | 'dataSetting'
   | 'detailSearch'
   | 'docs'
   | 'doujin'
@@ -21,8 +27,11 @@ type CustomIconName =
   | 'menuExit'
   | 'offline'
   | 'releaseCheck'
+  | 'repair'
   | 'reset'
+  | 'scrollToTop'
   | 'sourceRefresh'
+  | 'toolbarTop'
   | 'updatePackage'
   | 'wireError'
 
@@ -36,6 +45,8 @@ type IconSvgProps = Omit<CustomIconProps, 'name'>
 
 export function CustomIcon({ name, ...props }: CustomIconProps) {
   if (name === 'about') return <AboutIcon {...props} />
+  if (name === 'arrowsHorizontal') return <ArrowsHorizontalIcon {...props} />
+  if (name === 'arrowsVertical') return <ArrowsVerticalIcon {...props} />
   if (name === 'bookList') return <BookListIcon {...props} />
   if (name === 'cacheAdd') return <CacheAddIcon {...props} />
   if (name === 'cacheDownload') return <CacheDownloadIcon {...props} />
@@ -45,8 +56,12 @@ export function CustomIcon({ name, ...props }: CustomIconProps) {
   if (name === 'cgsLibrary') return <CgsLibraryIcon {...props} />
   if (name === 'cgsSearch') return <CgsSearchIcon {...props} />
   if (name === 'cgsSite') return <CgsSiteIcon {...props} />
+  if (name === 'cgsSubmitJump') return <CgsSubmitJumpIcon {...props} />
+  if (name === 'cgsSubmitNext') return <CgsSubmitNextIcon {...props} />
   if (name === 'cgsSubmit') return <CgsSubmitIcon {...props} />
+  if (name === 'cursorPointer') return <CursorPointerIcon {...props} />
   if (name === 'data') return <DataIcon {...props} />
+  if (name === 'dataSetting') return <DataSettingIcon {...props} />
   if (name === 'detailSearch') return <DetailSearchIcon {...props} />
   if (name === 'docs') return <DocsIcon {...props} />
   if (name === 'faq') return <FaqIcon {...props} />
@@ -56,11 +71,23 @@ export function CustomIcon({ name, ...props }: CustomIconProps) {
   if (name === 'menuExit') return <MenuExitIcon {...props} />
   if (name === 'offline') return <OfflineIcon {...props} />
   if (name === 'releaseCheck') return <ReleaseCheckIcon {...props} />
+  if (name === 'repair') return <RepairIcon {...props} />
   if (name === 'reset') return <ResetIcon {...props} />
+  if (name === 'scrollToTop') return <ScrollToTopIcon {...props} />
   if (name === 'sourceRefresh') return <SourceRefreshIcon {...props} />
+  if (name === 'toolbarTop') return <ToolbarTopIcon {...props} />
   if (name === 'updatePackage') return <UpdatePackageIcon {...props} />
   if (name === 'wireError') return <WireErrorIcon {...props} />
   return <DoujinIcon {...props} />
+}
+
+function DataSettingIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path fill="currentColor" d="M12 14c-2.42 0-4.7-.6-6-1.55V9.64c1.47.83 3.61 1.36 6 1.36s4.53-.53 6-1.36v2.44c.33-.05.66-.08 1-.08s.67.03 1 .08V7c0-2.21-3.58-4-8-4S4 4.79 4 7v10c0 2.21 3.59 4 8 4h.29a7.4 7.4 0 0 1-.29-2c-3.87 0-6-1.5-6-2v-2.23c1.61.78 3.72 1.23 6 1.23c.24 0 .47 0 .7-.03c.4-.83.95-1.56 1.62-2.16c-.74.12-1.52.19-2.32.19m0-9c3.87 0 6 1.5 6 2s-2.13 2-6 2s-6-1.5-6-2s2.13-2 6-2m10.7 14.6v-1l1.1-.8c.1-.1.2-.2.1-.3l-1-1.7c0-.1-.2-.1-.3-.1l-1.2.5c-.3-.2-.6-.4-.9-.5l-.2-1.3c0-.1-.1-.2-.2-.2h-2c-.2 0-.3.1-.3.2l-.2 1.3c-.3.2-.5.3-.8.5l-1.2-.5c-.1 0-.2 0-.3.1l-1 1.7c0 .1 0 .2.1.3l1.1.8v1l-1.1.8c-.1.1-.2.2-.1.3l1 1.7c.1.1.2.1.3.1l1.2-.5c.2.2.5.4.8.5l.2 1.3c.1.1.2.2.3.2h2c.1 0 .2-.1.2-.2l.2-1.3c.3-.2.5-.3.8-.5l1.2.4c.1 0 .2 0 .3-.1l1-1.7c.1-.1.1-.2 0-.2zm-3.7.9c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5s1.5.7 1.5 1.5s-.7 1.5-1.5 1.5" />
+    </svg>
+  )
 }
 
 function AboutIcon({ className, size = 16 }: IconSvgProps) {
@@ -135,6 +162,24 @@ function CgsSubmitIcon({ className, size = 16 }: IconSvgProps) {
     <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 256 256" aria-hidden="true" focusable="false">
       <path d="M0 0h256v256H0z" fill="none" />
       <path fill="currentColor" d="m246.15 65.46l-.07-.08l-23.93-23.53a20 20 0 0 0-28.23-.05l-90 88.83l-33.86-32.85a20 20 0 0 0-28.21.08l-24 24a20 20 0 0 0 0 28.26l71.62 72a20 20 0 0 0 28.29 0L246.15 93.74a20 20 0 0 0 0-28.28M103.61 202.33L37.64 136L56 117.61L95.65 156a12 12 0 0 0 16.78-.08L208 61.61l18.32 18Z" />
+    </svg>
+  )
+}
+
+function CgsSubmitNextIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path fill="currentColor" d="M16.175 13H5q-.425 0-.712-.288T4 12t.288-.712T5 11h11.175l-4.9-4.9q-.3-.3-.288-.7t.313-.7q.3-.275.7-.288t.7.288l6.6 6.6q.15.15.213.325t.062.375t-.062.375t-.213.325l-6.6 6.6q-.275.275-.687.275T11.3 19.3q-.3-.3-.3-.712t.3-.713z" />
+    </svg>
+  )
+}
+
+function CgsSubmitJumpIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path fill="currentColor" d="M19.175 11L15.3 7.125q-.3-.3-.3-.712t.3-.713q.3-.275.713-.275t.687.275l4.6 4.6q.15.15.213.325t.062.375t-.062.375t-.213.325l-4.6 4.6q-.3.3-.7.288t-.7-.288q-.3-.3-.312-.7t.287-.7zm-6 1H7q-1.25 0-2.125.875T4 15v3q0 .425-.288.713T3 19t-.712-.288T2 18v-3q0-2.075 1.463-3.537T7 10h6.175L10.3 7.125q-.3-.3-.3-.712t.3-.713q.3-.275.713-.275t.687.275l4.6 4.6q.15.15.213.325t.062.375t-.062.375t-.213.325l-4.6 4.6q-.3.3-.7.288t-.7-.288q-.3-.3-.312-.7t.287-.7z" />
     </svg>
   )
 }
@@ -479,6 +524,133 @@ function ResetIcon({ className, size = 16 }: IconSvgProps) {
         fill="currentColor"
         d="m16.325 18.8l-1.15 1.15q-.425.425-1.05.438t-1.075-.438q-.425-.425-.425-1.062t.425-1.063l1.15-1.15q-.1-.275-.15-.575t-.05-.6q0-1.45 1.025-2.475T17.5 12q.225 0 .45.013t.425.087q.275.1.338.413t-.138.512L17.5 14.1q-.275.275-.275.7t.275.7t.7.275t.7-.275l1.075-1.075q.2-.2.512-.138t.413.338q.075.2.088.425t.012.45q0 1.45-1.025 2.475T17.5 19q-.325 0-.612-.05t-.563-.15M12 5Q9.075 5 7.038 7.038T5 12q0 1.8.813 3.3T8 17.75V16q0-.425.288-.712T9 15t.713.288T10 16v4q0 .425-.288.713T9 21H5q-.425 0-.712-.288T4 20t.288-.712T5 19h1.35Q4.8 17.75 3.9 15.938T3 12q0-1.875.713-3.512t1.924-2.85t2.85-1.925T12 3q2.85 0 5.1 1.563t3.25 4.062q.15.4 0 .775t-.55.525t-.788 0t-.537-.55q-.775-1.95-2.513-3.162T12 5"
       />
+    </svg>
+  )
+}
+
+function RepairIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 512 512"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h512v512H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M477.2 477.2c-46.4 46.4-121.631 46.4-168.032 0L34.8 202.832c-46.401-46.4-46.401-121.631 0-168.032c46.4-46.4 121.631-46.4 168.032 0l274.366 274.366c46.4 46.4 46.4 121.631 0 168.032M221.92 128.381l-93.54 93.54l158.913 158.912l93.54-93.54zM86.838 180.384c-5.569 5.569-5.569 14.597 0 20.166c5.568 5.569 14.597 5.569 20.166 0c5.568-5.569 5.568-14.597 0-20.166c-5.569-5.569-14.598-5.569-20.166 0m47.231-47.232c-5.568 5.569-5.568 14.597 0 20.166c5.57 5.569 14.598 5.569 20.167 0c5.568-5.569 5.568-14.597 0-20.166c-5.57-5.569-14.598-5.569-20.167 0m47.232-47.232c-5.568 5.569-5.568 14.598 0 20.166c5.569 5.57 14.598 5.57 20.166 0c5.569-5.568 5.569-14.597 0-20.166s-14.597-5.568-20.166 0m-57.25-8.587c-5.57 5.568-5.57 14.597 0 20.166c5.568 5.568 14.597 5.568 20.166 0c5.568-5.569 5.568-14.598 0-20.166c-5.57-5.569-14.598-5.569-20.166 0m-45.8 45.8c-5.57 5.569-5.57 14.598 0 20.166c5.568 5.569 14.596 5.569 20.165 0c5.569-5.568 5.569-14.597 0-20.166c-5.569-5.568-14.597-5.568-20.166 0M65.368 64.451c-5.569 5.569-5.569 14.598 0 20.166c5.568 5.57 14.597 5.57 20.166 0c5.568-5.568 5.568-14.597 0-20.166c-5.569-5.568-14.598-5.568-20.166 0m359.376 264.913c5.569-5.569 5.569-14.598 0-20.166c-5.569-5.569-14.598-5.569-20.166 0c-5.569 5.568-5.569 14.597 0 20.166c5.568 5.569 14.597 5.569 20.166 0m-47.232 47.232c5.569-5.57 5.569-14.598 0-20.166c-5.569-5.57-14.597-5.57-20.166 0c-5.569 5.568-5.569 14.597 0 20.166c5.569 5.568 14.597 5.568 20.166 0m-47.232 47.231c5.569-5.568 5.569-14.597 0-20.166c-5.569-5.568-14.597-5.568-20.166 0c-5.569 5.569-5.569 14.598 0 20.166c5.569 5.57 14.597 5.57 20.166 0m57.25 8.588c5.57-5.569 5.57-14.597 0-20.166c-5.568-5.569-14.596-5.569-20.165 0s-5.569 14.597 0 20.166s14.597 5.569 20.166 0m45.801-45.8c5.57-5.57 5.57-14.598 0-20.167c-5.568-5.568-14.597-5.568-20.166 0c-5.568 5.57-5.568 14.598 0 20.166c5.57 5.57 14.598 5.57 20.166 0m12.882 58.681c5.569-5.568 5.569-14.597 0-20.166c-5.569-5.568-14.598-5.568-20.166 0c-5.569 5.57-5.569 14.598 0 20.166c5.568 5.57 14.597 5.57 20.166 0m-12.675-198.803l43.66-43.66c46.401-46.4 46.401-121.631 0-168.032c-46.4-46.401-121.631-46.401-168.032 0l-43.66 43.66zM78.461 265.507l-43.66 43.66c-46.401 46.4-46.401 121.631 0 168.032c46.4 46.401 121.631 46.401 168.032 0l43.66-43.66z"
+      />
+    </svg>
+  )
+}
+
+function ScrollToTopIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h16v16H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M3 2.25a.75.75 0 0 1 .75-.75h8.5a.75.75 0 0 1 0 1.5h-8.5A.75.75 0 0 1 3 2.25m5.53 2.97l3.75 3.75a.749.749 0 1 1-1.06 1.06L8.75 7.561v6.689a.75.75 0 0 1-1.5 0V7.561L4.78 10.03a.749.749 0 1 1-1.06-1.06l3.75-3.75a.75.75 0 0 1 1.06 0"
+      />
+    </svg>
+  )
+}
+
+function ArrowsVerticalIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3">
+        <path d="M17 15l0 -11.5M7 9l0 11.5" />
+        <path d="M17 3l-4 4M17 3l4 4M7 21l-4 -4M7 21l4 -4" />
+      </g>
+    </svg>
+  )
+}
+
+function ArrowsHorizontalIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.8">
+        <path d="M15 7h-11.5M9 17h11.5" />
+        <path d="M3 7l4 4M3 7l4 -4M21 17l-4 4M21 17l-4 -4" />
+      </g>
+    </svg>
+  )
+}
+
+function ToolbarTopIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 256 256"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        fill="currentColor"
+        transform="scale(2.66667 2.66667)"
+        d="M20.2127 12.0828C30.508 11.6222 43.4993 11.9781 54.1167 11.9753L67.2316 11.9738C71.6873 11.9739 78.0788 11.448 81.7119 14.3274C84.0666 16.207 85.5763 18.9465 85.9077 21.9411C86.1251 23.8778 85.2709 25.8009 83.1372 25.9746C79.5152 26.2254 80.4027 20.554 77.924 19.0407C75.338 17.4619 70.3177 18.0499 67.2385 18.0554L50.4826 18.0818L31.6596 18.0307C27.6555 18.018 22.9857 17.8823 19.0609 18.2905C14.6848 20.9936 16.043 27.3418 15.9877 31.9981C23.5085 32.0086 82.5778 31.3822 85.0521 32.5196C85.8955 33.7903 86.022 36.2845 86.0267 37.7869L86.0343 61.6367C86.0285 67.9323 87.2445 76.146 82.6618 80.7578C78.3622 85.0848 71.0975 84.0614 65.4793 84.0598L48.875 84.0418L30.6198 84.0632C20.9937 84.0737 9.86098 85.2345 10.0013 71.3083C10.0465 66.8206 9.69777 62.2222 10.2802 57.7614C10.5054 56.0365 12.3384 55.5218 13.9678 55.9235C17.8945 57.9389 15.3071 67.9461 15.9926 71.7099C16.5242 74.6288 15.9242 74.2229 17.3152 76.6021C18.9951 77.5343 20.0446 77.9523 21.9996 77.9667C33.4181 78.0504 44.8692 78.0144 56.2859 78.0115L68.2086 78.009C71.7234 78.0119 79.1 78.9994 79.7399 74.0774C80.2412 70.2204 80.0411 65.7958 80.0384 61.8457C80.0001 53.9461 80.0103 46.0464 80.0689 38.1469C74.6906 37.9523 68.6802 38.0695 63.2432 38.0685L33.3456 38.0826C28.1518 38.0867 21.0915 38.2845 16.0528 37.98C16.0213 41.4607 16.6368 46.9447 15.0656 50.0411C14.1151 51.9144 10.4467 51.1517 10.2451 48.7474C9.72506 42.5449 10.1167 36.1999 9.99725 29.9703C9.80674 21.1501 9.77198 13.7076 20.2127 12.0828Z"
+      />
+      <path
+        fill="currentColor"
+        transform="scale(2.66667 2.66667)"
+        d="M42.4496 22.0743C47.1099 21.906 71.6225 21.4109 74.4926 22.4973C75.0346 22.7025 75.4687 23.1518 75.7042 23.6763C76.0476 24.4409 76.0915 25.2159 75.7916 25.9997C75.394 27.0389 74.6963 27.5361 73.7093 27.9675C69.3415 28.1715 43.8062 28.6165 41.3094 27.447C40.7996 27.2082 40.4248 26.7062 40.2389 26.1861C39.9454 25.365 39.9618 24.3819 40.3537 23.5947C40.8007 22.6965 41.5402 22.3719 42.4496 22.0743Z"
+      />
+      <path fill="currentColor" transform="scale(2.66667 2.66667)" d="M22.6004 22.1057C24.1962 21.8955 25.6612 23.016 25.876 24.6112C26.0909 26.2063 24.9747 27.6746 23.3801 27.8942C21.779 28.1147 20.3033 26.9927 20.0875 25.3909C19.8717 23.7892 20.998 22.3167 22.6004 22.1057Z" />
+      <path fill="currentColor" transform="scale(2.66667 2.66667)" d="M32.6257 22.1073C34.2196 21.9079 35.675 23.0341 35.8819 24.6271C36.0888 26.2201 34.9694 27.6808 33.3774 27.8951C31.7748 28.1109 30.3023 26.9824 30.094 25.3788C29.8858 23.7753 31.0211 22.3081 32.6257 22.1073Z" />
+    </svg>
+  )
+}
+
+function CursorPointerIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 28 28"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <g transform="translate(28 0) scale(-1 1)">
+        <path className="cursor-frame" d="M0 0h28v28H0z" />
+        <path
+          className="cursor-body"
+          d="M6 3.604c0-1.346 1.56-2.09 2.607-1.243l16.88 13.669c1.018.824.435 2.47-.875 2.47h-9.377a2.25 2.25 0 0 0-1.749.835l-4.962 6.134C7.682 26.51 6 25.915 6 24.576z"
+        />
+      </g>
     </svg>
   )
 }

@@ -3,5 +3,9 @@
   "identifier": "default",
   "description": "Default mobile app capability",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:default",
+    "core:path:default",
+    "core:event:default"
+  ]
 }

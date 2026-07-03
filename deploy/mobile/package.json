@@ -18,7 +18,7 @@
     "antd": "^6.4.3",
     "crypto-js": "^4.2.0",
     "js-yaml": "^4.1.0",
-    "lucide-react": "^0.563.0",
+    "lucide-react": "^1.21.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },

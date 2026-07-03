@@ -16,6 +16,7 @@ import {
   buildUrl,
   apiGet,
   apiPost,
+  clearOfflineCache,
   cleanupInvalidOfflineCache,
   getOfflineCacheSummary,
   loadCachedItems,
@@ -238,6 +239,12 @@ type AppShellControllerDeps = {
   setShelf: Dispatch<SetStateAction<ShelfBook[]>>
   setStatusInfo: Dispatch<SetStateAction<AppShellStatusInfo>>
   setStorageBusy: Dispatch<SetStateAction<string>>
+  setActiveItem: Dispatch<SetStateAction<AppState['activeItem']>>
+  setReaderPages: Dispatch<SetStateAction<string[]>>
+  setSelectedBook: Dispatch<SetStateAction<ShelfBook | null>>
+  setView: Dispatch<SetStateAction<AppState['view']>>
+  readerShelfSource: AppState['readerShelfSource']
+  selectedShelfSource: AppState['selectedShelfSource']
 }
 
 function isPrivateIpv4Host(value: string): boolean {
@@ -301,12 +308,34 @@ async function fetchOkWithTimeout(url: string, path: string): Promise<boolean> {
   }
 }
 
-async function probeBackendCandidate(url: string): Promise<boolean> {
+async function fetchMobileStatusWithTimeout(url: string): Promise<'ok' | 'missing' | 'invalid'> {
+  const controller = new AbortController()
+  const timeout = window.setTimeout(() => controller.abort(), BACKEND_PROBE_TIMEOUT_MS)
   try {
-    if (await fetchOkWithTimeout(url, '/mobile/status')) return true
-  } catch {
-    // Try the legacy root health endpoint before rejecting this candidate.
+    const response = await fetch(buildUrl(url, '/mobile/status'), { signal: controller.signal })
+    if (response.status === 404) return 'missing'
+    if (!response.ok) return 'invalid'
+    const payload = await response.json()
+    return (
+      payload
+      && typeof payload === 'object'
+      && payload.status === 'ok'
+      && typeof payload.library_loaded === 'boolean'
+    ) ? 'ok' : 'invalid'
+  } finally {
+    window.clearTimeout(timeout)
   }
+}
+
+async function probeBackendCandidate(url: string): Promise<boolean> {
+  let mobileStatus: 'ok' | 'missing' | 'invalid' = 'invalid'
+  try {
+    mobileStatus = await fetchMobileStatusWithTimeout(url)
+    if (mobileStatus === 'ok') return true
+  } catch {
+    return false
+  }
+  if (mobileStatus !== 'missing') return false
   try {
     return await fetchOkWithTimeout(url, '/root/')
   } catch {
@@ -386,7 +415,28 @@ export function useAppShellController(deps: AppShellControllerDeps) {
     }
   }
 
-  async function refreshLibrary(url = deps.backendUrl, nextSort: SortMode = deps.sort, resetPage = true, showLoading = true, sync = false) {
+  async function clearCache() {
+    if (!confirm('确定要清空全部离线缓存吗？已缓存的书籍和章节将从离线页移除。')) return
+    deps.setStorageBusy('clear-cache')
+    try {
+      const result = await clearOfflineCache()
+      await refreshCache()
+      await refreshCacheSummary()
+      if (deps.selectedShelfSource === 'downloads') deps.setSelectedBook(null)
+      if (deps.readerShelfSource === 'downloads') {
+        deps.setActiveItem(null)
+        deps.setReaderPages([])
+        deps.setView('downloads')
+      }
+      deps.show('ok', result.removed_item_count ? `已清空 ${result.removed_item_count} 条离线缓存` : '没有可清空的离线缓存')
+    } catch (error) {
+      deps.show('error', error instanceof Error ? error.message : '离线缓存清空失败')
+    } finally {
+      deps.setStorageBusy('')
+    }
+  }
+
+  async function refreshLibrary(url = deps.backendUrl, nextSort: SortMode = deps.sort, resetPage = true, showLoading = true, sync = false): Promise<ShelfBook[]> {
     if (showLoading) deps.setBusy('library')
     try {
       const syncQuery = sync ? '&sync=1' : ''
@@ -396,6 +446,7 @@ export function useAppShellController(deps: AppShellControllerDeps) {
       if (resetPage) deps.setLibraryPage(1)
       deps.setStatusInfo((state) => ({ ...state, mobile_contract: true, path_configured: response.path_configured, ero: response.ero }))
       deps.setConnection('online')
+      return books
     } catch (error) {
       if (isMissingMobileContract(error)) {
         const books = await loadLegacyShelf(url, nextSort)
@@ -406,11 +457,12 @@ export function useAppShellController(deps: AppShellControllerDeps) {
           mobile_contract: false,
         }))
         deps.setConnection('online')
-        return
+        return books
       }
       deps.setConnection('backend_unreachable')
       deps.show('error', error instanceof Error ? error.message : '读取书库失败')
       if (sync) throw error
+      return []
     } finally {
       if (showLoading) deps.setBusy('')
     }
@@ -684,6 +736,7 @@ export function useAppShellController(deps: AppShellControllerDeps) {
     authorizeStoredRootSecret,
     changeFilesystemExpandedKeys,
     checkBackend,
+    clearCache,
     cleanupInvalidCache,
     clearBackendDraft,
     discoverBackend,
@@ -734,6 +787,12 @@ export function useMobileAppShellControllerModel(appState: AppState, show: ShowT
     setShelf,
     setStatusInfo,
     setStorageBusy,
+    readerShelfSource,
+    selectedShelfSource,
+    setActiveItem,
+    setReaderPages,
+    setSelectedBook,
+    setView,
   } = appState
 
   return useAppShellController({
@@ -746,6 +805,8 @@ export function useMobileAppShellControllerModel(appState: AppState, show: ShowT
     comicPathDraft,
     rootSecretDraft,
     sort,
+    readerShelfSource,
+    selectedShelfSource,
     show,
     onRootSecretSaved: options?.onRootSecretSaved,
     setBackendDraft,
@@ -770,5 +831,9 @@ export function useMobileAppShellControllerModel(appState: AppState, show: ShowT
     setShelf,
     setStatusInfo,
     setStorageBusy,
+    setActiveItem,
+    setReaderPages,
+    setSelectedBook,
+    setView,
   })
 }

@@ -6,7 +6,7 @@ import {
   Settings,
   Trash2,
 } from 'lucide-react'
-import { useCallback, useState, type Dispatch, type MouseEvent, type SetStateAction, type TouchEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type Dispatch, type MouseEvent, type SetStateAction, type TouchEvent } from 'react'
 import { ReaderPageTurnCanvas } from './ReaderPageTurnCanvas'
 import type { ReaderFit, ReaderItem, ReaderMode, ReaderPageFlipState } from './readerCore'
 
@@ -26,6 +26,7 @@ type ReaderPageModeProps = {
   jumpReaderFirstPage: () => void
   jumpReaderLastPage: () => void
   readerBookHandle: (handle: 'save' | 'remove' | 'del') => void
+  saveReaderImageToGallery: (imageUrl: string, imagePageIndex: number) => void
   setReaderPageJumpOpen: Dispatch<SetStateAction<boolean>>
   showReaderChromeControls: () => void
   stopReaderAutoScroll: () => void
@@ -47,6 +48,7 @@ export function ReaderPageMode({
   jumpReaderFirstPage,
   jumpReaderLastPage,
   readerBookHandle,
+  saveReaderImageToGallery,
   setReaderPageJumpOpen,
   showReaderChromeControls,
   stopReaderAutoScroll,
@@ -58,6 +60,43 @@ export function ReaderPageMode({
   const pageImage = readerPages[pageIndex] || ''
   const activePageTurn = readerPageFlip && readerPageFlip.fromIndex === pageIndex ? readerPageFlip : null
   const activePageTurnCanvasReady = activePageTurn ? readerPageTurnCanvasReadyKey === activePageTurn.key : false
+
+  const longPressTimerRef = useRef<number | null>(null)
+  const [isLongPressing, setIsLongPressing] = useState(false)
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current === null) return
+      window.clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }, [])
+
+  const handleImageTouchStart = useCallback((event: TouchEvent<HTMLImageElement>) => {
+    handleReaderPageTouchStart(event)
+    
+    longPressTimerRef.current = window.setTimeout(() => {
+      setIsLongPressing(true)
+      if (pageImage) {
+        saveReaderImageToGallery(pageImage, pageIndex)
+      }
+    }, 600)
+  }, [handleReaderPageTouchStart, pageImage, pageIndex, saveReaderImageToGallery])
+
+  const handleImageTouchEnd = useCallback((event: TouchEvent<HTMLImageElement>) => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+
+    if (isLongPressing) {
+      setIsLongPressing(false)
+      event.stopPropagation()
+      return
+    }
+
+    handleReaderPageTouchEnd(event)
+  }, [isLongPressing, handleReaderPageTouchEnd])
 
   const handleReaderPageCountClick = () => {
     if (readerMode === 'page' && readerAutoScrolling) {
@@ -78,7 +117,13 @@ export function ReaderPageMode({
     >
       {pageImage ? (
         <>
-          <img className={`reader-page-image ${activePageTurn ? `reader-page-turn-source ${activePageTurnCanvasReady ? 'reader-page-turn-source-hidden' : ''}` : ''}`} src={pageImage} alt={activeItem.title} />
+          <img 
+            className={`reader-page-image ${activePageTurn ? `reader-page-turn-source ${activePageTurnCanvasReady ? 'reader-page-turn-source-hidden' : ''}` : ''}`} 
+            src={pageImage} 
+            alt={activeItem.title}
+            onTouchStart={handleImageTouchStart}
+            onTouchEnd={handleImageTouchEnd}
+          />
           {activePageTurn && <img className="reader-page-image reader-page-turn-bottom" src={activePageTurn.toSrc} alt="" aria-hidden="true" />}
           {activePageTurn && <ReaderPageTurnCanvas key={activePageTurn.key} onFirstFrame={markReaderPageTurnCanvasReady} pageTurn={activePageTurn} readerFit={readerFit} />}
         </>

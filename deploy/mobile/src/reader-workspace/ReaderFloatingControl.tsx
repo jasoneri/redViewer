@@ -1,5 +1,6 @@
-import { Save, Settings, Trash2 } from 'lucide-react'
+import { ArrowLeft, ChevronsLeft, ChevronsRight, Move, Save, Settings, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState, type PointerEvent } from 'react'
+import { CustomIcon } from '../icons/CustomIcon'
 import type { ReaderFloatingControlPosition } from './readerCore'
 
 type ReaderFloatingControlProps = {
@@ -10,42 +11,17 @@ type ReaderFloatingControlProps = {
   finishReaderFloatingControlDrag: (position: ReaderFloatingControlPosition) => void
   jumpReaderScrollByDrag: (dragRatio: number) => void
   moveReaderFloatingControl: (position: ReaderFloatingControlPosition) => void
+  onBack: () => void
+  openReaderNeighbor: (direction: number) => void
   readerBookHandle: (handle: 'save' | 'remove' | 'del') => void
   scrollReaderToTop: () => void
   showReaderChromeControls: () => void
+  showFloatingNav: boolean
   stopReaderAutoScroll: () => void
 }
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
-}
-
-function MoveIcon({ size = 20 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="M0 0h24v24H0z" fill="none" />
-      <path
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.5"
-        d="M12 3v6m-9 3h6m12 0h-6m-3 9v-6.5M9 6l1.705-1.952C11.315 3.35 11.621 3 12 3c.38 0 .684.35 1.295 1.048L15 6m0 12l-1.705 1.952C12.685 20.65 12.379 21 12 21c-.38 0-.684-.35-1.295-1.048L9 18m9-9l1.952 1.705C20.65 11.315 21 11.621 21 12c0 .38-.35.684-1.048 1.295L18 15M6 15l-1.952-1.705C3.35 12.685 3 12.379 3 12c0-.38.35-.684 1.048-1.295L6 9"
-      />
-    </svg>
-  )
-}
-
-function TopIcon({ size = 18 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-      <path d="M0 0h16v16H0z" fill="none" />
-      <path
-        fill="currentColor"
-        d="M3 2.25a.75.75 0 0 1 .75-.75h8.5a.75.75 0 0 1 0 1.5h-8.5A.75.75 0 0 1 3 2.25m5.53 2.97l3.75 3.75a.749.749 0 1 1-1.06 1.06L8.75 7.561v6.689a.75.75 0 0 1-1.5 0V7.561L4.78 10.03a.749.749 0 1 1-1.06-1.06l3.75-3.75a.75.75 0 0 1 1.06 0"
-      />
-    </svg>
-  )
 }
 
 export function ReaderFloatingControl({
@@ -56,9 +32,12 @@ export function ReaderFloatingControl({
   finishReaderFloatingControlDrag,
   jumpReaderScrollByDrag,
   moveReaderFloatingControl,
+  onBack,
+  openReaderNeighbor,
   readerBookHandle,
   scrollReaderToTop,
   showReaderChromeControls,
+  showFloatingNav,
   stopReaderAutoScroll,
 }: ReaderFloatingControlProps) {
   const [floatingMenuOpen, setFloatingMenuOpen] = useState(false)
@@ -161,10 +140,14 @@ export function ReaderFloatingControl({
   const viewportWidth = readerRect?.width || (typeof window !== 'undefined' ? window.innerWidth : 0)
   const viewportHeight = readerRect?.height || (typeof window !== 'undefined' ? window.innerHeight : 0)
   const menuAlign = viewportWidth && readerFloatingControlPosition.x > viewportWidth / 2 ? 'align-right' : 'align-left'
+  const navAlign = viewportWidth && readerFloatingControlPosition.x > viewportWidth / 2 ? 'nav-left' : 'nav-right'
   const menuSide = viewportHeight && readerFloatingControlPosition.y < viewportHeight / 2 ? 'open-up' : 'open-down'
+  const navSide = menuSide === 'open-up' ? 'l-mode-up' : 'l-mode-down'
+  const floatingNavOpen = showFloatingNav && floatingMenuOpen
+  const wrapLMode = floatingNavOpen ? ` ${navAlign} ${navSide}` : ''
 
   return (
-    <div className="reader-floating-wrap" style={{ left: readerFloatingControlPosition.x, bottom: readerFloatingControlPosition.y }}>
+    <div className={`reader-floating-wrap${wrapLMode}`} style={{ left: readerFloatingControlPosition.x, bottom: readerFloatingControlPosition.y }}>
       <button
         className="reader-floating-control"
         onPointerDown={handleFloatingPointerDown}
@@ -175,13 +158,26 @@ export function ReaderFloatingControl({
       >
         <span>{activeProgress}</span>
       </button>
+      {floatingNavOpen && (
+        <div className={`reader-floating-nav btn-group ${navAlign} ${navSide}`} role="group" aria-label="悬浮阅读导航">
+          <button className="reader-icon" onClick={onBack} aria-label="返回上级目录">
+            <ArrowLeft size={16} />
+          </button>
+          <button className="reader-icon" onClick={() => openReaderNeighbor(-1)} aria-label="上一本">
+            <ChevronsLeft size={16} />
+          </button>
+          <button className="reader-icon" onClick={() => openReaderNeighbor(1)} aria-label="下一本">
+            <ChevronsRight size={16} />
+          </button>
+        </div>
+      )}
       {floatingMenuOpen && (
         <div className={`reader-floating-teachtip ${menuAlign} ${menuSide}`} aria-label="滚动控制菜单">
           <button className="reader-icon" onClick={showReaderChromeControls} aria-label="显示阅读工具栏">
             <Settings size={18} />
           </button>
           <button className="reader-icon" onClick={scrollReaderToTop} aria-label="回到第一页">
-            <TopIcon size={18} />
+            <CustomIcon name="scrollToTop" size={18} />
           </button>
           <button
             className="reader-icon reader-floating-drag"
@@ -191,7 +187,7 @@ export function ReaderFloatingControl({
             onPointerCancel={handleMovePointerFinish}
             aria-label="拖动滚动进度控制坐标"
           >
-            <MoveIcon size={18} />
+            <Move size={18} />
           </button>
           <button className="reader-icon handle-btn handle-saveBtn" onClick={() => readerBookHandle('save')} aria-label="保留">
             <Save size={18} />

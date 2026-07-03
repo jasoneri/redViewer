@@ -11,6 +11,8 @@ import {
   isMissingMobileContract,
   legacyItemId,
   mergeLibraryMeta,
+  MULTI_CHECK_PRIMARY_BATCH_ACTIONS,
+  type MultiCheckBatchAction,
   type SortMode,
 } from './libraryCore'
 import {
@@ -32,7 +34,6 @@ import {
 type View = 'library' | 'downloads' | 'reader' | 'acquire'
 type ShelfSource = 'library' | 'downloads'
 type BookHandle = 'save' | 'remove' | 'del'
-export type MultiCheckBatchAction = 'cacheAdd' | 'save' | 'del'
 type ShowToast = (tone: 'ok' | 'warn' | 'error', text: string) => void
 type MultiCheckFloatDragState = {
   pointerId: number
@@ -67,8 +68,9 @@ type LibraryReaderActionsDeps = {
   readerInitialRestorePendingRef: MutableRefObject<boolean>
   readerUserScrolledRef: MutableRefObject<boolean>
   restoredScrollRef: MutableRefObject<string>
+  addAttachedBooksFromShelf: (books: ShelfBook[]) => Promise<void> | void
   refreshCache: () => Promise<CachedItem[]>
-  refreshLibrary: (url?: string, nextSort?: SortMode, resetPage?: boolean, showLoading?: boolean, sync?: boolean) => Promise<void>
+  refreshLibrary: (url?: string, nextSort?: SortMode, resetPage?: boolean, showLoading?: boolean, sync?: boolean) => Promise<ShelfBook[]>
   restoreReaderScrollTop: () => void
   show: ShowToast
   stopReaderAutoScroll: () => void
@@ -109,10 +111,23 @@ export function useLibraryReaderActions(deps: LibraryReaderActionsDeps) {
     })
   }
 
+  function isSeriesShelfBook(item: LibraryItem): item is ShelfBook {
+    return (item as ShelfBook).kind === 'series'
+  }
+
+  async function applyShelfBookHandle(item: LibraryItem, handle: BookHandle) {
+    if (!isSeriesShelfBook(item)) {
+      await applyBookHandle(item, handle)
+      return
+    }
+    if (!item.episodes.length) throw new Error(`系列 ${item.book} 没有可操作章节`)
+    for (const episode of item.episodes) await applyBookHandle(episode, handle)
+  }
+
   async function handleBookAction(item: LibraryItem, handle: BookHandle) {
     deps.setBusy(`handle:${item.id}:${handle}`)
     try {
-      await applyBookHandle(item, handle)
+      await applyShelfBookHandle(item, handle)
       await deps.refreshLibrary(deps.backendUrl, deps.sort, false, false)
       if (deps.selectedBook?.book === item.book) deps.setSelectedBook(null)
       showBookHandleResult(handle)
@@ -226,10 +241,12 @@ export function useLibraryReaderActions(deps: LibraryReaderActionsDeps) {
       }
       return
     }
-    if (action === 'cacheAdd' && deps.connection !== 'online') {
-      deps.show('warn', '当前不在线，无法缓存')
+    if (action === 'attachAdd') {
+      // if (deps.connection !== 'online') { 没有不在线的场景
+      await deps.addAttachedBooksFromShelf(books)
       return
     }
+    // if (action === 'cacheAdd' && deps.connection !== 'online') { // 没有不在线的场景
     deps.setBusy('multi-check')
     let ok = 0
     let fail = 0
@@ -246,10 +263,11 @@ export function useLibraryReaderActions(deps: LibraryReaderActionsDeps) {
             }
           } else {
             const handle: BookHandle = action === 'save' ? 'save' : deps.deleteHardMode ? 'del' : 'remove'
-            await applyBookHandle(book, handle)
+            await applyShelfBookHandle(book, handle)
           }
           ok += 1
-        } catch {
+        } catch (error) {
+          console.error(error)
           fail += 1
         }
       }
@@ -272,7 +290,7 @@ export function useLibraryReaderActions(deps: LibraryReaderActionsDeps) {
 
   function startMultiCheckDrag(event: PointerEvent<HTMLButtonElement>) {
     event.preventDefault()
-    const origin = clampCgsSubmitPosition(deps.multiCheckFloatPosition)
+    const origin = clampCgsSubmitPosition(deps.multiCheckFloatPosition, MULTI_CHECK_PRIMARY_BATCH_ACTIONS.length)
     multiCheckDragRef.current = {
       pointerId: event.pointerId,
       startX: event.clientX,
@@ -291,7 +309,7 @@ export function useLibraryReaderActions(deps: LibraryReaderActionsDeps) {
     const next = clampCgsSubmitPosition({
       x: drag.originX + event.clientX - drag.startX,
       y: drag.originY + event.clientY - drag.startY,
-    })
+    }, MULTI_CHECK_PRIMARY_BATCH_ACTIONS.length)
     drag.lastPosition = next
     deps.setMultiCheckFloatPosition(next)
   }
@@ -300,7 +318,7 @@ export function useLibraryReaderActions(deps: LibraryReaderActionsDeps) {
     const drag = multiCheckDragRef.current
     if (!drag || drag.pointerId !== event.pointerId) return
     multiCheckDragRef.current = null
-    deps.setMultiCheckFloatPosition(saveCgsSubmitPosition(drag.lastPosition, MULTI_CHECK_FLOAT_POSITION_KEY))
+    deps.setMultiCheckFloatPosition(saveCgsSubmitPosition(drag.lastPosition, MULTI_CHECK_FLOAT_POSITION_KEY, MULTI_CHECK_PRIMARY_BATCH_ACTIONS.length))
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId)
   }
 

@@ -52,8 +52,8 @@ type AppWorkspaceLifecycleDeps = {
   backendUrl: string
   cached: CachedItem[]
   cachedById: Map<string, CachedItem>
-  cgsMcpRunning: boolean
-  cgsMcpTimeline: unknown[]
+  rvAgentRunning: boolean
+  rvAgentTimeline: unknown[]
   connection: ConnectionState
   detailShelf: ShelfBook[]
   doujinTagPanel: DoujinTagPanel | null
@@ -83,8 +83,8 @@ type AppWorkspaceLifecycleDeps = {
   statusInfo: { ero?: boolean | number }
   toolMenuOpen: boolean
   view: View
-  cgsMcpAbortRef: MutableRefObject<AbortController | null>
-  cgsMcpScrollRef: RefObject<HTMLDivElement | null>
+  rvAgentAbortRef: MutableRefObject<AbortController | null>
+  rvAgentScrollRef: RefObject<HTMLDivElement | null>
   doujinTagLinkButtonRef: RefObject<HTMLButtonElement | null>
   offlineCoverUrlsRef: MutableRefObject<Record<string, string>>
   readerInitialRestorePendingRef: MutableRefObject<boolean>
@@ -455,10 +455,10 @@ export function useAppWorkspaceLifecycle(deps: AppWorkspaceLifecycleDeps) {
   }, [deps.cached, deps.libraryMetaByCacheKey])
 
   useEffect(() => {
-    deps.cgsMcpScrollRef.current?.scrollTo({ top: deps.cgsMcpScrollRef.current.scrollHeight })
-  }, [deps.cgsMcpTimeline, deps.cgsMcpRunning])
+    deps.rvAgentScrollRef.current?.scrollTo({ top: deps.rvAgentScrollRef.current.scrollHeight })
+  }, [deps.rvAgentTimeline, deps.rvAgentRunning])
 
-  useEffect(() => () => deps.cgsMcpAbortRef.current?.abort(), [])
+  useEffect(() => () => deps.rvAgentAbortRef.current?.abort(), [])
 }
 
 type AppShellControllerModel = ReturnType<typeof useMobileAppShellControllerModel>
@@ -478,8 +478,8 @@ export function useMobileWorkspaceLifecycleModel(appState: AppState, deps: Mobil
     autoOpenConsumed,
     backendUrl,
     cached,
-    cgsMcpRunning,
-    cgsMcpTimeline,
+    rvAgentRunning,
+    rvAgentTimeline,
     connection,
     doujinTagPanel,
     drawerOpen,
@@ -500,8 +500,8 @@ export function useMobileWorkspaceLifecycleModel(appState: AppState, deps: Mobil
     statusInfo,
     toolMenuOpen,
     view,
-    cgsMcpAbortRef,
-    cgsMcpScrollRef,
+    rvAgentAbortRef,
+    rvAgentScrollRef,
     doujinTagLinkButtonRef,
     offlineCoverUrlsRef,
     readerInitialRestorePendingRef,
@@ -535,8 +535,8 @@ export function useMobileWorkspaceLifecycleModel(appState: AppState, deps: Mobil
     backendUrl,
     cached,
     cachedById: deps.shelfModel.cachedById,
-    cgsMcpRunning,
-    cgsMcpTimeline,
+    rvAgentRunning,
+    rvAgentTimeline,
     connection,
     detailShelf: deps.shelfModel.detailShelf,
     doujinTagPanel,
@@ -566,8 +566,8 @@ export function useMobileWorkspaceLifecycleModel(appState: AppState, deps: Mobil
     statusInfo,
     toolMenuOpen,
     view,
-    cgsMcpAbortRef,
-    cgsMcpScrollRef,
+    rvAgentAbortRef,
+    rvAgentScrollRef,
     doujinTagLinkButtonRef,
     offlineCoverUrlsRef,
     readerInitialRestorePendingRef,

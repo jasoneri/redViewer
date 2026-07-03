@@ -1,9 +1,11 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { EdgeAction } from './EdgeTools'
 import { ensureMeta, type SortMode } from './libraryCore'
-import type { CgsSearchCandidate, CgsSearchBookInfo } from '../acquire-workspace/acquireTypes'
+import { createCgsMcpSessionId, cgsMcpSearchBookPreferenceKind, mergeCgsAttachedBookList } from '../acquire-workspace/acquireCore'
+import type { CgsAttachedBook, CgsSearchCandidate, CgsSearchBookInfo } from '../acquire-workspace/acquireTypes'
 import type { ShelfBook } from '../mobileStore'
-import { buildUrl } from '../mobileStore'
+import { apiPost, buildUrl } from '../mobileStore'
+import { rootSecretHeaders } from '../app-shell/useAppShellController'
 
 type View = 'library' | 'downloads' | 'reader' | 'acquire'
 type ShelfSource = 'library' | 'downloads'
@@ -16,6 +18,7 @@ type StatusInfo = {
 
 type LibraryWorkspaceControllerDeps = {
   activeSourceIsOffline: boolean
+  supportsMultiCheck: boolean
   backendUrl: string
   busy: string
   deleteHardMode: boolean
@@ -33,12 +36,16 @@ type LibraryWorkspaceControllerDeps = {
   sort: SortMode
   statusInfo: StatusInfo
   view: View
+  cgsSessionId: string
   refreshCache: () => Promise<unknown>
-  refreshLibrary: (url?: string, nextSort?: SortMode, resetPage?: boolean, showLoading?: boolean, sync?: boolean) => Promise<void>
+  refreshLibrary: (url?: string, nextSort?: SortMode, resetPage?: boolean, showLoading?: boolean, sync?: boolean) => Promise<ShelfBook[]>
   show: ShowToast
   setActiveToolPanel: Dispatch<SetStateAction<'filter' | 'sort' | null>>
   setBusy: Dispatch<SetStateAction<string>>
+  setCgsAttachedBookList: Dispatch<SetStateAction<CgsAttachedBook[]>>
+  setCgsPendingAttachBookId: Dispatch<SetStateAction<string | null>>
   setCgsSearchBookInfo: Dispatch<SetStateAction<CgsSearchBookInfo | null>>
+  setCgsSessionId: Dispatch<SetStateAction<string>>
   setDeleteHardMode: Dispatch<SetStateAction<boolean>>
   setDoujinTagPanel: Dispatch<SetStateAction<{
     bookId: string
@@ -254,7 +261,10 @@ export function useLibraryWorkspaceController(deps: LibraryWorkspaceControllerDe
     if (action === 'refresh' && !deps.activeSourceIsOffline && deps.busy !== 'library') void deps.refreshLibrary()
     if (action === 'delete-mode') toggleDeleteMode()
     if (action === 'doujin') void switchDoujinMode()
-    if (action === 'multi-check') toggleMultiCheckMode()
+    if (action === 'multi-check') {
+      if (!deps.supportsMultiCheck) return
+      toggleMultiCheckMode()
+    }
   }
 
   function openEdgeMenu() {
@@ -309,7 +319,69 @@ export function useLibraryWorkspaceController(deps: LibraryWorkspaceControllerDe
       artist: meta.artist,
       source: meta.source,
       tags: meta.tags,
+      btype: meta.btype,
+      category: null,
+      type: null,
+      book_kind: book.kind === 'series' ? 'manga' : 'unknown',
+      local_library_kind: book.kind,
       candidates,
+    }
+  }
+
+  function ensureCgsMcpSessionId(): string {
+    if (deps.cgsSessionId) return deps.cgsSessionId
+    const sessionId = createCgsMcpSessionId()
+    deps.setCgsSessionId(sessionId)
+    return sessionId
+  }
+
+  async function attachCgsSearchBookInfo(bookInfo: CgsSearchBookInfo): Promise<CgsAttachedBook> {
+    const response = await apiPost<{ attach_book_id: string; title?: string; book?: string }>(
+      deps.backendUrl,
+      '/root/cgs/mcp/attach-book',
+      {
+        session_id: ensureCgsMcpSessionId(),
+        id: bookInfo.id,
+        title: bookInfo.title,
+      },
+      await rootSecretHeaders(),
+    )
+    return {
+      attach_book_id: response.attach_book_id,
+      id: bookInfo.id,
+      book: response.book || bookInfo.book,
+      title: response.title || bookInfo.title || bookInfo.book,
+      source: bookInfo.source,
+      book_kind: cgsMcpSearchBookPreferenceKind(bookInfo),
+      searchInfo: bookInfo,
+    }
+  }
+
+  async function addAttachedBooksFromShelf(books: ShelfBook[]) {
+    const infos = books.map(buildCgsSearchBookInfo).filter((info) => info.candidates.length > 0)
+    if (!infos.length) {
+      deps.show('warn', '选中作品无可搜索信息')
+      return
+    }
+    deps.setBusy('multi-check')
+    deps.setCgsPendingAttachBookId(infos[0].id)
+    try {
+      const attachedBooks: CgsAttachedBook[] = []
+      for (const info of infos) attachedBooks.push(await attachCgsSearchBookInfo(info))
+      // Single-entry attach replaces; multi-check is the only path that can set a multi-book list.
+      deps.setCgsAttachedBookList(mergeCgsAttachedBookList([], attachedBooks))
+      deps.setCgsSearchBookInfo(infos[0])
+      deps.setKeyword(infos[0].candidates[0].value)
+      deps.setView('acquire')
+      deps.setSelectedBook(null)
+      deps.setMultiCheckedIds([])
+      deps.setMultiCheckMode(false)
+      deps.show('ok', `已附加 ${attachedBooks.length} 项`)
+    } catch (error) {
+      deps.show('error', error instanceof Error ? error.message : '附加失败')
+    } finally {
+      deps.setCgsPendingAttachBookId(null)
+      deps.setBusy('')
     }
   }
 
@@ -325,6 +397,8 @@ export function useLibraryWorkspaceController(deps: LibraryWorkspaceControllerDe
       return
     }
     deps.setCgsSearchBookInfo(bookInfo)
+    // RVUX001: CGS acquire entry is an explicit attachedBook attach/replace event.
+    deps.setCgsPendingAttachBookId(book.id)
     deps.setKeyword(defaultCandidate.value)
     openTab('acquire')
   }
@@ -338,6 +412,7 @@ export function useLibraryWorkspaceController(deps: LibraryWorkspaceControllerDe
     clearFilter,
     closeDoujinTagPanel,
     closeEdgeMenu,
+    addAttachedBooksFromShelf,
     openCgsSearchFromBook,
     openCgsTagPanel,
     openDrawerTab,

@@ -1,4 +1,5 @@
-import { Eraser, Filter, FolderOpen, Search, SlidersHorizontal, Tags, X } from 'lucide-react'
+import { ArrowDownNarrowWide, ArrowDownWideNarrow, Eraser, Filter, FolderOpen, Search, Tags, X } from 'lucide-react'
+import { CustomIcon } from '../icons/CustomIcon'
 import type { SortMode } from './libraryCore'
 import type { ShelfWorkspaceActions, ShelfWorkspaceView } from './LibraryWorkspace'
 
@@ -17,15 +18,10 @@ export function ShelfToolPanel({
           <div className="tool-panel-head">
             <div className="filter-head-left">
               <div className="btn-group filter-head-actions" aria-label="筛选动作">
-                <button className={shelfView.seriesOnly ? 'active' : ''} onClick={shelfActions.toggleSeriesOnly} aria-pressed={shelfView.seriesOnly} title="只显示系列">
+                <button className={shelfView.seriesOnly ? 'active' : ''} onClick={shelfActions.toggleSeriesOnly} aria-pressed={shelfView.seriesOnly}>
                   <FolderOpen size={15} />
                   筛系列
-                  <svg className="filter-click-cue" viewBox="0 0 28 28" aria-hidden="true" focusable="false">
-                    <g transform="translate(28 0) scale(-1 1)">
-                      <path className="cursor-frame" d="M0 0h28v28H0z" />
-                      <path className="cursor-body" d="M6 3.604c0-1.346 1.56-2.09 2.607-1.243l16.88 13.669c1.018.824.435 2.47-.875 2.47h-9.377a2.25 2.25 0 0 0-1.749.835l-4.962 6.134C7.682 26.51 6 25.915 6 24.576z" />
-                    </g>
-                  </svg>
+                  <CustomIcon name="cursorPointer" className="filter-click-cue" size={28} />
                 </button>
               </div>
             </div>
@@ -48,11 +44,11 @@ export function ShelfToolPanel({
                 autoFocus
               />
               <span className="filter-input-actions">
-                <button className="icon-only primary-action filter-apply-button" onClick={shelfActions.applyFilterDraft} aria-label="确认筛选" title="确认筛选">
+                <button className="icon-only primary-action filter-apply-button" onClick={shelfActions.applyFilterDraft} aria-label="确认筛选">
                   <Filter size={16} />
                 </button>
                 {shelfView.filterDraft && (
-                  <button className="icon-only filter-clear-button" onClick={shelfActions.clearFilter} aria-label="清空筛选" title="清空筛选并显示原始列表">
+                  <button className="icon-only filter-clear-button" onClick={shelfActions.clearFilter} aria-label="清空筛选">
                     <Eraser className="clear-icon" size={16} />
                   </button>
                 )}
@@ -76,7 +72,6 @@ export function ShelfToolPanel({
                     className={shelfView.query === keyword ? 'active' : ''}
                     key={keyword}
                     onClick={() => shelfActions.selectFilterKeyword(keyword)}
-                    title={keyword}
                     aria-pressed={shelfView.query === keyword}
                   >
                     {keyword}
@@ -89,12 +84,16 @@ export function ShelfToolPanel({
           </>
         ) : (
           <div className="sort-panel-grid">
-            {Object.entries(shelfView.sortLabels).map(([value, label]) => (
-              <button className={shelfView.sort === value ? 'active' : ''} key={value} onClick={() => void shelfActions.changeSort(value as SortMode)}>
-                <SlidersHorizontal size={16} />
-                {label}
-              </button>
-            ))}
+            {Object.entries(shelfView.sortLabels).map(([value, label]) => {
+              const isDescending = value.endsWith('_desc')
+              const SortIcon = isDescending ? ArrowDownWideNarrow : ArrowDownNarrowWide
+              return (
+                <button className={shelfView.sort === value ? 'active' : ''} key={value} onClick={() => void shelfActions.changeSort(value as SortMode)}>
+                  <SortIcon size={16} />
+                  {label}
+                </button>
+              )
+            })}
           </div>
         )}
       </section>

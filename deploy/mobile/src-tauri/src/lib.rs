@@ -10,7 +10,7 @@ pub fn run() {
     }
 
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![discover_backend, get_local_ip])
+        .invoke_handler(tauri::generate_handler![discover_backend, get_local_ip, save_image_to_gallery])
         .run(tauri::generate_context!())
         .expect("error while running redViewer mobile");
 }
@@ -116,4 +116,83 @@ fn get_local_ip() -> Result<String, String> {
         .map_err(|err| err.to_string())?;
     let addr = socket.local_addr().map_err(|err| err.to_string())?;
     Ok(addr.ip().to_string())
+}
+
+#[tauri::command]
+async fn save_image_to_gallery(url: String, filename: String) -> Result<bool, String> {
+    #[cfg(target_os = "android")]
+    log::info!("💾 save_image_to_gallery called: url={}, filename={}", url, filename);
+
+    let image_data = if url.starts_with("http://") || url.starts_with("https://") {
+        #[cfg(target_os = "android")]
+        log::info!("📥 Downloading image from URL: {}", url);
+
+        let response = reqwest::blocking::get(&url).map_err(|err| {
+            #[cfg(target_os = "android")]
+            log::error!("❌ Download failed: {}", err);
+            format!("下载失败: {}", err)
+        })?;
+
+        response.bytes().map_err(|err| {
+            #[cfg(target_os = "android")]
+            log::error!("❌ Read bytes failed: {}", err);
+            format!("读取数据失败: {}", err)
+        })?
+    } else if url.starts_with("blob:") || url.starts_with("data:") {
+        #[cfg(target_os = "android")]
+        log::error!("❌ Blob/Data URL not supported yet");
+        return Err("暂不支持 blob/data URL".into());
+    } else {
+        #[cfg(target_os = "android")]
+        log::error!("❌ Invalid URL scheme: {}", url);
+        return Err("无效的图片 URL".into());
+    };
+
+    #[cfg(target_os = "android")]
+    {
+        log::info!("📦 Downloaded {} bytes, saving to gallery...", image_data.len());
+        save_to_android_gallery(&image_data, &filename)
+    }
+
+    #[cfg(target_os = "ios")]
+    {
+        save_to_ios_photos(&image_data, &filename)
+    }
+
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        log::warn!("⚠️ Platform not supported");
+        Err("当前平台不支持保存到相册".into())
+    }
+}
+
+#[cfg(target_os = "android")]
+fn save_to_android_gallery(image_data: &[u8], filename: &str) -> Result<bool, String> {
+    use std::fs;
+    use std::path::PathBuf;
+
+    let pictures_dir = PathBuf::from("/sdcard/Pictures/RedViewer");
+    
+    if !pictures_dir.exists() {
+        fs::create_dir_all(&pictures_dir).map_err(|err| {
+            log::error!("❌ Create directory failed: {}", err);
+            format!("创建目录失败: {}", err)
+        })?;
+    }
+
+    let file_path = pictures_dir.join(filename);
+    
+    fs::write(&file_path, image_data).map_err(|err| {
+        log::error!("❌ Write file failed: {}", err);
+        format!("写入文件失败: {}", err)
+    })?;
+
+    log::info!("✅ Image saved to: {:?}", file_path);
+
+    Ok(true)
+}
+
+#[cfg(target_os = "ios")]
+fn save_to_ios_photos(_image_data: &[u8], _filename: &str) -> Result<bool, String> {
+    Err("iOS 平台保存功能暂未实现".into())
 }

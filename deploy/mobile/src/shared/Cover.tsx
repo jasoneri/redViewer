@@ -65,7 +65,7 @@ export function Cover({
 
 export function renderCoverOverlayTag(tag: CoverOverlayTag) {
   return (
-    <Tag key={tag.key} className={`cover-overlay-tag tone-${tag.tone}${tag.text ? '' : ' icon-only'}${tag.icon === 'episodes' ? ' eps-badge' : ''}`} title={tag.title} variant="filled">
+    <Tag key={tag.key} className={`cover-overlay-tag tone-${tag.tone}${tag.text ? '' : ' icon-only'}${tag.icon === 'episodes' ? ' eps-badge' : ''}`} variant="filled">
       {tag.icon === 'episodes' && <BookOpen size={11} className="overlay-badge-icon" aria-hidden="true" />}
       {tag.text ? <span>{tag.text}</span> : null}
     </Tag>
@@ -95,7 +95,6 @@ export function StatusBadgeIcon({
   Icon,
   ok,
   label,
-  title,
   showBadge = true,
   disabled = true,
   onClick,
@@ -104,7 +103,6 @@ export function StatusBadgeIcon({
   Icon: ComponentType<{ size?: number }>
   ok: boolean
   label: string
-  title: string
   showBadge?: boolean
   disabled?: boolean
   onClick?: () => void
@@ -117,7 +115,6 @@ export function StatusBadgeIcon({
       disabled={disabled}
       onClick={onClick}
       aria-label={label}
-      title={title}
     >
       <Icon size={16} />
       {showBadge && <span className={`accept-status-badge ${ok ? 'ok' : 'error'}`} aria-hidden="true" />}

@@ -6,17 +6,23 @@ const CLEARABLE_KEYS = [
   'rv_mobile_reader_floating_control_position',
   'rv_mobile_delete_mode',
   'rv_mobile_cgs_submit_position',
+  'rv_mobile_multicheck_float_position',
   'rv_mobile_cgs_mcp_llm',
   'rv_mobile_cgs_mcp_prompt_history',
+  'redviewer:cgs-mcp-baseurl-history',
+  'redviewer:cgs-mcp-model-history',
+  'redviewer:cgs-mcp-preference-tags',
   'redviewer:cgs-proxy-history',
   'rv_mobile_author_github_avatar',
-  'rv_mobile_skin_assets_v1',
+  'rv_mobile_skin_assets',
   'rv_mobile_selected_skin',
 ] as const
 
 const PRESERVED_KEYS = [
   'rv_mobile_device_id',
 ] as const
+
+export const CUSTOM_SETTINGS_RESTORED_EVENT = 'rv-mobile:custom-settings-restored'
 
 export function restoreCustomSettingsStorage(): void {
   if (typeof window === 'undefined' || !window.localStorage) return
@@ -28,13 +34,14 @@ export function restoreCustomSettingsStorage(): void {
       console.warn(`Failed to remove localStorage key: ${key}`, error)
     }
   })
+  window.dispatchEvent(new Event(CUSTOM_SETTINGS_RESTORED_EVENT))
 }
 
 export function clearSkinAssetsCache(): void {
   if (typeof window === 'undefined' || !window.localStorage) return
 
   try {
-    localStorage.removeItem('rv_mobile_skin_assets_v1')
+    localStorage.removeItem('rv_mobile_skin_assets')
   } catch (error) {
     console.warn('Failed to clear skin assets cache:', error)
   }

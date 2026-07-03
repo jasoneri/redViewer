@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, type SetStateAction } from 'react'
 import type { CgsBook, CgsBookEpisode, CgsConfig, CgsSite, ConnectionState, CachedItem, ShelfBook } from '../mobileStore'
+import type { CgsAttachedBook } from '../acquire-workspace/acquireTypes'
 import { BACKEND_URL_KEY, ensureDeviceId } from '../mobileStore'
 import type {
   CgsConfigDraft,
@@ -8,15 +9,18 @@ import type {
   CgsGateFlight,
   CgsGatePhase,
   CgsMcpLlmConfig,
-  CgsMcpTimelineItem,
+  CgsMcpPreferenceState,
+  RvAgentRepairState,
+  RvAgentTimelineItem,
   CgsModeSwap,
+  CgsRunBadge,
   CgsSearchBookInfo,
   CgsSubmitDragState,
   CgsSubmitPosition,
   CgsWorkspaceMode,
 } from '../acquire-workspace/acquireTypes'
-import { loadCgsMcpLlmConfig, loadCgsMcpPromptHistory, loadCgsSubmitPosition, MULTI_CHECK_FLOAT_POSITION_KEY } from '../acquire-workspace/acquireCore'
-import type { ProgressMap, SortMode } from '../library-workspace/libraryCore'
+import { loadCgsMcpLlmConfig, loadCgsMcpPreferenceState, loadCgsMcpPromptHistory, loadCgsSubmitPosition, mergeCgsAttachedBookList, MULTI_CHECK_FLOAT_POSITION_KEY } from '../acquire-workspace/acquireCore'
+import { MULTI_CHECK_PRIMARY_BATCH_ACTIONS, type ProgressMap, type SortMode } from '../library-workspace/libraryCore'
 import type {
   ReaderFit,
   ReaderFloatingControlPosition,
@@ -118,7 +122,15 @@ export function useAppState() {
   const [selectedSite, setSelectedSite] = useState('')
   const [keyword, setKeyword] = useState('')
   const [cgsSearchBookInfo, setCgsSearchBookInfo] = useState<CgsSearchBookInfo | null>(null)
-  const [cgsMcpBookAttached, setCgsMcpBookAttached] = useState(false)
+  const [cgsAttachedBookList, setCgsAttachedBookList] = useState<CgsAttachedBook[]>([])
+  const cgsAttachedBook = cgsAttachedBookList[0] || null
+  const setCgsAttachedBook = (value: SetStateAction<CgsAttachedBook | null>) => {
+    setCgsAttachedBookList((current) => {
+      const next = typeof value === 'function' ? value(current[0] || null) : value
+      return next ? mergeCgsAttachedBookList([], [next]) : []
+    })
+  }
+  const [cgsPendingAttachBookId, setCgsPendingAttachBookId] = useState<string | null>(null)
   const [autoOpenConsumed, setAutoOpenConsumed] = useState(false)
   const [cgsBooks, setCgsBooks] = useState<CgsBook[]>([])
   const [selectedKeys, setSelectedKeys] = useState<string[]>([])
@@ -127,7 +139,10 @@ export function useAppState() {
   const [episodeLoadByBook, setEpisodeLoadByBook] = useState<Record<string, CgsEpisodeLoadState>>({})
   const [chapterPanelBookKey, setChapterPanelBookKey] = useState('')
   const [cgsSessionId, setCgsSessionId] = useState('')
+  const [cgsCurrentPage, setCgsCurrentPage] = useState(1)
   const [cgsStatus, setCgsStatus] = useState<Record<string, unknown> | null>(null)
+  const [cgsSubmitStatusInfoOpen, setCgsSubmitStatusInfoOpen] = useState(false)
+  const [cgsSubmitStatusInfoText, setCgsSubmitStatusInfoText] = useState('')
   const [cgsConfig, setCgsConfig] = useState<CgsConfig | null>(null)
   const [cgsConfigDraft, setCgsConfigDraft] = useState<CgsConfigDraft>({ downloaded_handle: '-', proxies_text: '', sv_path: '' })
   const [cgsConfigBusy, setCgsConfigBusy] = useState('')
@@ -141,17 +156,20 @@ export function useAppState() {
   const [cgsSubmitPosition, setCgsSubmitPosition] = useState<CgsSubmitPosition>(() => loadCgsSubmitPosition())
   const [multiCheckMode, setMultiCheckMode] = useState(false)
   const [multiCheckedIds, setMultiCheckedIds] = useState<string[]>([])
-  const [multiCheckFloatPosition, setMultiCheckFloatPosition] = useState<CgsSubmitPosition>(() => loadCgsSubmitPosition(MULTI_CHECK_FLOAT_POSITION_KEY))
+  const [multiCheckFloatPosition, setMultiCheckFloatPosition] = useState<CgsSubmitPosition>(() => loadCgsSubmitPosition(MULTI_CHECK_FLOAT_POSITION_KEY, MULTI_CHECK_PRIMARY_BATCH_ACTIONS.length))
   const [cgsMcpLlmConfig, setCgsMcpLlmConfig] = useState<CgsMcpLlmConfig>(() => loadCgsMcpLlmConfig())
   const [cgsMcpLlmDraft, setCgsMcpLlmDraft] = useState<CgsMcpLlmConfig>(() => loadCgsMcpLlmConfig())
-  const [cgsMcpModelHelpOpen, setCgsMcpModelHelpOpen] = useState(false)
-  const [cgsMcpPrompt, setCgsMcpPrompt] = useState('')
-  const [cgsMcpPromptHistory, setCgsMcpPromptHistory] = useState<string[]>(loadCgsMcpPromptHistory)
-  const [cgsMcpHistoryOpen, setCgsMcpHistoryOpen] = useState(false)
-  const [cgsMcpExpandedToolId, setCgsMcpExpandedToolId] = useState<string | null>(null)
-  const [cgsMcpTimeline, setCgsMcpTimeline] = useState<CgsMcpTimelineItem[]>([])
-  const [cgsMcpRunning, setCgsMcpRunning] = useState(false)
-  const [cgsMcpLibrarySyncing, setCgsMcpLibrarySyncing] = useState(false)
+  const [rvAgentModelHelpOpen, setRvAgentModelHelpOpen] = useState(false)
+  const [rvAgentPrompt, setRvAgentPrompt] = useState('')
+  const [rvAgentPromptHistory, setRvAgentPromptHistory] = useState<string[]>(loadCgsMcpPromptHistory)
+  const [rvAgentHistoryOpen, setRvAgentHistoryOpen] = useState(false)
+  const [rvAgentPreferenceOpen, setRvAgentPreferenceOpen] = useState(false)
+  const [rvAgentPreferenceState, setRvAgentPreferenceState] = useState<CgsMcpPreferenceState>(loadCgsMcpPreferenceState)
+  const [rvAgentExpandedToolId, setRvAgentExpandedToolId] = useState<string | null>(null)
+  const [rvAgentTimeline, setRvAgentTimeline] = useState<RvAgentTimelineItem[]>([])
+  const [rvAgentRunning, setRvAgentRunning] = useState(false)
+  const [rvAgentLibrarySyncing, setRvAgentLibrarySyncing] = useState(false)
+  const [rvAgentRepair, setRvAgentRepair] = useState<RvAgentRepairState | null>(null)
   const [appVersion, setAppVersion] = useState(APP_VERSION_FALLBACK)
   const [authorAvatarSrc, setAuthorAvatarSrc] = useState(readStoredAuthorAvatar)
   const [selectedSkin, setSelectedSkin] = useState(() => getSelectedSkinId())
@@ -179,29 +197,28 @@ export function useAppState() {
   const backendInputRef = useRef<HTMLInputElement | null>(null)
   const doujinTagLinkButtonRef = useRef<HTMLButtonElement | null>(null)
   const cgsManualGateRef = useRef<HTMLButtonElement | null>(null)
-  const cgsMcpGateRef = useRef<HTMLButtonElement | null>(null)
+  const rvAgentGateRef = useRef<HTMLButtonElement | null>(null)
   const cgsStatusDotRef = useRef<HTMLSpanElement | null>(null)
   const cgsStatusHeadRef = useRef<HTMLButtonElement | null>(null)
   const cgsSubmitDragRef = useRef<CgsSubmitDragState | null>(null)
-  const cgsMcpAbortRef = useRef<AbortController | null>(null)
-  const cgsMcpComposerRef = useRef(false)
-  const cgsMcpScrollRef = useRef<HTMLDivElement | null>(null)
-  const cgsMcpSubmittedRef = useRef(false)
-  const cgsMcpFailedRef = useRef(false)
+  const rvAgentAbortRef = useRef<AbortController | null>(null)
+  const rvAgentComposerRef = useRef(false)
+  const rvAgentScrollRef = useRef<HTMLDivElement | null>(null)
+  const rvAgentSubmittedRef = useRef(false)
+  const rvAgentFailedRef = useRef(false)
+  const rvAgentLastRunRef = useRef<{ prompt: string; attachedBookList: CgsAttachedBook[] } | null>(null)
+  const rvAgentLastSubmitBadgesRef = useRef<CgsRunBadge[]>([])
   const offlineCoverUrlsRef = useRef<Record<string, string>>({})
-
-  useEffect(() => {
-    setCgsMcpBookAttached(Boolean(cgsSearchBookInfo))
-  }, [cgsSearchBookInfo])
 
   return {
     activeItem, activeToolPanel, appVersion, authorAvatarSrc, autoOpenConsumed, autoScrollFrameRef, autoScrollIntervalRef, autoScrollingRef,
     backendDraft, backendInputRef, backendUrl, backendUrlHistory, busy, cached, cacheProgress, cacheSummaryHint, cacheSummaryText,
     cgsBooks, cgsConfig, cgsConfigBusy, cgsConfigDraft, cgsConnection, cgsGateFlight, cgsGateLoadingMode, cgsGatePhase, cgsHeadGateFlight,
     chapterPanelBookKey, customSettingsModalOpen, episodeLoadByBook, episodesByBook,
-    cgsManualGateRef, cgsMcpAbortRef, cgsMcpComposerRef, cgsMcpExpandedToolId, cgsMcpFailedRef, cgsMcpGateRef, cgsMcpHistoryOpen,
-    cgsMcpBookAttached, cgsMcpLibrarySyncing, cgsMcpLlmConfig, cgsMcpLlmDraft, cgsMcpModelHelpOpen, cgsMcpPrompt, cgsMcpPromptHistory, cgsMcpRunning, cgsMcpScrollRef,
-    cgsMcpSubmittedRef, cgsMcpTimeline, cgsModeSwap, cgsSearchBookInfo, cgsSessionId, cgsStatus, cgsStatusDotRef, cgsStatusHeadRef,
+    cgsManualGateRef, rvAgentAbortRef, rvAgentComposerRef, rvAgentExpandedToolId, rvAgentFailedRef, rvAgentGateRef, rvAgentHistoryOpen,
+    cgsAttachedBook, cgsAttachedBookList, rvAgentLibrarySyncing, cgsMcpLlmConfig, cgsMcpLlmDraft, rvAgentModelHelpOpen, rvAgentPreferenceOpen, rvAgentPreferenceState, rvAgentPrompt, rvAgentPromptHistory, rvAgentRunning, rvAgentScrollRef,
+    cgsPendingAttachBookId,
+    cgsCurrentPage, cgsSubmitStatusInfoOpen, cgsSubmitStatusInfoText, rvAgentLastRunRef, rvAgentLastSubmitBadgesRef, rvAgentRepair, rvAgentSubmittedRef, rvAgentTimeline, cgsModeSwap, cgsSearchBookInfo, cgsSessionId, cgsStatus, cgsStatusDotRef, cgsStatusHeadRef,
     cgsSubmitDragRef, cgsSubmitPosition, cgsWorkspaceMode, comicConfig, comicPathDraft, connection, deleteHardMode, deviceId,
     doujinTagLinkButtonRef, doujinTagPanel, drawerOpen, episodePage, episodePageCounts,
     filesystemBusy, filesystemExpandedKeys, filesystemTree, filterDraft, keyword, libraryPage, multiCheckFloatPosition, multiCheckedIds, multiCheckMode, offlineCoverUrls, offlineCoverUrlsRef,
@@ -214,9 +231,9 @@ export function useAppState() {
     selectedEpisodeKeysByBook, selectedKeys, selectedShelfSource, selectedSite, selectedSkin, seriesOnly, setActiveItem, setActiveToolPanel, setAppVersion, setAuthorAvatarSrc,
     setAutoOpenConsumed, setBackendDraft, setBackendUrl, setBackendUrlHistory, setBusy, setCached, setCacheProgress, setCacheSummaryHint,
     setCacheSummaryText, setCgsBooks, setCgsConfig, setCgsConfigBusy, setCgsConfigDraft, setCgsConnection, setCgsGateFlight,
-    setCgsGateLoadingMode, setCgsGatePhase, setCgsHeadGateFlight, setCgsMcpBookAttached, setCgsMcpExpandedToolId, setCgsMcpHistoryOpen, setCgsMcpLlmConfig,
-    setCgsMcpLibrarySyncing, setCgsMcpLlmDraft, setCgsMcpModelHelpOpen, setCgsMcpPrompt, setCgsMcpPromptHistory, setCgsMcpRunning, setCgsMcpTimeline,
-    setChapterPanelBookKey, setCgsModeSwap, setCgsSearchBookInfo, setCgsSessionId, setCgsStatus, setCgsSubmitPosition, setCgsWorkspaceMode, setComicConfig,
+    setCgsAttachedBook, setCgsAttachedBookList, setCgsGateLoadingMode, setCgsGatePhase, setCgsHeadGateFlight, setRvAgentExpandedToolId, setRvAgentHistoryOpen, setCgsMcpLlmConfig,
+    setRvAgentLibrarySyncing, setCgsMcpLlmDraft, setRvAgentModelHelpOpen, setRvAgentPreferenceOpen, setRvAgentPreferenceState, setRvAgentPrompt, setRvAgentPromptHistory, setRvAgentRepair, setRvAgentRunning, setRvAgentTimeline,
+    setChapterPanelBookKey, setCgsCurrentPage, setCgsPendingAttachBookId, setCgsSubmitStatusInfoOpen, setCgsSubmitStatusInfoText, setCgsModeSwap, setCgsSearchBookInfo, setCgsSessionId, setCgsStatus, setCgsSubmitPosition, setCgsWorkspaceMode, setComicConfig,
     setComicPathDraft, setConnection, setCustomSettingsModalOpen, setDeleteHardMode, setDoujinTagPanel, setDrawerOpen, setEpisodePage,
     setEpisodeLoadByBook, setEpisodePageCounts, setEpisodesByBook, setFilesystemBusy, setFilesystemExpandedKeys, setFilesystemTree, setFilterDraft, setKeyword, setLibraryPage,
     setMultiCheckFloatPosition, setMultiCheckedIds, setMultiCheckMode, setOfflineCoverUrls, setOpenOpsId, setPageIndex, setPathBusy, setPathSegments, setProgressByKey, setQuery, setReaderAutoScrolling,

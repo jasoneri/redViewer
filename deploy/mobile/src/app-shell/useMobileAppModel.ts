@@ -1,4 +1,5 @@
-import { createElement, useRef, useState } from 'react'
+import { invoke } from '@tauri-apps/api/core'
+import { createElement, useEffect, useRef, useState } from 'react'
 import type { AppState } from './useAppState'
 import { useMobileWorkspaceLifecycleModel } from './useAppWorkspaceLifecycle'
 import { useMicroHeaderStatus } from './useMicroHeaderStatus'
@@ -15,17 +16,26 @@ import {
   RELEASES_URL,
 } from './appMeta'
 import { compactPathTail, useMobileAppShellControllerModel } from './useAppShellController'
-import { clearSkinAssetsCache, restoreCustomSettingsStorage, setSelectedSkinId } from './customSettingsStorage'
-import { getCgsStatusKey, getCgsStatusPercent } from '../acquire-workspace/acquireCore'
+import { restoreCustomSettingsStorage, setSelectedSkinId } from './customSettingsStorage'
+import { getCgsStatusKey, getCgsStatusPercent, loadCgsMcpLlmConfig, loadCgsMcpPreferenceState } from '../acquire-workspace/acquireCore'
 import { AcquireDrawerSettings } from '../acquire-workspace/AcquireWorkspace'
 import { useMobileAcquireModel } from '../acquire-workspace/useMobileAcquireModel'
+import type { RvAgentSuccessTarget } from '../acquire-workspace/acquireTypes'
 import type { ReaderWorkspaceProps } from '../reader-workspace/ReaderWorkspace'
 import { READER_PAGE_FLIP_DURATION_BOUNDS, readerIntervalTimeBoundsForMode } from '../reader-workspace/readerCore'
 import { useMobileReaderRuntimeModel } from '../reader-workspace/useReaderRuntime'
 import { useMobileShelfModel } from '../library-workspace/useMobileShelfModel'
+import {
+  cleanupExpiredOfflineReadCache,
+  DEFAULT_OFFLINE_READ_CLEANUP_CONFIG,
+  loadOfflineReadCleanupConfig,
+  saveOfflineReadCleanupConfig,
+} from '../mobileStore'
 
 export type ToastTone = 'ok' | 'warn' | 'error'
 type Toast = { tone: ToastTone; text: string } | null
+
+const OFFLINE_READ_CLEANUP_SWEEP_MS = 5 * 60 * 1000
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max)
@@ -83,36 +93,33 @@ function useToastController() {
 }
 
 export function useMobileAppModel(appState: AppState, options?: { onRootSecretSaved?: () => void }) {
+  const [offlineDelAfterHourDraft, setOfflineDelAfterHourDraft] = useState(() => String(loadOfflineReadCleanupConfig().delAfterHours))
+  const offlineReadCleanupRunningRef = useRef(false)
+  const readerImageSavingRef = useRef(false)
   const {
-    activeItem, activeToolPanel, appVersion, authorAvatarSrc, autoOpenConsumed, autoScrollFrameRef, autoScrollIntervalRef, autoScrollingRef,
-    backendDraft, backendInputRef, backendUrl, backendUrlHistory, busy, cached, cacheProgress, cacheSummaryHint, cacheSummaryText,
-    cgsBooks, cgsConfig, cgsConfigBusy, cgsConfigDraft, cgsConnection, cgsGateFlight, cgsGateLoadingMode, cgsGatePhase, cgsHeadGateFlight,
-    cgsManualGateRef, cgsMcpAbortRef, cgsMcpComposerRef, cgsMcpExpandedToolId, cgsMcpFailedRef, cgsMcpGateRef, cgsMcpHistoryOpen,
-    cgsMcpLlmConfig, cgsMcpLlmDraft, cgsMcpModelHelpOpen, cgsMcpPrompt, cgsMcpPromptHistory, cgsMcpRunning, cgsMcpScrollRef,
-    cgsMcpSubmittedRef, cgsMcpTimeline, cgsModeSwap, cgsSearchBookInfo, cgsSessionId, cgsStatus, cgsStatusDotRef, cgsStatusHeadRef,
-    cgsSubmitDragRef, cgsSubmitPosition, cgsWorkspaceMode, comicConfig, comicPathDraft, connection, deleteHardMode, deviceId,
-    doujinTagLinkButtonRef, doujinTagPanel, drawerOpen, episodePage, episodePageCounts,
-    filesystemBusy, filesystemExpandedKeys, filesystemTree, filterDraft, keyword, libraryPage, offlineCoverUrls, offlineCoverUrlsRef,
-    openOpsId, pageIndex, pageTouchStartRef, pageTouchSuppressClickRef, pathBusy, pathSegments, pendingReaderProgressRef,
-    progressByKey, query, readerAutoScrolling, readerChromeVisible, readerFit, readerFloatingControlPosition,
-    readerInitialRestorePendingRef, readerLoadedImages, readerMaxScrollTop, readerMode, readerPageFlip,
-    readerPageFlipActiveRef, readerPageFlipKeyRef, readerPageJumpOpen, readerPages, readerProgrammaticScrollRef, readerReturnView,
-    readerScrollRenderNonce, readerScrollTop, readerSettings, readerSettingsOpen, readerShelfSource, readerUserScrolledRef,
-    restoredScrollRef, rootSecretAuthorized, rootSecretConfigured, rootSecretDraft, rootSecretHelpOpen, scrollProgressTimerRef, scrollReaderRef, selectedBook,
-    selectedKeys, selectedShelfSource, selectedSite, seriesOnly, setActiveItem, setActiveToolPanel, setAppVersion, setAuthorAvatarSrc,
-    setAutoOpenConsumed, setBackendDraft, setBackendUrl, setBackendUrlHistory, setBusy, setCached, setCacheProgress, setCacheSummaryHint,
-    setCacheSummaryText, setCgsBooks, setCgsConfig, setCgsConfigBusy, setCgsConfigDraft, setCgsConnection, setCgsGateFlight,
-    setCgsGateLoadingMode, setCgsGatePhase, setCgsHeadGateFlight, setCgsMcpExpandedToolId, setCgsMcpHistoryOpen, setCgsMcpLlmConfig,
-    setCgsMcpLlmDraft, setCgsMcpModelHelpOpen, setCgsMcpPrompt, setCgsMcpPromptHistory, setCgsMcpRunning, setCgsMcpTimeline,
-    setCgsModeSwap, setCgsSearchBookInfo, setCgsSessionId, setCgsStatus, setCgsSubmitPosition, setCgsWorkspaceMode, setComicConfig,
-    setComicPathDraft, setConnection, setDeleteHardMode, setDoujinTagPanel, setDrawerOpen, setEpisodePage,
-    setEpisodePageCounts, setFilesystemBusy, setFilesystemExpandedKeys, setFilesystemTree, setFilterDraft, setKeyword, setLibraryPage,
-    setOfflineCoverUrls, setOpenOpsId, setPageIndex, setPathBusy, setPathSegments, setProgressByKey, setQuery, setReaderAutoScrolling,
-    setReaderChromeVisible, setReaderFit, setReaderFloatingControlPosition, setReaderLoadedImages,
-    setReaderMaxScrollTop, setReaderMode, setReaderPageFlip, setReaderPageJumpOpen, setReaderPages, setReaderReturnView,
-    setReaderScrollTop, setReaderSettings, setReaderSettingsOpen, setReaderShelfSource, setRootSecretAuthorized, setRootSecretConfigured, setRootSecretDraft,
-    setRootSecretHelpOpen, setSelectedBook, setSelectedKeys, setSelectedShelfSource, setSelectedSite, setSeriesOnly, setShelf, setSites,
-    setSort, setStatusInfo, setStorageBusy, setView, shelf, sites, sort, statusInfo, storageBusy, view,
+    activeItem, appVersion, authorAvatarSrc,
+    backendDraft, backendInputRef, backendUrl, backendUrlHistory, busy, cached, cacheSummaryHint, cacheSummaryText,
+    cgsConnection, cgsGatePhase, cgsHeadGateFlight,
+    cgsModeSwap, cgsStatusDotRef, cgsStatusHeadRef,
+    cgsWorkspaceMode, comicConfig, comicPathDraft, connection, deleteHardMode,
+    drawerOpen,
+    filesystemBusy, filesystemExpandedKeys, filesystemTree,
+    pageIndex, pathBusy, pathSegments,
+    readerAutoScrolling, readerChromeVisible, readerFit, readerFloatingControlPosition,
+    readerMaxScrollTop, readerMode, readerPageFlip,
+    readerPageJumpOpen, readerPages, readerReturnView,
+    readerScrollRenderNonce, readerScrollTop, readerSettings, readerSettingsOpen,
+    rootSecretAuthorized, rootSecretConfigured, rootSecretDraft, rootSecretHelpOpen, scrollReaderRef, selectedBook,
+    setAuthorAvatarSrc,
+    setBackendDraft, setBackendUrl, setBackendUrlHistory,
+    setCgsMcpLlmConfig, setCgsMcpLlmDraft,
+    setDeleteHardMode, setDrawerOpen,
+    setRvAgentHistoryOpen, setRvAgentModelHelpOpen, setRvAgentPreferenceOpen, setRvAgentPreferenceState, setRvAgentPromptHistory,
+    setReaderFit,
+    setReaderPageJumpOpen,
+    setReaderSettingsOpen, setRootSecretConfigured, setRootSecretDraft,
+    setRootSecretHelpOpen, setSelectedBook, setSelectedShelfSource,
+    setView, shelf, sort, statusInfo, storageBusy, view,
   } = appState
   const {
     cgsStatusToastKeyRef,
@@ -127,7 +134,7 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
   const {
     authorizeStoredRootSecret,
     changeFilesystemExpandedKeys,
-    checkBackend,
+    clearCache,
     cleanupInvalidCache,
     clearBackendDraft,
     discoverBackend,
@@ -135,14 +142,44 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
     loadFilesystemNode,
     moveBackendCaretToEnd,
     refreshCache,
-    refreshCacheSummary,
-    refreshComicConfig,
     refreshFilesystem,
     refreshLibrary,
     saveBackend,
     saveComicPath,
     saveRootSecret,
   } = appShellController
+
+  async function runOfflineReadCleanup() {
+    if (offlineReadCleanupRunningRef.current) return
+    offlineReadCleanupRunningRef.current = true
+    try {
+      const result = await cleanupExpiredOfflineReadCache()
+      if (result.removed > 0) await refreshCache()
+    } catch {
+      // Silent by design: read cleanup should not interrupt the drawer/reader flow.
+    } finally {
+      offlineReadCleanupRunningRef.current = false
+    }
+  }
+
+  async function saveOfflineConfig() {
+    const saved = saveOfflineReadCleanupConfig({ delAfterHours: Number(offlineDelAfterHourDraft) })
+    setOfflineDelAfterHourDraft(String(saved.delAfterHours))
+    await runOfflineReadCleanup()
+  }
+
+  useEffect(() => {
+    void runOfflineReadCleanup()
+    const timer = window.setInterval(() => void runOfflineReadCleanup(), OFFLINE_READ_CLEANUP_SWEEP_MS)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') void runOfflineReadCleanup()
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
 
   async function authorizeAcquire(): Promise<boolean> {
     if (rootSecretAuthorized) return true
@@ -158,25 +195,45 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
     stopReaderAutoScroll: readerRuntime.stopReaderAutoScroll,
   })
   const {
-    cachedById,
     cachedComplete,
     cachedPages,
     closeDoujinTagPanel,
-    detailShelf,
-    episodePageCount,
-    libraryMetaByCacheKey,
-    libraryPageCount,
-    loadManifest,
     openCgsTagPanel,
     openDrawerTab,
     openReaderNeighbor,
-    pagedEpisodes,
-    pagedShelf,
+    openSourceItem,
     readerBookHandle,
     selectCgsSearchCandidate,
     selectDoujinTag,
     shelfWorkspace,
   } = shelfModel
+  async function openAcquireSuccessTarget(target: RvAgentSuccessTarget) {
+    const latestShelf = target.kind === 'detail' ? await refreshLibrary(backendUrl, sort, false, false, true) : shelf
+    const targetBook = latestShelf.find((book) => book.id === target.shelfBookId)
+    if (!targetBook) {
+      show('warn', '结果已同步，但当前书架里未定位到目标')
+      return
+    }
+    setDrawerOpen(false)
+    if (target.kind === 'detail') {
+      setSelectedShelfSource('library')
+      setSelectedBook(targetBook)
+      setView('library')
+      return
+    }
+    const readerItem = targetBook.kind === 'single'
+      ? targetBook
+      : target.itemId ? targetBook.episodes.find((item) => item.id === target.itemId) : undefined
+    if (!readerItem) {
+      show('warn', '结果已同步，但当前阅读目标未定位到章节')
+      return
+    }
+    await openSourceItem(readerItem, 'library')
+  }
+  function openRvAgentLlmConfig() {
+    setDrawerOpen(true)
+    openDrawerTab('acquire')
+  }
   const {
     acquireWorkspace,
     cgsGateBusy,
@@ -185,6 +242,8 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
     cgsStatusToastKeyRef,
     closeDoujinTagPanel,
     openCgsTagPanel,
+    openRvAgentLlmConfig,
+    openSuccessTarget: openAcquireSuccessTarget,
     refreshLibrary,
     selectCgsSearchCandidate,
     selectDoujinTag,
@@ -227,6 +286,35 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
       btype: activeItem.meta?.btype || activeReaderFallbackMeta?.btype || null,
     },
   } : null
+
+  async function saveReaderImageToGallery(imageUrl: string, imagePageIndex: number) {
+    if (readerImageSavingRef.current) return
+    if (!activeReaderItem) {
+      show('error', '保存失败：未定位到当前页面')
+      return
+    }
+
+    readerImageSavingRef.current = true
+    const timestamp = new Date().getTime()
+    const title = activeReaderItem.book || activeReaderItem.title
+    const filename = `${title}_page${imagePageIndex + 1}_${timestamp}.jpg`
+      .replace(/[/\\:*?"<>|]/g, '_')
+
+    try {
+      const success = await invoke<boolean>('save_image_to_gallery', {
+        url: imageUrl,
+        filename,
+      })
+      show(success ? 'ok' : 'error', success ? '图片已保存到相册' : '保存失败')
+    } catch (error) {
+      console.error('保存图片失败:', error)
+      const message = error instanceof Error ? error.message : String(error)
+      show('error', `保存失败: ${message}`)
+    } finally {
+      readerImageSavingRef.current = false
+    }
+  }
+
   const readerWorkspaceProps: ReaderWorkspaceProps | null = activeReaderItem ? {
     activeItem: activeReaderItem,
     activeProgress: readerMode === 'scroll'
@@ -271,6 +359,7 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
     onBack: () => setView(readerReturnView === 'reader' ? 'library' : readerReturnView),
     openReaderNeighbor: (direction) => void openReaderNeighbor(direction as -1 | 1),
     readerBookHandle: (handle) => void readerBookHandle(handle),
+    saveReaderImageToGallery: (imageUrl, imagePageIndex) => void saveReaderImageToGallery(imageUrl, imagePageIndex),
     scrollReaderToTop: readerRuntime.scrollReaderToTop,
     showReaderChromeControls: readerRuntime.showReaderChromeControls,
     finishReaderFloatingControlDrag: readerRuntime.finishReaderFloatingControlDrag,
@@ -340,7 +429,7 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
   }
 
   function handleRestoreSettings() {
-    if (!confirm('确定要还原所有设置吗？这将清除后端配置、阅读设置、皮肤缓存等，但不会删除离线缓存内容。')) {
+    if (!confirm('除已下载的离线缓存书籍以外，其他习惯、输入历史、皮肤资源将进行初始化，是否继续？')) {
       return
     }
     
@@ -354,9 +443,20 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
     appState.setSelectedSkin('default')
     setAuthorAvatarSrc('')
     setDeleteHardMode(false)
+    const resetLlmConfig = loadCgsMcpLlmConfig()
+    setCgsMcpLlmConfig(resetLlmConfig)
+    setCgsMcpLlmDraft(resetLlmConfig)
+    setRvAgentPromptHistory([])
+    setRvAgentHistoryOpen(false)
+    setRvAgentModelHelpOpen(false)
+    setRvAgentPreferenceState(loadCgsMcpPreferenceState())
+    setRvAgentPreferenceOpen(false)
+    saveOfflineReadCleanupConfig(DEFAULT_OFFLINE_READ_CLEANUP_CONFIG)
+    setOfflineDelAfterHourDraft(String(DEFAULT_OFFLINE_READ_CLEANUP_CONFIG.delAfterHours))
     
-    show('ok', '设置已还原')
+    show('ok', '设置已还原，正在刷新')
     appState.setCustomSettingsModalOpen(false)
+    window.location.reload()
   }
 
   function guardedOpenDrawerTab(next: Parameters<typeof openDrawerTab>[0]) {
@@ -366,7 +466,7 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
   const leftDrawerProps: LeftDrawerProps = {
     open: drawerOpen,
     activeView: view,
-    onClose: () => setDrawerOpen(false),
+    onClose: () => { setDrawerOpen(false) },
     onOpenTab: guardedOpenDrawerTab,
     libraryView: {
       appAuthor: APP_AUTHOR,
@@ -397,6 +497,7 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
     downloadsView: {
       cacheSummaryHint,
       cacheSummaryText,
+      offlineDelAfterHourDraft,
       storageBusy,
     },
     links: {
@@ -408,6 +509,7 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
     },
     actions: {
       changeFilesystemExpandedKeys,
+      clearCache,
       cleanupInvalidCache,
       clearBackendDraft,
       discoverBackend,
@@ -417,10 +519,12 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
       openCustomSettingsFromBackground,
       openExternalLink,
       refreshFilesystem,
+      saveOfflineConfig,
       saveBackend,
       saveComicPath,
       saveRootSecret,
       setBackendDraft,
+      setOfflineDelAfterHourDraft,
       setRootSecretDraft,
       toggleRootSecretHelp: () => setRootSecretHelpOpen((open) => !open),
     },
@@ -439,6 +543,7 @@ export function useMobileAppModel(appState: AppState, options?: { onRootSecretSa
     drawerOpen,
     leftDrawerProps,
     menuImgSrc: appState.skinAssets.menuImgSrc || MENU_LOGO_SRC,
+    menuVisiblePercent: appState.skinAssets.menuVisiblePercent,
     menuEffectSrc: appState.skinAssets.menuEffectSrc,
     menuEffectDuration: appState.skinAssets.menuEffectDuration,
     microHeaderStatus,

@@ -40,6 +40,7 @@ type MenuLayerProps = {
   open: boolean
   options: NativeDropdownOption[]
   value?: string
+  menuClassName?: string
 }
 
 function assignForwardedRef<T>(ref: ForwardedRef<T>, value: T | null) {
@@ -50,36 +51,54 @@ function assignForwardedRef<T>(ref: ForwardedRef<T>, value: T | null) {
   if (ref) (ref as { current: T | null }).current = value
 }
 
-function measurePopup(anchor: HTMLElement): PopupMetrics {
+function estimatedPopupOuterHeight(optionCount: number) {
+  const itemHeight = 34
+  const menuChrome = 10
+  return Math.max(1, optionCount) * itemHeight + menuChrome
+}
+
+function measurePopup(anchor: HTMLElement, optionCount: number, menuClassName?: string): PopupMetrics {
   const margin = 8
   const gap = 4
   const rect = anchor.getBoundingClientRect()
   const viewportWidth = window.innerWidth
   const viewportHeight = window.innerHeight
-  const preferredWidth = Math.min(260, viewportWidth - margin * 2)
-  const width = Math.max(Math.ceil(rect.width), preferredWidth)
+  const maxWidth = viewportWidth - margin * 2
+  
+  let width = Math.min(Math.ceil(rect.width)+10, maxWidth)
+  
+  if (menuClassName === 'detail-series-select-dropdown') {
+    const btnGroup = anchor.closest('.btn-group')
+    if (btnGroup) {
+      const btnGroupWidth = btnGroup.getBoundingClientRect().width
+      width = Math.min(Math.ceil(btnGroupWidth * 0.4), maxWidth)
+    }
+  }
+  
   const left = Math.min(Math.max(margin, rect.left), viewportWidth - margin - width)
   const belowSpace = viewportHeight - rect.bottom - gap - margin
   const aboveSpace = rect.top - gap - margin
   const openAbove = belowSpace < 120 && aboveSpace > belowSpace
-  const maxHeight = Math.max(96, Math.floor(openAbove ? aboveSpace : belowSpace))
+  const availableSpace = Math.max(0, Math.floor(openAbove ? aboveSpace : belowSpace))
+  const outerHeight = Math.min(estimatedPopupOuterHeight(optionCount), availableSpace)
+  const maxHeight = Math.max(34, availableSpace - 10)
 
   return {
     left,
-    top: openAbove ? Math.max(margin, Math.round(rect.top - gap - maxHeight)) : Math.round(rect.bottom + gap),
+    top: openAbove ? Math.max(margin, Math.round(rect.top - gap - outerHeight)) : Math.round(rect.bottom + gap),
     width,
     maxHeight,
   }
 }
 
-function usePopupMetrics(open: boolean, anchorRef: RefObject<HTMLElement | null>) {
+function usePopupMetrics(open: boolean, anchorRef: RefObject<HTMLElement | null>, optionCount: number, menuClassName?: string) {
   const [metrics, setMetrics] = useState<PopupMetrics | null>(null)
 
   const updateMetrics = useCallback(() => {
     const anchor = anchorRef.current
     if (!anchor) return
-    setMetrics(measurePopup(anchor))
-  }, [anchorRef])
+    setMetrics(measurePopup(anchor, optionCount, menuClassName))
+  }, [anchorRef, optionCount, menuClassName])
 
   useLayoutEffect(() => {
     if (!open) {
@@ -113,8 +132,9 @@ function MenuLayer({
   open,
   options,
   value,
+  menuClassName,
 }: MenuLayerProps) {
-  const metrics = usePopupMetrics(open, anchorRef)
+  const metrics = usePopupMetrics(open, anchorRef, options.length, menuClassName)
   if (!open || !metrics || typeof document === 'undefined') return null
 
   const style: CSSProperties = {
@@ -144,7 +164,6 @@ function MenuLayer({
           role="option"
           aria-selected={option.value === value}
           aria-disabled={option.disabled || undefined}
-          title={option.label}
           onClick={() => {
             if (!option.disabled) onSelect(option.value)
           }}
@@ -275,6 +294,7 @@ export function NativeSelectMenu({
         value={value}
         activeIndex={activeIndex}
         className={menuClassName}
+        menuClassName={menuClassName}
         onSelect={selectValue}
       />
     </>

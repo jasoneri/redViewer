@@ -91,6 +91,19 @@ export type OfflineCacheCleanupSummary = {
   removed_manifest_ids: string[]
 }
 
+export type OfflineCacheClearSummary = {
+  removed_item_count: number
+}
+
+export type OfflineReadCleanupConfig = {
+  delAfterHours: number
+}
+
+export type OfflineReadCleanupResult = {
+  removed: number
+  removedIds: string[]
+}
+
 export type CgsSite = {
   site_index?: number
   index?: number
@@ -143,6 +156,13 @@ const QUEUE_STORE = 'pendingProgress'
 
 export const DEVICE_ID_KEY = 'rv_mobile_device_id'
 export const BACKEND_URL_KEY = 'rv_mobile_backend_url'
+export const OFFLINE_READ_CLEANUP_HOURS_KEY = 'rv_mobile_offline_read_cleanup_hours'
+
+const OFFLINE_READ_CLEANUP_COMPLETED_AT_KEY = 'rv_mobile_offline_read_cleanup_completed_at'
+
+export const DEFAULT_OFFLINE_READ_CLEANUP_CONFIG: OfflineReadCleanupConfig = {
+  delAfterHours: 0,
+}
 
 export const EMPTY_LIBRARY_META: LibraryMeta = {
   artist: null,
@@ -248,6 +268,65 @@ export function ensureDeviceId(): string {
   return id
 }
 
+function clampOfflineReadCleanupHours(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(parsed) || parsed <= 0) return 0
+  return Math.min(Math.floor(parsed), 9999)
+}
+
+export function loadOfflineReadCleanupConfig(): OfflineReadCleanupConfig {
+  if (typeof localStorage === 'undefined') return DEFAULT_OFFLINE_READ_CLEANUP_CONFIG
+  return {
+    delAfterHours: clampOfflineReadCleanupHours(localStorage.getItem(OFFLINE_READ_CLEANUP_HOURS_KEY)),
+  }
+}
+
+export function saveOfflineReadCleanupConfig(config: OfflineReadCleanupConfig): OfflineReadCleanupConfig {
+  const next = { delAfterHours: clampOfflineReadCleanupHours(config.delAfterHours) }
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(OFFLINE_READ_CLEANUP_HOURS_KEY, String(next.delAfterHours))
+  }
+  return next
+}
+
+function loadOfflineReadCleanupCompletedAt(): Record<string, number> {
+  if (typeof localStorage === 'undefined') return {}
+  try {
+    const raw = localStorage.getItem(OFFLINE_READ_CLEANUP_COMPLETED_AT_KEY)
+    const parsed = raw ? JSON.parse(raw) : {}
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    return Object.fromEntries(
+      Object.entries(parsed).filter((entry): entry is [string, number] => {
+        const [key, value] = entry
+        return Boolean(key) && typeof value === 'number' && Number.isFinite(value) && value > 0
+      }),
+    )
+  } catch {
+    return {}
+  }
+}
+
+function saveOfflineReadCleanupCompletedAt(value: Record<string, number>): void {
+  if (typeof localStorage === 'undefined') return
+  localStorage.setItem(OFFLINE_READ_CLEANUP_COMPLETED_AT_KEY, JSON.stringify(value))
+}
+
+function markOfflineReadCleanupProgress(progress: Progress): void {
+  const key = progressKey(progress.book, progress.ep)
+  const completedAt = loadOfflineReadCleanupCompletedAt()
+  if (progress.status === 'completed') {
+    if (!completedAt[key]) {
+      completedAt[key] = progress.updated_at || Date.now()
+      saveOfflineReadCleanupCompletedAt(completedAt)
+    }
+    return
+  }
+  if (completedAt[key]) {
+    delete completedAt[key]
+    saveOfflineReadCleanupCompletedAt(completedAt)
+  }
+}
+
 function fallbackUUID(): string {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
     const r = (Math.random() * 16) | 0
@@ -346,6 +425,7 @@ export async function getCachedCover(item: Pick<CachedItem, 'id' | 'cached_pages
 export async function saveProgress(progress: Progress): Promise<void> {
   const key = progressKey(progress.book, progress.ep)
   await txStore(PROGRESS_STORE, 'readwrite', (store) => store.put({ ...progress, key }))
+  markOfflineReadCleanupProgress(progress)
 }
 
 export async function loadProgress(book: string, ep: string): Promise<Progress | undefined> {
@@ -426,14 +506,82 @@ export async function cacheManifest(
 }
 
 export async function deleteCachedItem(item: CachedItem): Promise<void> {
+  const readCleanupKey = progressKey(item.book, item.ep)
   await txStores([META_STORE, PAGE_STORE, PROGRESS_STORE, QUEUE_STORE], 'readwrite', async (stores) => {
     stores[META_STORE].delete(item.id)
-    stores[PROGRESS_STORE].delete(progressKey(item.book, item.ep))
-    stores[QUEUE_STORE].delete(progressKey(item.book, item.ep))
+    stores[PROGRESS_STORE].delete(readCleanupKey)
+    stores[QUEUE_STORE].delete(readCleanupKey)
     for (let index = 0; index < item.pages.length; index += 1) {
       stores[PAGE_STORE].delete(pageKey(item.id, index))
     }
   })
+  const completedAt = loadOfflineReadCleanupCompletedAt()
+  if (completedAt[readCleanupKey]) {
+    delete completedAt[readCleanupKey]
+    saveOfflineReadCleanupCompletedAt(completedAt)
+  }
+}
+
+export async function clearOfflineCache(): Promise<OfflineCacheClearSummary> {
+  const cachedItems = await loadCachedItems()
+  await txStores([META_STORE, PAGE_STORE, PROGRESS_STORE, QUEUE_STORE], 'readwrite', async (stores) => {
+    stores[META_STORE].clear()
+    stores[PAGE_STORE].clear()
+    for (const item of cachedItems) {
+      const key = progressKey(item.book, item.ep)
+      stores[PROGRESS_STORE].delete(key)
+      stores[QUEUE_STORE].delete(key)
+    }
+  })
+  saveOfflineReadCleanupCompletedAt({})
+  return { removed_item_count: cachedItems.length }
+}
+
+export async function cleanupExpiredOfflineReadCache(
+  config: OfflineReadCleanupConfig = loadOfflineReadCleanupConfig(),
+): Promise<OfflineReadCleanupResult> {
+  const delAfterHours = clampOfflineReadCleanupHours(config.delAfterHours)
+  if (delAfterHours <= 0) return { removed: 0, removedIds: [] }
+
+  const cachedItems = await loadCachedItems()
+  if (!cachedItems.length) return { removed: 0, removedIds: [] }
+
+  const progressRows = await loadAllProgress()
+  const progressByKey = new Map(progressRows.map((progress) => [progressKey(progress.book, progress.ep), progress]))
+  const completedAt = loadOfflineReadCleanupCompletedAt()
+  const cacheKeys = new Set(cachedItems.map((item) => progressKey(item.book, item.ep)))
+  const cutoff = Date.now() - delAfterHours * 60 * 60 * 1000
+  const removedIds: string[] = []
+  let completedAtChanged = false
+
+  for (const key of Object.keys(completedAt)) {
+    const progress = progressByKey.get(key)
+    if (!cacheKeys.has(key) || progress?.status !== 'completed') {
+      delete completedAt[key]
+      completedAtChanged = true
+    }
+  }
+
+  for (const item of cachedItems) {
+    const key = progressKey(item.book, item.ep)
+    const progress = progressByKey.get(key)
+    if (progress?.status !== 'completed') continue
+
+    const completedTime = completedAt[key] || progress.updated_at || Date.now()
+    if (!completedAt[key]) {
+      completedAt[key] = completedTime
+      completedAtChanged = true
+    }
+    if (completedTime > cutoff) continue
+
+    await deleteCachedItem(item)
+    removedIds.push(item.id)
+    delete completedAt[key]
+    completedAtChanged = true
+  }
+
+  if (completedAtChanged) saveOfflineReadCleanupCompletedAt(completedAt)
+  return { removed: removedIds.length, removedIds }
 }
 
 export async function getOfflineCacheSummary(): Promise<OfflineCacheSummary> {

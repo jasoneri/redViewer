@@ -4,7 +4,7 @@ import type { ToastTone } from '../app-shell/useMobileAppModel'
 import type { AppState } from '../app-shell/useAppState'
 import type { DetailWorkspaceProps } from '../detail-workspace/DetailWorkspace'
 import { EmptyState } from '../shared/Cover'
-import type { CachedItem, ConnectionState } from '../mobileStore'
+import type { CachedItem, ConnectionState, ShelfBook } from '../mobileStore'
 import { EDGE_LOGO_SRC, MENU_LOGO_SRC } from '../app-shell/appMeta'
 import type { useMobileReaderRuntimeModel } from '../reader-workspace/useReaderRuntime'
 import { useLibraryReaderActions } from './useLibraryReaderActions'
@@ -42,7 +42,7 @@ type ReaderRuntimeModel = ReturnType<typeof useMobileReaderRuntimeModel>
 type MobileShelfModelDeps = {
   authorizeAcquire: () => Promise<boolean>
   refreshCache: () => Promise<CachedItem[]>
-  refreshLibrary: (url?: string, nextSort?: SortMode, resetPage?: boolean, showLoading?: boolean, sync?: boolean) => Promise<void>
+  refreshLibrary: (url?: string, nextSort?: SortMode, resetPage?: boolean, showLoading?: boolean, sync?: boolean) => Promise<ShelfBook[]>
   restoreReaderScrollTop: ReaderRuntimeModel['restoreReaderScrollTop']
   show: ShowToast
   stopReaderAutoScroll: ReaderRuntimeModel['stopReaderAutoScroll']
@@ -51,8 +51,8 @@ type MobileShelfModelDeps = {
 const sortLabels: Record<SortMode, string> = {
   time_desc: '最近',
   time_asc: '最早',
-  name_asc: '名称正序',
   name_desc: '名称倒序',
+  name_asc: '名称正序',
 }
 
 type StatusInfo = {
@@ -89,6 +89,7 @@ export function useMobileShelfModel(appState: AppState, deps: MobileShelfModelDe
     cached,
     cacheProgress,
     connection,
+    cgsSessionId,
     deleteHardMode,
     doujinTagLinkButtonRef,
     doujinTagPanel,
@@ -122,7 +123,10 @@ export function useMobileShelfModel(appState: AppState, deps: MobileShelfModelDe
     setActiveToolPanel,
     setBusy,
     setCacheProgress,
+    setCgsAttachedBookList,
+    setCgsPendingAttachBookId,
     setCgsSearchBookInfo,
+    setCgsSessionId,
     setDeleteHardMode,
     setDoujinTagPanel,
     setDrawerOpen,
@@ -195,6 +199,57 @@ export function useMobileShelfModel(appState: AppState, deps: MobileShelfModelDe
     seriesBooks,
   } = shelfDerived
 
+  const supportsMultiCheck = !activeSourceIsOffline
+
+  const libraryWorkspaceController = useLibraryWorkspaceController({
+    activeSourceIsOffline,
+    supportsMultiCheck,
+    backendUrl,
+    busy,
+    deleteHardMode,
+    doujinTagPanel,
+    episodePageCount,
+    filterDraft,
+    query,
+    libraryPageCount,
+    nextSeriesBook,
+    previousSeriesBook,
+    authorizeAcquire: deps.authorizeAcquire,
+    selectedBook,
+    selectedShelfSource,
+    seriesBooks,
+    sort,
+    statusInfo,
+    view,
+    cgsSessionId,
+    refreshCache: deps.refreshCache,
+    refreshLibrary: deps.refreshLibrary,
+    show: deps.show,
+    setActiveToolPanel,
+    setBusy,
+    setCgsAttachedBookList,
+    setCgsPendingAttachBookId,
+    setCgsSearchBookInfo,
+    setCgsSessionId,
+    setDeleteHardMode,
+    setDoujinTagPanel,
+    setDrawerOpen,
+    setEpisodePage,
+    setFilterDraft,
+    setKeyword,
+    setLibraryPage,
+    setMultiCheckMode,
+    setMultiCheckedIds,
+    setQuery,
+    setSelectedBook,
+    setSelectedShelfSource,
+    setSeriesOnly,
+    setSort,
+    setStatusInfo,
+    setToolMenuOpen,
+    setView,
+  })
+
   const libraryReaderActions = useLibraryReaderActions({
     activeItem,
     backendUrl,
@@ -219,6 +274,7 @@ export function useMobileShelfModel(appState: AppState, deps: MobileShelfModelDe
     readerInitialRestorePendingRef,
     readerUserScrolledRef,
     restoredScrollRef,
+    addAttachedBooksFromShelf: libraryWorkspaceController.addAttachedBooksFromShelf,
     refreshCache: deps.refreshCache,
     refreshLibrary: deps.refreshLibrary,
     restoreReaderScrollTop: deps.restoreReaderScrollTop,
@@ -247,50 +303,6 @@ export function useMobileShelfModel(appState: AppState, deps: MobileShelfModelDe
     setView,
   })
 
-  const libraryWorkspaceController = useLibraryWorkspaceController({
-    activeSourceIsOffline,
-    backendUrl,
-    busy,
-    deleteHardMode,
-    doujinTagPanel,
-    episodePageCount,
-    filterDraft,
-    query,
-    libraryPageCount,
-    nextSeriesBook,
-    previousSeriesBook,
-    authorizeAcquire: deps.authorizeAcquire,
-    selectedBook,
-    selectedShelfSource,
-    seriesBooks,
-    sort,
-    statusInfo,
-    view,
-    refreshCache: deps.refreshCache,
-    refreshLibrary: deps.refreshLibrary,
-    show: deps.show,
-    setActiveToolPanel,
-    setBusy,
-    setCgsSearchBookInfo,
-    setDeleteHardMode,
-    setDoujinTagPanel,
-    setDrawerOpen,
-    setEpisodePage,
-    setFilterDraft,
-    setKeyword,
-    setLibraryPage,
-    setMultiCheckMode,
-    setMultiCheckedIds,
-    setQuery,
-    setSelectedBook,
-    setSelectedShelfSource,
-    setSeriesOnly,
-    setSort,
-    setStatusInfo,
-    setToolMenuOpen,
-    setView,
-  })
-
   const isDoujinMode = Boolean(statusInfo.ero)
   const libraryEmpty = renderLibraryEmpty(connection, statusInfo, shelf.length, busy, libraryWorkspaceController.openSettingsDrawer)
   const downloadsEmpty = !cached.length
@@ -311,6 +323,7 @@ export function useMobileShelfModel(appState: AppState, deps: MobileShelfModelDe
       deleteHardMode,
       doujinTagPanel,
       edgeLogoSrc: appState.skinAssets.edgeImgSrc || EDGE_LOGO_SRC,
+      edgeVisiblePercent: appState.skinAssets.edgeVisiblePercent,
       edgeEffectSrc: appState.skinAssets.edgeEffectSrc,
       edgeEffectDuration: appState.skinAssets.edgeEffectDuration,
       filterBoardKeywords,
@@ -322,6 +335,7 @@ export function useMobileShelfModel(appState: AppState, deps: MobileShelfModelDe
       multiCheckFloatPosition,
       multiCheckMode,
       multiCheckedIds,
+      supportsMultiCheck,
       openOpsId,
       pagedShelf,
       query,
@@ -450,6 +464,8 @@ export function useMobileShelfModel(appState: AppState, deps: MobileShelfModelDe
     openCgsTagPanel: libraryWorkspaceController.openCgsTagPanel,
     openDrawerTab: libraryWorkspaceController.openDrawerTab,
     openReaderNeighbor: libraryReaderActions.openReaderNeighbor,
+    openShelfBook: libraryReaderActions.openShelfBook,
+    openSourceItem: libraryReaderActions.openSourceItem,
     readerBookHandle: libraryReaderActions.readerBookHandle,
     selectCgsSearchCandidate: libraryWorkspaceController.selectCgsSearchCandidate,
     selectDoujinTag: libraryWorkspaceController.selectDoujinTag,

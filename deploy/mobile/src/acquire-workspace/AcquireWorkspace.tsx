@@ -1,15 +1,15 @@
-import { CgsMcpDrawerSettings, CgsMcpPanel } from './cgs-mcp/CgsMcpPanel'
+import { RvAgentDrawerSettings, RvAgentPanel, RvAgentPreferenceSheet } from './rv-agent/RvAgentPanel'
 import { CgsServerDrawerSettings, CgsServerPanel } from './cgs-server/CgsServerPanel'
 import { CgsGateFlight, CgsSubmitFloat } from './acquireUi'
 import type {
   AcquireWorkspaceActions,
   AcquireWorkspaceRefs,
   AcquireWorkspaceView,
-  CgsMcpDrawerActions,
-  CgsMcpDrawerView,
-  CgsMcpPanelActions,
-  CgsMcpPanelSelectors,
-  CgsMcpPanelView,
+  RvAgentDrawerActions,
+  RvAgentDrawerView,
+  RvAgentPanelActions,
+  RvAgentPanelSelectors,
+  RvAgentPanelView,
   CgsServerDrawerActions,
   CgsServerDrawerView,
   CgsServerPanelActions,
@@ -22,9 +22,11 @@ export type AcquireWorkspaceProps = {
   serverView: CgsServerPanelView
   serverSelectors: CgsServerPanelSelectors
   serverActions: CgsServerPanelActions
-  mcpView: CgsMcpPanelView
-  mcpSelectors: CgsMcpPanelSelectors
-  mcpActions: CgsMcpPanelActions
+  rvAgentView: RvAgentPanelView
+  rvAgentSelectors: RvAgentPanelSelectors
+  rvAgentActions: RvAgentPanelActions
+  rvAgentDrawerView: RvAgentDrawerView
+  rvAgentDrawerActions: RvAgentDrawerActions
   acquireActions: AcquireWorkspaceActions
   acquireRefs: AcquireWorkspaceRefs
 }
@@ -32,8 +34,8 @@ export type AcquireWorkspaceProps = {
 export type AcquireDrawerSettingsProps = {
   serverDrawerView: CgsServerDrawerView
   serverDrawerActions: CgsServerDrawerActions
-  mcpDrawerView: CgsMcpDrawerView
-  mcpDrawerActions: CgsMcpDrawerActions
+  rvAgentDrawerView: RvAgentDrawerView
+  rvAgentDrawerActions: RvAgentDrawerActions
 }
 
 export function AcquireWorkspace({
@@ -41,9 +43,11 @@ export function AcquireWorkspace({
   serverView,
   serverSelectors,
   serverActions,
-  mcpView,
-  mcpSelectors,
-  mcpActions,
+  rvAgentView,
+  rvAgentSelectors,
+  rvAgentActions,
+  rvAgentDrawerView,
+  rvAgentDrawerActions,
   acquireActions,
   acquireRefs,
 }: AcquireWorkspaceProps) {
@@ -56,11 +60,11 @@ export function AcquireWorkspace({
         acquireRefs={{ manualGate: acquireRefs.manualGate }}
       />
 
-      <CgsMcpPanel
-        mcpView={mcpView}
-        mcpSelectors={mcpSelectors}
-        mcpActions={mcpActions}
-        acquireRefs={{ mcpGate: acquireRefs.mcpGate, mcpScroll: acquireRefs.mcpScroll }}
+      <RvAgentPanel
+        rvAgentView={rvAgentView}
+        rvAgentSelectors={rvAgentSelectors}
+        rvAgentActions={rvAgentActions}
+        acquireRefs={{ rvAgentGate: acquireRefs.rvAgentGate, rvAgentScroll: acquireRefs.rvAgentScroll }}
       />
 
       {acquireView.flights.map((flight) => (
@@ -72,6 +76,8 @@ export function AcquireWorkspace({
       ))}
 
       <CgsSubmitFloat acquireView={acquireView} acquireActions={acquireActions} />
+
+      {rvAgentDrawerView.preferenceOpen && <RvAgentPreferenceSheet drawerView={rvAgentDrawerView} drawerActions={rvAgentDrawerActions} />}
     </section>
   )
 }
@@ -79,13 +85,13 @@ export function AcquireWorkspace({
 export function AcquireDrawerSettings({
   serverDrawerView,
   serverDrawerActions,
-  mcpDrawerView,
-  mcpDrawerActions,
+  rvAgentDrawerView,
+  rvAgentDrawerActions,
 }: AcquireDrawerSettingsProps) {
   return (
     <>
       <CgsServerDrawerSettings drawerView={serverDrawerView} drawerActions={serverDrawerActions} />
-      <CgsMcpDrawerSettings drawerView={mcpDrawerView} drawerActions={mcpDrawerActions} />
+      <RvAgentDrawerSettings drawerView={rvAgentDrawerView} drawerActions={rvAgentDrawerActions} />
     </>
   )
 }

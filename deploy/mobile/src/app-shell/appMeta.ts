@@ -4,7 +4,7 @@ import skinYmlRaw from './skin.yml?raw'
 
 const APP_AUTHOR_AVATAR_URL = 'https://avatars.githubusercontent.com/u/47016274'
 const APP_AUTHOR_AVATAR_STORAGE_KEY = 'rv_mobile_author_github_avatar'
-const SKIN_ASSETS_CACHE_KEY = 'rv_mobile_skin_assets_v1'
+const SKIN_ASSETS_CACHE_KEY = 'rv_mobile_skin_assets'
 
 export const DEFAULT_BACKEND = 'http://127.0.0.1:12345'
 export const EDGE_LOGO_SRC = './assets/edge.png'
@@ -18,14 +18,20 @@ export const RELEASES_URL = 'https://github.com/jasoneri/redViewer/releases'
 export const ISSUES_URL = 'https://github.com/jasoneri/redViewer/issues'
 export const CURRENT_LANGUAGE_LABEL = '简体中文'
 
+type SkinBaseAsset = string | [string, number?]
+type SkinTimedAsset = string | [string, number?]
+
 export type SkinEntry = {
   _act?: {
-    edge?: [string, number?] | string
-    menu?: [string, number?] | string
+    edge?: SkinTimedAsset
+    menu?: SkinTimedAsset
   }
-  edge: string
-  menu: string
+  edge: SkinBaseAsset
+  menu: SkinBaseAsset
   settings_bg: string
+  toast_err?: string
+  toast_success?: string
+  toast_warn?: string
 }
 
 export type SkinConfig = {
@@ -35,12 +41,17 @@ export type SkinConfig = {
 
 export type SkinAssets = {
   edgeImgSrc: string
+  edgeVisiblePercent: number
   edgeEffectSrc: string
   edgeEffectDuration: number
   menuImgSrc: string
+  menuVisiblePercent: number
   menuEffectSrc: string
   menuEffectDuration: number
   settingsBottomGifSrc: string
+  toastErrIconSrc: string
+  toastSuccessIconSrc: string
+  toastWarnIconSrc: string
 }
 
 export const MOBILE_SKIN_CONFIG: SkinConfig = loadYaml(skinYmlRaw) as SkinConfig
@@ -48,12 +59,17 @@ export const AVAILABLE_SKINS = Object.keys(MOBILE_SKIN_CONFIG.skin)
 
 export const EMPTY_SKIN_ASSETS: SkinAssets = {
   edgeImgSrc: '',
+  edgeVisiblePercent: 50,
   edgeEffectSrc: '',
   edgeEffectDuration: 1000,
   menuImgSrc: '',
+  menuVisiblePercent: 50,
   menuEffectSrc: '',
   menuEffectDuration: 1000,
   settingsBottomGifSrc: '',
+  toastErrIconSrc: '',
+  toastSuccessIconSrc: '',
+  toastWarnIconSrc: '',
 }
 
 export function queryParam(name: string): string {
@@ -104,9 +120,23 @@ export async function downloadAuthorAvatarToLocalStorage(backendUrl: string): Pr
 }
 
 function resolveAssetUrl(path: string, baseUrl: string): string {
-  if (path.startsWith('http://') || path.startsWith('https://')) return path
-  if (path.startsWith('./') || path.startsWith('assets/')) return path
-  return `${baseUrl}/${path}`
+  const assetPath = path.trim()
+  if (!assetPath) return ''
+  if (/^https?:\/\//i.test(assetPath)) return assetPath
+  return `${baseUrl.replace(/\/+$/, '')}/${assetPath.replace(/^\/+/, '')}`
+}
+
+function clampPercent(value: number): number {
+  if (!Number.isFinite(value)) return 50
+  return Math.min(Math.max(value, 1), 100)
+}
+
+function resolveSkinBaseAsset(asset: SkinBaseAsset): { path: string; visiblePercent: number } {
+  const [path, visiblePercent] = Array.isArray(asset) ? asset : [asset, 50]
+  return {
+    path,
+    visiblePercent: clampPercent(visiblePercent ?? 50),
+  }
 }
 
 async function resolveSkinAssets(skinId: string): Promise<SkinAssets> {
@@ -115,8 +145,10 @@ async function resolveSkinAssets(skinId: string): Promise<SkinAssets> {
 
   const baseUrl = `${MOBILE_SKIN_CONFIG.skinBaseUrl}/${skinId}`
   
-  const edgeUrl = resolveAssetUrl(entry.edge, baseUrl)
-  const menuUrl = resolveAssetUrl(entry.menu, baseUrl)
+  const edgeAsset = resolveSkinBaseAsset(entry.edge)
+  const menuAsset = resolveSkinBaseAsset(entry.menu)
+  const edgeUrl = resolveAssetUrl(edgeAsset.path, baseUrl)
+  const menuUrl = resolveAssetUrl(menuAsset.path, baseUrl)
   const settingsBgUrl = resolveAssetUrl(entry.settings_bg, baseUrl)
 
   const actEdge = entry._act?.edge
@@ -127,22 +159,34 @@ async function resolveSkinAssets(skinId: string): Promise<SkinAssets> {
   const [menuEffectPath, menuEffectDuration] = Array.isArray(actMenu) ? actMenu : [actMenu || '', 1000]
   const menuEffectUrl = menuEffectPath ? resolveAssetUrl(menuEffectPath, baseUrl) : ''
 
-  const [edgeImgSrc, menuImgSrc, settingsBottomGifSrc, edgeEffectSrc, menuEffectSrc] = await Promise.all([
+  const toastErrUrl = entry.toast_err ? resolveAssetUrl(entry.toast_err, baseUrl) : ''
+  const toastSuccessUrl = entry.toast_success ? resolveAssetUrl(entry.toast_success, baseUrl) : ''
+  const toastWarnUrl = entry.toast_warn ? resolveAssetUrl(entry.toast_warn, baseUrl) : ''
+
+  const [edgeImgSrc, menuImgSrc, settingsBottomGifSrc, edgeEffectSrc, menuEffectSrc, toastErrIconSrc, toastSuccessIconSrc, toastWarnIconSrc] = await Promise.all([
     fetchImageDataUrl(edgeUrl, `${skinId}/edge`),
     fetchImageDataUrl(menuUrl, `${skinId}/menu`),
     fetchImageDataUrl(settingsBgUrl, `${skinId}/settings_bg`),
     edgeEffectUrl ? fetchImageDataUrl(edgeEffectUrl, `${skinId}/edge_effect`).catch(() => '') : Promise.resolve(''),
     menuEffectUrl ? fetchImageDataUrl(menuEffectUrl, `${skinId}/menu_effect`).catch(() => '') : Promise.resolve(''),
+    toastErrUrl ? fetchImageDataUrl(toastErrUrl, `${skinId}/toast_err`).catch(() => '') : Promise.resolve(''),
+    toastSuccessUrl ? fetchImageDataUrl(toastSuccessUrl, `${skinId}/toast_success`).catch(() => '') : Promise.resolve(''),
+    toastWarnUrl ? fetchImageDataUrl(toastWarnUrl, `${skinId}/toast_warn`).catch(() => '') : Promise.resolve(''),
   ])
 
   return {
     edgeImgSrc,
+    edgeVisiblePercent: edgeAsset.visiblePercent,
     edgeEffectSrc,
     edgeEffectDuration: edgeEffectDuration || 1000,
     menuImgSrc,
+    menuVisiblePercent: menuAsset.visiblePercent,
     menuEffectSrc,
     menuEffectDuration: menuEffectDuration || 1000,
     settingsBottomGifSrc,
+    toastErrIconSrc,
+    toastSuccessIconSrc,
+    toastWarnIconSrc,
   }
 }
 
