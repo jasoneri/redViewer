@@ -6,9 +6,11 @@
 
 ### 🍢 Feat/Fix
 
-+ ✨ 新增 rv-app android ，支持离线缓存等，特有功能 cgs-server/mcp
-+ rv-desktop 增加 udp 广播与 rv-app 扫描搭配使用
-+ rv-desktop 界面增加设置页面，可直接设 .secret （ 用于 cgs-server/mcp ，操作锁等 ）
++ ✨ [rv-app(android)](http://rv.101114105.xyz/guide/mobile.html)
+  - 下载部分：CGS 交互/agent
+  - rv-app 皮肤自定义组件, 各种交互
++ rv-desktop 增加增加设置页：改 secret/锁/日志等级
++ package.json 的 bun workspaces 利好开发
 
 ---
 

@@ -11,7 +11,7 @@
   <button @click="showDialog = true" style="display: flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 6px; border: 1px solid var(--vp-c-brand); background: var(--vp-c-brand); color: white; cursor: pointer; font-size: 14px;">
     <img src="/lxd.png" alt="invite" style="width: 20px; height: 20px;" />
     <span>注册邀请</span></button>
-  <a href="https://credit.linux.do/paying/online?token=26af47ee90b1192086095d107dc9bc1ca4137bd12496fefaf22efadcc349a98a" target="_blank" style="display: flex; align-items: center; padding: 10px 20px; border-radius: 6px; border: 1px solid var(--vp-c-brand); background: var(--vp-c-brand); color: white; text-decoration: none; cursor: pointer; font-size: 14px;">
+  <a href="https://credit.linux.do/paying/online?token=46cd5f0681d06eaa56f1c3e89599b8a388f859acbc29a1b871b1da88913b9473" target="_blank" style="display: flex; align-items: center; padding: 10px 20px; border-radius: 6px; border: 1px solid var(--vp-c-brand); background: var(--vp-c-brand); color: white; text-decoration: none; cursor: pointer; font-size: 14px;">
     🎅LDC 投喂</a>
 </div>
 
