@@ -249,6 +249,14 @@ class ComicLibraryManager:
 
         logger.debug("Startup synchronization complete.")
 
+    async def sync_active_cache(self):
+        if not self.active_cache:
+            raise RuntimeError("No active library")
+        await self._sync_startup(self.active_cache)
+        book_count = len(self.active_cache.books_index)
+        logger.info(f"Active library sync complete. Found {book_count} books.")
+        return {"success": True, "book_count": book_count}
+
     async def force_rescan(self, main_loop=None):
         """强制重新扫描：释放资源，重置数据库，重新扫描"""
         if not self.active_cache:

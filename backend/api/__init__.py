@@ -4,6 +4,7 @@
 
 import asyncio
 import fnmatch
+import os
 from urllib.parse import urlparse
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
@@ -14,17 +15,32 @@ from infra import backend
 from core import lib_mgr
 from storage import StorageBackendFactory
 from api.routes.comic import index_router
+from api.routes.cgs import cgs_router
+from api.routes.mobile import mobile_router
 from api.routes.root import root_router, api_config_router
+from infra.lan_discovery import LanDiscoveryResponder
 from utils.cbz_cache import close_cbz_cache
 
 staticFiles = None
+
+
+class MobileStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope) -> Response:
+        response = await super().get_response(path, scope)
+        response.headers.setdefault("Access-Control-Allow-Origin", "*")
+        response.headers.setdefault("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS")
+        response.headers.setdefault("Access-Control-Allow-Headers", "*")
+        return response
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     main_loop = asyncio.get_running_loop()
     await lib_mgr.switch_library(backend.config.comic_path, main_loop)
+    lan_discovery = LanDiscoveryResponder(int(os.getenv("RV_PORT", "12345")))
+    lan_discovery.start()
     yield
+    lan_discovery.stop()
     if lib_mgr.observer and lib_mgr.observer.is_alive():
         lib_mgr.observer.stop()
         lib_mgr.observer.join()
@@ -47,11 +63,11 @@ def register_static_file(app: FastAPI) -> None:
     global staticFiles
     storage = StorageBackendFactory.create(backend.config.comic_path)
     if storage.supports_static_mount():
-        staticFiles = StaticFiles(directory=str(backend.config.comic_path))
+        staticFiles = MobileStaticFiles(directory=str(backend.config.comic_path))
         app.mount("/static", staticFiles, name="static")
     kemono_path = backend.config.kemono_path
     if kemono_path and kemono_path.exists():
-        app.mount("/static_kemono", StaticFiles(directory=str(kemono_path)), name="static_kemono")
+        app.mount("/static_kemono", MobileStaticFiles(directory=str(kemono_path)), name="static_kemono")
 
 
 def register_router(app: FastAPI) -> None:
@@ -62,6 +78,8 @@ def register_router(app: FastAPI) -> None:
         app.include_router(kemono_index_router, prefix="", tags=['kemono'])
     app.include_router(api_config_router, prefix="", tags=['api'])
     app.include_router(root_router, prefix="", tags=['root'])
+    app.include_router(cgs_router, prefix="", tags=['root'])
+    app.include_router(mobile_router, prefix="", tags=['mobile'])
 
 
 def register_cors(app: FastAPI) -> None:

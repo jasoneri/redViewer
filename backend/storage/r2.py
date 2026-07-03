@@ -139,6 +139,20 @@ class R2StorageBackend(StorageBackend):
         """重置索引缓存，下次访问时重新加载"""
         self._index_cache = None
 
+    # ========== Mobile progress/read-state ==========
+
+    def supports_progress_sync(self) -> bool:
+        return False
+
+    def get_progress(self, book: str, ep: str, device_id: str) -> Optional[dict]:
+        raise NotImplementedError("R2 static-index backend does not support progress sync")
+
+    def get_latest_progress(self, book: str, ep: str) -> Optional[dict]:
+        raise NotImplementedError("R2 static-index backend does not support progress sync")
+
+    def upsert_progress(self, progress: dict) -> dict:
+        raise NotImplementedError("R2 static-index backend does not support progress sync")
+
     # ========== URL 生成 ==========
 
     def get_image_url(self, book: str, ep: str, image_name: str) -> str:

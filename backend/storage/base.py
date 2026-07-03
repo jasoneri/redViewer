@@ -8,7 +8,7 @@ via configuration.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Tuple, TYPE_CHECKING
+from typing import Any, List, Optional, Dict, Tuple, TYPE_CHECKING
 from pathlib import Path
 
 if TYPE_CHECKING:
@@ -109,6 +109,28 @@ class StorageBackend(ABC):
     def load_entries_for_dir(self, dir_name: str) -> set:
         """从数据库加载指定目录下的所有条目"""
         return set()
+
+    # ========== Mobile progress/read-state ==========
+
+    def supports_progress_sync(self) -> bool:
+        """Whether this backend can persist mobile reading progress."""
+        return False
+
+    def get_progress(self, book: str, ep: str, device_id: str) -> Optional[Dict[str, Any]]:
+        """Load reading progress for one device."""
+        raise NotImplementedError(f"{self.__class__.__name__} does not support progress sync")
+
+    def get_latest_progress(self, book: str, ep: str) -> Optional[Dict[str, Any]]:
+        """Load the newest reading progress across devices."""
+        raise NotImplementedError(f"{self.__class__.__name__} does not support progress sync")
+
+    def upsert_progress(self, progress: Dict[str, Any]) -> Dict[str, Any]:
+        """Create or replace reading progress for one device."""
+        raise NotImplementedError(f"{self.__class__.__name__} does not support progress sync")
+
+    def load_book_metainfo_map(self) -> Dict[str, Dict[str, Any]]:
+        """Load optional book-level metadata keyed by normalized book name."""
+        return {}
 
     # ========== URL 生成 ==========
 

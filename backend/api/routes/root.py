@@ -4,15 +4,17 @@
 
 import time
 import httpx
+import ipaddress
 from functools import wraps
 from urllib.parse import urlsplit
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, HTTPException, Header, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional
 
 from infra import backend
 from core.crypto import decrypt
+from core.logging import normalize_log_level
 
 root_router = APIRouter(prefix='/root')
 api_config_router = APIRouter(prefix='/api')
@@ -40,6 +42,23 @@ def is_auth_required() -> bool:
     return backend.auth.is_auth_required()
 
 
+def is_loopback_client(request: Request) -> bool:
+    host = request.client.host if request.client else ""
+    if host == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
+
+
+def require_desktop_admin_access(request: Request) -> None:
+    # RVDSK001: rvDesktop uses this local-only route group as a trusted control plane.
+    if is_loopback_client(request):
+        return
+    raise HTTPException(403, "桌面管理员通道仅允许本机访问")
+
+
 # ===== 装饰器 =====
 def require_lock(lock_name: str):
     """检查操作锁的装饰器"""
@@ -60,6 +79,14 @@ class AuthRequest(BaseModel):
 
 class InitSecretRequest(BaseModel):
     secret: str
+
+
+class DesktopSecretUpdate(BaseModel):
+    secret: str
+
+
+class DesktopLogLevelUpdate(BaseModel):
+    log_level: str
 
 
 class LocksUpdate(BaseModel):
@@ -99,13 +126,18 @@ async def get_locks():
     return {k: locks.get(k, False) for k in ('config_path', 'book_handle', 'switch_doujin', 'force_rescan')}
 
 
+def update_lock_values(req: LocksUpdate) -> dict:
+    current_locks = dict(backend.config.locks)
+    current_locks.update({k: v for k, v in req.model_dump().items() if v is not None})
+    backend.config.set('locks', current_locks)
+    return current_locks
+
+
 @root_router.post("/locks")
 async def update_locks(req: LocksUpdate, x_secret: Optional[str] = Header(None)):
     if is_auth_required() and not verify_secret(x_secret or ''):
         raise HTTPException(401, "鉴权失败")
-    current_locks = dict(backend.config.locks)
-    current_locks.update({k: v for k, v in req.model_dump().items() if v is not None})
-    backend.config.set('locks', current_locks)
+    current_locks = update_lock_values(req)
     return {"success": True, "locks": current_locks}
 
 
@@ -128,6 +160,46 @@ async def init_secret(req: InitSecretRequest):
         raise HTTPException(400, "密钥不能为空")
     backend.auth.set_secret(req.secret.strip())
     return {"success": True}
+
+
+@root_router.get("/desktop-admin/state")
+async def desktop_admin_state(
+    request: Request,
+):
+    require_desktop_admin_access(request)
+    locks = await get_locks()
+    return {"has_secret": is_auth_required(), "locks": locks}
+
+
+@root_router.post("/desktop-admin/secret")
+async def desktop_admin_update_secret(
+    request: Request,
+    req: DesktopSecretUpdate,
+):
+    require_desktop_admin_access(request)
+    backend.auth.set_secret(req.secret.strip())
+    return {"success": True, "has_secret": True}
+
+
+@root_router.post("/desktop-admin/locks")
+async def desktop_admin_update_locks(
+    request: Request,
+    req: LocksUpdate,
+):
+    require_desktop_admin_access(request)
+    current_locks = update_lock_values(req)
+    return {"success": True, "locks": current_locks}
+
+
+@root_router.post("/desktop-admin/log-level")
+async def desktop_admin_update_log_level(
+    request: Request,
+    req: DesktopLogLevelUpdate,
+):
+    require_desktop_admin_access(request)
+    level = normalize_log_level(req.log_level).lower()
+    backend.config.update(log_level=level)
+    return {"success": True, "log_level": level, "restart_required": True}
 
 
 @root_router.get("/whitelist")
