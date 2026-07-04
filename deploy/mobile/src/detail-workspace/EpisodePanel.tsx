@@ -70,10 +70,11 @@ function EpisodeTile({
   const cachedEpisode = detailSelectors.cachedEpisode(episode)
   const episodePageCount = detailSelectors.episodePageCount(episode, cachedEpisode)
   const title = episode.ep || episode.title
+  const dogEarOpen = detailView.openOpsId === episode.id
 
   return (
     <article style={{ display: 'grid', gap: 6, minWidth: 0 }}>
-      <div className="poster-card episode-poster-card has-dogEaredCover">
+      <div className={`poster-card episode-poster-card has-dogEaredCover ${dogEarOpen ? 'is-dogear-open' : ''}`}>
         <button className="cover-button" onClick={() => void detailActions.openSourceItem(episode, detailView.selectedShelfSource)} aria-label={`打开 ${title}`}>
           <Cover
             src={detailSelectors.episodeCoverSrc(episode)}
@@ -82,12 +83,12 @@ function EpisodeTile({
             overlayTags={detailSelectors.episodeCoverOverlayTags(episodePageCount)}
           />
         </button>
-        <div className={`cover-ops ${detailView.openOpsId === episode.id ? 'ops-open' : ''}`} role="menu" aria-label={`${title} 操作菜单`}>
+        <div className={`cover-ops ${dogEarOpen ? 'ops-open' : ''}`} role="menu" aria-label={`${title} 操作菜单`}>
           <button
             className={`dogEaredCover ${cachedEpisode ? 'is-cached' : ''}`}
             aria-label={`${title} dogEaredCover 操作`}
             aria-haspopup="menu"
-            aria-expanded={detailView.openOpsId === episode.id}
+            aria-expanded={dogEarOpen}
             onClick={() => detailActions.toggleOps(episode.id)}
           >
             <span className="dogEaredCoverGroup" aria-hidden="true">

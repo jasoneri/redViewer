@@ -4,7 +4,7 @@
 手感优化，拥有  rv-desktop 前端部分做得不怎么完善的 cgs-server/mcp 远程功能。
 :::
 
-<HomeDemoVideo src="{{URL_IMG}}/file/rv/1783070093304_app.webm" title="rv mobile demo"></HomeDemoVideo>
+<HomeDemoVideo src="{{URL_IMG}}/file/rv/1783171021752_app.webm" title="rv mobile demo"></HomeDemoVideo>
 
 以下复述些重点操作或没描述的操作，其他参考 上述视频 和 rv-desktop
 
@@ -25,6 +25,7 @@
 + 随便点击一个特大 gateBtn 进入 cgs-server/agent 连通后，点击左上角小图标能互换模式  
 
 ::: warning 表漫用 agent , 手动挡还没做章节选择 ui
+无论哪种模式都要关注 CGS配置 的储存目录和代理，刷新键获取 CGS 配置，保存键更新配置
 :::
 
 + 在 cgs-手动挡 页面入库失败时，可点击 `入库` 会出现面板进行重试补漏页

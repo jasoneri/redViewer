@@ -34,10 +34,11 @@ export function BookTile({
   const coverSrc = shelfSelectors.coverSrc(book)
   const cardOpen = () => shelfActions.openShelfBook(book, shelfView.activeShelfSource)
   const isChecked = multiCheck && shelfView.multiCheckedIds.includes(book.id)
+  const dogEarOpen = showCoverOps && !multiCheck && shelfView.openOpsId === book.id
 
   return (
     <article className={`book-tile ${cachedCount ? 'is-cached' : ''} ${bookProgress ? 'has-progress' : ''} ${book.kind}-card ${isChecked ? 'is-checked' : ''}`}>
-      <div className={`poster-card ${showCoverOps ? 'has-dogEaredCover' : ''} ${multiCheck ? 'is-multi-check' : ''}`}>
+      <div className={`poster-card ${showCoverOps ? 'has-dogEaredCover' : ''} ${multiCheck ? 'is-multi-check' : ''} ${dogEarOpen ? 'is-dogear-open' : ''}`}>
         <button
           className="cover-button"
           onClick={multiCheck ? () => shelfActions.toggleMultiCheckId(book.id) : cardOpen}
@@ -47,7 +48,7 @@ export function BookTile({
         </button>
         {showCoverOps && (
           <div
-            className={`cover-ops ${multiCheck ? 'multi-check' : shelfView.openOpsId === book.id ? 'ops-open' : ''}`}
+            className={`cover-ops ${multiCheck ? 'multi-check' : dogEarOpen ? 'ops-open' : ''}`}
             role={multiCheck ? 'group' : 'menu'}
             aria-label={`${book.book} ${multiCheck ? '选择' : '操作菜单'}`}
           >
@@ -57,7 +58,7 @@ export function BookTile({
               role={multiCheck ? 'checkbox' : undefined}
               aria-checked={multiCheck ? isChecked : undefined}
               aria-haspopup={multiCheck ? undefined : 'menu'}
-              aria-expanded={multiCheck ? undefined : shelfView.openOpsId === book.id}
+              aria-expanded={multiCheck ? undefined : dogEarOpen}
               onClick={multiCheck ? () => shelfActions.toggleMultiCheckId(book.id) : () => shelfActions.toggleOps(book.id)}
             >
               <span className="dogEaredCoverGroup" aria-hidden="true">

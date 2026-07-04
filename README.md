@@ -28,10 +28,9 @@
 </p>
 
 <div>
-  <a href="https://img-cgs.101114105.xyz/file/rv/1783070093304_app.webm" target="_blank">
+  <a href="https://img-cgs.101114105.xyz/file/rv/1783171021752_app.webm" target="_blank">
     <img src="https://img-cgs.101114105.xyz/file/rv/1783000491990_app_cover.png" alt="logo" height="340">
   </a>
-<br clear="center">
 </div>
 
 ## 🎉 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/jasoneri/redViewer?color=blue&label=Ver&sort=semver)](https://github.com/jasoneri/redViewer/releases/latest)
