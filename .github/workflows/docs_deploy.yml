@@ -22,6 +22,7 @@ jobs:
         with:
           filters: |
             docs:
+              - 'package.json'
               - 'docs/**'
 
   deploy:
@@ -34,20 +35,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: docs/package.json
+          bun-version: latest
       
       - name: Install dependencies
-        run: |
-          cd docs && npm install
+        run: bun install
       
       - name: Build VitePress docs
-        run: |
-          cd docs && npm run docs:build
+        run: bun run docs:build
       
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
