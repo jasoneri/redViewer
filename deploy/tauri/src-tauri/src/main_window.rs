@@ -125,6 +125,14 @@ pub fn show_main_win(app: &tauri::AppHandle) {
     }
 }
 
+/// Show the main window and switch the desktop shell to the Secret & Lock view.
+pub fn show_secret_settings(app: &tauri::AppHandle) {
+    show_main_win(app);
+    if let Some(window) = app.get_webview_window(MAIN_WIN_LABEL) {
+        let _ = window.emit("desktop-secret-update-requested", ());
+    }
+}
+
 /// Hide the main window
 pub fn hide_main_win(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window(MAIN_WIN_LABEL) {
@@ -179,4 +187,10 @@ pub async fn main_window_close(app: tauri::AppHandle) {
 pub fn get_lan_url(app: tauri::AppHandle) -> Option<String> {
     app.try_state::<WebServer>()
         .and_then(|ws| ws.lan_url().map(String::from))
+}
+
+#[tauri::command]
+pub fn get_backend_base_url(app: tauri::AppHandle) -> Option<String> {
+    app.try_state::<WebServer>()
+        .map(|ws| ws.url().to_string())
 }

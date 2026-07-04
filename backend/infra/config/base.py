@@ -62,6 +62,10 @@ class ConfigBackend(ABC):
     @property
     def storage_backend(self) -> str:
         return self.get('storage_backend', 'local')
+
+    @property
+    def log_level(self) -> str:
+        return str(self.get('log_level', 'info') or 'info').strip()
     
     @property
     def locks(self) -> Dict[str, bool]:
@@ -87,7 +91,7 @@ class ConfigBackend(ABC):
     @property
     def ero(self) -> int:
         return self.get('ero', 0)
-    
+
     # ========== 路径相关 ==========
     
     @property

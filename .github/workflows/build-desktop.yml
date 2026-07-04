@@ -23,9 +23,9 @@ jobs:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             ext: .exe
-          # - os: macos-latest
-          #   target: x86_64-apple-darwin
-          #   ext: ''
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            ext: ''
           # - os: macos-latest
           #   target: aarch64-apple-darwin
           #   ext: ''
@@ -52,7 +52,7 @@ jobs:
           cache-all-crates: true
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v1
+        uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
@@ -60,6 +60,9 @@ jobs:
         uses: astral-sh/setup-uv@v4
         with:
           version: "latest"
+
+      - name: Install workspace dependencies
+        run: bun install
 
       - name: Install Tauri CLI
         run: cargo install tauri-cli --locked
@@ -81,19 +84,15 @@ jobs:
       - name: Build (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: |
-          cd deploy/scripts
-          # Full build: Stage 1 (rvInstaller) + Stage 2 (NSIS bundle)
-          .\build-desktop.ps1
+        run: bun run desktop:pack
 
       - name: Build (macOS/Linux)
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          cd deploy/scripts
-          chmod +x build-desktop.sh
+          chmod +x deploy/scripts/build-desktop.sh
           # Full build: Stage 1 (rvInstaller) + Stage 2 (app bundle)
-          ./build-desktop.sh --cross-target ${{ matrix.target }}
+          ./deploy/scripts/build-desktop.sh --cross-target ${{ matrix.target }}
 
       # Artifact paths: Release builds output to __temp/tauri_dist
       - name: Upload artifacts (Windows)

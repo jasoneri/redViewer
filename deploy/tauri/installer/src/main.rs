@@ -14,7 +14,7 @@ mod args;
 mod install;
 
 use anyhow::Context;
-use lib::{resolve_paths, ensure_dirs, init_logging};
+use lib::{ensure_dirs, init_logging, resolve_paths};
 use tracing::info;
 
 fn main() -> anyhow::Result<()> {
@@ -28,7 +28,10 @@ fn main() -> anyhow::Result<()> {
     ensure_dirs(&paths).context("failed to create directories")?;
     let _guard = init_logging(&paths, args.verbose).context("failed to init logging")?;
 
-    info!("redViewer Installer starting (version {})", env!("CARGO_PKG_VERSION"));
+    info!(
+        "redViewer Installer starting (version {})",
+        env!("CARGO_PKG_VERSION")
+    );
 
     if args.help {
         args::print_help();
@@ -38,6 +41,12 @@ fn main() -> anyhow::Result<()> {
     if args.update {
         info!("Update mode requested");
         install::update_backend(&paths).context("failed to update backend")?;
+        return Ok(());
+    }
+
+    if args.firewall {
+        info!("Firewall mode requested");
+        install::configure_python_firewall().context("failed to configure firewall")?;
         return Ok(());
     }
 

@@ -6,6 +6,8 @@ use std::ffi::OsString;
 pub struct Args {
     /// /i - Install mode (Python + dependencies)
     pub install: bool,
+    /// /firewall - Configure Windows firewall rules for the Python backend runtime
+    pub firewall: bool,
     /// /pyenv <file> - Mirror/profile selection
     pub pyenv: Option<String>,
     /// /update - Update backend code only
@@ -26,6 +28,7 @@ impl Args {
 
             match s.as_str() {
                 "/i" | "-i" | "--install" => out.install = true,
+                "/firewall" | "--firewall" => out.firewall = true,
                 "/update" | "--update" => out.update = true,
                 "/v" | "-v" | "--verbose" => out.verbose = true,
                 "/h" | "/?" | "-h" | "--help" => out.help = true,
@@ -55,6 +58,7 @@ Usage:
 
 Options:
   /i                    Install Python and dependencies
+  /firewall             Fix Windows firewall rules for backend Python
   /pyenv <file>         Mirror selection (cn.toml/global.toml/custom.toml)
   /update               Update backend code only
   /v, --verbose         Enable verbose logging
@@ -62,6 +66,7 @@ Options:
 
 Examples:
   rvInstaller.exe /i /pyenv cn.toml    # Install with China mirrors
+  rvInstaller.exe /firewall            # Fix backend Python firewall rules
   rvInstaller.exe /update              # Update backend code only
 "#
     );

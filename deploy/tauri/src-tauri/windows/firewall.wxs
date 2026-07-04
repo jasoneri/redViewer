@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <DirectoryRef Id="INSTALLDIR">
+      <Component Id="RvMsiFirewallMarker" Guid="{BBAF6B83-5304-48E9-A3AA-4B30B6EBC69B}" Win64="yes">
+        <RegistryValue Root="HKCU" Key="Software\jasoneri\rV" Name="MsiFirewallActions" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <CustomAction Id="RvDeleteFirewallRule"
+                  Directory="INSTALLDIR"
+                  Execute="deferred"
+                  Impersonate="no"
+                  ExeCommand='cmd.exe /C netsh advfirewall firewall delete rule name=&quot;rV&quot;'
+                  Return="ignore" />
+    <CustomAction Id="RvAddFirewallTcp"
+                  Directory="INSTALLDIR"
+                  Execute="deferred"
+                  Impersonate="no"
+                  ExeCommand='cmd.exe /C netsh advfirewall firewall add rule name=&quot;rV&quot; dir=in action=allow protocol=TCP localport=8080,12345 profile=any'
+                  Return="check" />
+    <CustomAction Id="RvAddFirewallUdp"
+                  Directory="INSTALLDIR"
+                  Execute="deferred"
+                  Impersonate="no"
+                  ExeCommand='cmd.exe /C netsh advfirewall firewall add rule name=&quot;rV&quot; dir=in action=allow protocol=UDP localport=12345 profile=any'
+                  Return="check" />
+    <CustomAction Id="RvConfigurePythonFirewall"
+                  Directory="INSTALLDIR"
+                  Execute="deferred"
+                  Impersonate="no"
+                  ExeCommand='cmd.exe /C if exist &quot;[INSTALLDIR]res\src\.venv\Scripts\python.exe&quot; &quot;[INSTALLDIR]rvInstaller.exe&quot; /firewall'
+                  Return="ignore" />
+
+    <InstallExecuteSequence>
+      <Custom Action="RvDeleteFirewallRule" After="InstallFiles">NOT Installed OR WIX_UPGRADE_DETECTED OR REINSTALL</Custom>
+      <Custom Action="RvAddFirewallTcp" After="RvDeleteFirewallRule">NOT Installed OR WIX_UPGRADE_DETECTED OR REINSTALL</Custom>
+      <Custom Action="RvAddFirewallUdp" After="RvAddFirewallTcp">NOT Installed OR WIX_UPGRADE_DETECTED OR REINSTALL</Custom>
+      <Custom Action="RvConfigurePythonFirewall" After="RvAddFirewallUdp">NOT Installed OR WIX_UPGRADE_DETECTED OR REINSTALL</Custom>
+    </InstallExecuteSequence>
+  </Fragment>
+</Wix>

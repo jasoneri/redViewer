@@ -15,10 +15,6 @@
 
 ## 📑介绍
 
-轻简风格的漫画阅读器。  
-
-> [26/02/18] nyc.mn 旧域名已废弃，新域名后缀 xyz
-
 <p>
   <a href="https://rv.101114105.xyz/">
     <img src="https://img-cgs.101114105.xyz/file/rv/1769934428726_btn-home.svg" alt="主页" height="48">
@@ -30,6 +26,12 @@
     <img src="https://img-cgs.101114105.xyz/file/rv/1769934610180_btn-dl.svg" alt="下载" height="48">
   </a>
 </p>
+
+<div>
+  <a href="https://img-cgs.101114105.xyz/file/rv/1783171021752_app.webm" target="_blank">
+    <img src="https://img-cgs.101114105.xyz/file/rv/1783000491990_app_cover.png" alt="logo" height="340">
+  </a>
+</div>
 
 ## 🎉 [![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/jasoneri/redViewer?color=blue&label=Ver&sort=semver)](https://github.com/jasoneri/redViewer/releases/latest)
 

@@ -1,29 +1,33 @@
 # 🎸功能详细预览
 
-建议新窗口开 [![demo](https://img-cgs.101114105.xyz/file/rv/1769934434211_btn-demo.svg)](https://demo-rv.101114105.xyz/) 边看此文档，直观功能演示
+建议新窗口开 [![demo]({{URL_IMG}}/file/rv/1769934434211_btn-demo.svg)](https://demo-rv.101114105.xyz/) 边看此文档，直观功能演示
 
-## 📚 列表/网格预览
+## [📱rv-app](/guide/mobile)
 
-![books_list](/books_list.png)
+## rv-web
 
-## 📑 章节页预览
+### 📚 列表/网格预览
+
+![books_list]({{URL_IMG}}/file/rv/1781338599167_books_list.png)
+
+### 📑 章节页预览
 
 跟网格展示相同，手机端需要注意顶部按钮组的含义如下（手机宽度问题只保留图标）
 
-![ep_list_head](/ep_list_head.png)
+![ep_list_head]({{URL_IMG}}/file/rv/1781338601468_ep_list_head.png)
 
-## 📖 阅读预览
+### 📖 阅读预览
 
-![book](/book.png)
+![book]({{URL_IMG}}/file/rv/1781338600377_book.png)
 
-## 🎲 其他说明
+### 🎲 其他说明
 
-### 未提及
+#### 未提及
 
 + 章节页预览 > 点一下系列名，弹出菜单系列列表可跳转
 + 阅读 > 翻页模式点一下下方页数可跳转页首页尾
 
-### 筛选相关
+#### 筛选相关
 
 筛选状态下，按`重新加载`就能恢复原始列表。  
 筛选有两种方式：  
@@ -40,5 +44,5 @@
 
 设置 `kemono路径`，可观看从 `CGS` 脚本集下的 `kemono` 内容。
 
-- 📖 [查看 kemono 内容目录树参考](https://doc.comicguispider.nyc.mn/feat/script.html#%F0%9F%93%92-%E8%AF%B4%E6%98%8E)
+- 📖 [查看 kemono 内容目录树参考](https://cgs.101114105.xyz/feat/script.html#%F0%9F%93%92-%E8%AF%B4%E6%98%8E)
 - 🌐 观看链接：`你的局域网ip:端口/kemono`

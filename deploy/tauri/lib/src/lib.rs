@@ -28,5 +28,11 @@ pub use paths::{
 
 pub use python::{
     BackendConfig,
+    DesktopAdminLocksResponse,
+    DesktopAdminLogLevelResponse,
+    DesktopAdminSecretResponse,
+    DesktopAdminState,
+    DesktopLocksState,
+    DesktopLocksUpdate,
     PythonManager,
 };

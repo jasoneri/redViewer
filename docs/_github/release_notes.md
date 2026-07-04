@@ -1,6 +1,7 @@
+### 🍢 Feat/Fix
 
-## 🍢 Feat/Fix
-
-+ nyc.mn 旧域名已废弃，新域名后缀 xyz
-+ win安装自动开防火墙
-+ 文档更新内容，例如个人更方便的 Tunnel 方案
++ ✨ [rv-app(android)](http://rv.101114105.xyz/guide/mobile.html)
+  - 下载部分：CGS 交互/agent
+  - rv-app 皮肤自定义组件, 各种交互
++ rv-desktop 增加增加设置页：改 secret/锁/日志等级
++ package.json 的 bun workspaces 利好开发

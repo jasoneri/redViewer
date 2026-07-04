@@ -1,4 +1,13 @@
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { loadEnv } from 'vite'
 import { defineConfig } from 'vitepress'
+import { createDocsUrlConfig } from './shared/urls.js'
+import { markdownUrlReplacePlugin } from './plugins/markdown-url-replace.js'
+
+const docsRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const docsEnv = loadEnv('', docsRoot, '')
+const { PLACEHOLDER_MAP } = createDocsUrlConfig(docsEnv)
 
 export default defineConfig({
   title: 'redViewer',
@@ -9,10 +18,14 @@ export default defineConfig({
     ['link', { rel: 'icon', href: '/logo.png' }]
   ],
 
+  vite: {
+    plugins: [markdownUrlReplacePlugin(PLACEHOLDER_MAP)],
+  },
+
   themeConfig: {
     logo: '/logo.png',
     nav: [
-      { text: 'CGS', link: 'https://doc.comicguispider.nyc.mn/' },
+      { text: 'CGS', link: 'https://cgs.101114105.xyz/' },
     ],
 
     sidebar: [
@@ -27,6 +40,7 @@ export default defineConfig({
         text: '使用指南',
         items: [
           { text: '🎸功能预览', link: '/guide/' },
+          { text: '📱移动端', link: '/guide/mobile' },
           { text: '📁目录结构', link: '/guide/folder' },
           { text: '🔐超管', link: '/guide/admin' }
         ]

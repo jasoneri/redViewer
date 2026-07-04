@@ -3,8 +3,9 @@
 //! Shared between src-tauri and other components that need to manage
 //! the Python backend process.
 
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use parking_lot::Mutex;
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
@@ -28,6 +29,57 @@ impl Default for BackendConfig {
             port: 12345,
         }
     }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct DesktopLocksState {
+    pub config_path: bool,
+    pub book_handle: bool,
+    pub switch_doujin: bool,
+    pub force_rescan: bool,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct DesktopLocksUpdate {
+    pub config_path: Option<bool>,
+    pub book_handle: Option<bool>,
+    pub switch_doujin: Option<bool>,
+    pub force_rescan: Option<bool>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DesktopAdminState {
+    pub has_secret: bool,
+    pub locks: DesktopLocksState,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DesktopAdminLocksResponse {
+    pub success: bool,
+    pub locks: DesktopLocksState,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DesktopAdminSecretResponse {
+    pub success: bool,
+    pub has_secret: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DesktopAdminLogLevelResponse {
+    pub success: bool,
+    pub log_level: String,
+    pub restart_required: bool,
+}
+
+#[derive(Serialize)]
+struct DesktopSecretPayload<'a> {
+    secret: &'a str,
+}
+
+#[derive(Serialize)]
+struct DesktopLogLevelPayload<'a> {
+    log_level: &'a str,
 }
 
 /// Python process manager - handles starting, stopping, and monitoring the backend
@@ -94,7 +146,9 @@ impl PythonManager {
             cmd.creation_flags(CREATE_NO_WINDOW);
         }
 
-        let child = cmd.spawn().context("spawn backend (uv run backend/app.py)")?;
+        let child = cmd
+            .spawn()
+            .context("spawn backend (uv run backend/app.py)")?;
         tracing::info!("Backend started with PID: {}", child.id());
         tracing::info!("Backend stderr log: {}", log_path.display());
         g.child = Some(child);
@@ -158,11 +212,94 @@ impl PythonManager {
         format!("http://127.0.0.1:{}/", g.cfg.port)
     }
 
+    pub fn desktop_admin_state(&self) -> anyhow::Result<DesktopAdminState> {
+        let base_url = self.desktop_admin_base_url();
+        let mut response = desktop_admin_request(
+            ureq::get(format!("{}/root/desktop-admin/state", base_url)).call(),
+        )?;
+        response
+            .body_mut()
+            .read_json::<DesktopAdminState>()
+            .context("parse desktop admin state")
+    }
+
+    pub fn desktop_admin_update_secret(
+        &self,
+        secret: &str,
+    ) -> anyhow::Result<DesktopAdminSecretResponse> {
+        let base_url = self.desktop_admin_base_url();
+        let mut response = desktop_admin_request(
+            ureq::post(format!("{}/root/desktop-admin/secret", base_url))
+                .send_json(DesktopSecretPayload { secret }),
+        )?;
+        response
+            .body_mut()
+            .read_json::<DesktopAdminSecretResponse>()
+            .context("parse desktop admin secret response")
+    }
+
+    pub fn desktop_admin_update_locks(
+        &self,
+        updates: &DesktopLocksUpdate,
+    ) -> anyhow::Result<DesktopAdminLocksResponse> {
+        let base_url = self.desktop_admin_base_url();
+        let mut response = desktop_admin_request(
+            ureq::post(format!("{}/root/desktop-admin/locks", base_url)).send_json(updates),
+        )?;
+        response
+            .body_mut()
+            .read_json::<DesktopAdminLocksResponse>()
+            .context("parse desktop admin locks response")
+    }
+
+    pub fn desktop_admin_update_log_level(
+        &self,
+        log_level: &str,
+    ) -> anyhow::Result<DesktopAdminLogLevelResponse> {
+        let base_url = self.desktop_admin_base_url();
+        let mut response = desktop_admin_request(
+            ureq::post(format!("{}/root/desktop-admin/log-level", base_url))
+                .send_json(DesktopLogLevelPayload { log_level }),
+        )?;
+        response
+            .body_mut()
+            .read_json::<DesktopAdminLogLevelResponse>()
+            .context("parse desktop admin log-level response")
+    }
+
+    fn desktop_admin_base_url(&self) -> String {
+        let g = self.inner.lock();
+        format!("http://127.0.0.1:{}", g.cfg.port)
+    }
+
     /// Get the log directory path
     pub fn log_dir(&self) -> PathBuf {
         let g = self.inner.lock();
         g.paths.log_dir.clone()
     }
+}
+
+fn desktop_admin_request(
+    result: Result<http::Response<ureq::Body>, ureq::Error>,
+) -> anyhow::Result<http::Response<ureq::Body>> {
+    let mut response = match result {
+        Ok(response) => response,
+        Err(error) => return Err(error).context("call desktop admin endpoint"),
+    };
+    let status = response.status().as_u16();
+    if (200..300).contains(&status) {
+        return Ok(response);
+    }
+
+    let detail = response
+        .body_mut()
+        .read_to_string()
+        .unwrap_or_else(|_| "desktop admin request failed".to_string());
+    Err(anyhow!(
+        "desktop admin endpoint returned {}: {}",
+        status,
+        detail
+    ))
 }
 
 /// Check if the backend is healthy by making an HTTP request

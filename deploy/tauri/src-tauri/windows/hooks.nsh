@@ -197,9 +197,22 @@ FunctionEnd
 ; Handles config saving and dependency installation
 ;------------------------------------------------------------------------------
 !macro NSIS_HOOK_POSTINSTALL
-  ; Add firewall rules for ports 8080 and 12345
+  ; Add firewall rules for web access and LAN discovery/backend access.
   DetailPrint "Adding firewall rules..."
-  nsExec::ExecToLog 'netsh advfirewall firewall add rule name="rV" dir=in action=allow protocol=TCP localport=8080,12345'
+  nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="rV"'
+  Pop $0
+  nsExec::ExecToLog 'netsh advfirewall firewall add rule name="rV" dir=in action=allow protocol=TCP localport=8080,12345 profile=any'
+  Pop $0
+  ${If} $0 != "0"
+    MessageBox MB_ICONSTOP "Failed to add rV TCP firewall rule. Please run the installer as administrator."
+    Abort
+  ${EndIf}
+  nsExec::ExecToLog 'netsh advfirewall firewall add rule name="rV" dir=in action=allow protocol=UDP localport=12345 profile=any'
+  Pop $0
+  ${If} $0 != "0"
+    MessageBox MB_ICONSTOP "Failed to add rV UDP firewall rule. Please run the installer as administrator."
+    Abort
+  ${EndIf}
 
   ; Create config directory
   CreateDirectory "${CONFIG_DIR}"
@@ -226,7 +239,7 @@ FunctionEnd
   ; Skip deps install if already done and not forced
   ${If} $DepsInstalled == "1"
   ${AndIf} $ForceDeps == "0"
-    Goto skip_deps_install
+    Goto configure_python_firewall
   ${EndIf}
 
   ; Determine config file based on mirror choice
@@ -247,15 +260,26 @@ FunctionEnd
     FileWrite $0 '{"deps_installed": true, "error": null}'
     FileClose $0
     DetailPrint "${DEPS_SUCCESS}"
+    Goto configure_python_firewall
   ${Else}
     FileOpen $0 "${STATUS_FILE}" w
     FileWrite $0 '{"deps_installed": false, "error": "rvInstaller exit code: $0"}'
     FileClose $0
     DetailPrint "${DEPS_FAILED} (exit code: $0)"
     DetailPrint "${DEPS_FAILED_HINT}"
+    Goto postinstall_done
   ${EndIf}
 
-  skip_deps_install:
+  configure_python_firewall:
+    DetailPrint "Configuring Python firewall rules..."
+    nsExec::ExecToLog '"$INSTDIR\rvInstaller.exe" /firewall'
+    Pop $0
+    ${If} $0 != "0"
+      MessageBox MB_ICONSTOP "Failed to configure rV Python firewall rules. Please run the installer as administrator."
+      Abort
+    ${EndIf}
+
+  postinstall_done:
 !macroend
 
 ;------------------------------------------------------------------------------

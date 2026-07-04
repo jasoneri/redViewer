@@ -16,6 +16,11 @@ node_modules
 dist
 dist-ssr
 *.local
+*.local.md
+*.private.md
+*.secret.md
+*_local.md
+*_private.md
 
 # Editor directories and files
 .vscode
@@ -67,6 +72,15 @@ docs/.vitepress/cache
 *.lock
 deploy/stage/src/
 deploy/assets/icons
+test*/
+deploy/mobile/src-tauri/gen/
+# Android build artifacts
+build/
+*.apk
+*.aab
+*.idsig
+*.keystore
+!debug.keystore
 # self/conf
 conf.yml
 # self/bug-report
@@ -98,3 +112,7 @@ desktop.ini
 .env.*.local
 *.wixobj
 *.wixpdb
+*.lnk
+__*
+# tauri
+deploy/mobile/scripts/*

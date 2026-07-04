@@ -6,7 +6,6 @@ on:
 
 jobs:
   gitee-sync:
-    if: |
     runs-on: ubuntu-latest
     permissions:
       pull-requests: read

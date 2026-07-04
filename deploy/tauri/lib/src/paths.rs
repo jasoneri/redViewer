@@ -62,11 +62,17 @@ pub fn resolve_uv_paths(_paths: &AppPaths) -> anyhow::Result<UvPaths> {
     let uv = resolve_uv()?;
 
     #[cfg(debug_assertions)]
-    if std::env::var("DEV_ENV").is_ok() {
+    {
         if let Ok(dir) = std::env::var("RV_PYPROJECT_DIR") {
             let pyproject_dir = PathBuf::from(dir);
             tracing::info!("Using uv at: {}", uv.display());
             tracing::info!("Project dir (DEV): {}", pyproject_dir.display());
+            return Ok(UvPaths { uv, pyproject_dir });
+        }
+
+        if let Some(pyproject_dir) = resolve_dev_pyproject_dir() {
+            tracing::info!("Using uv at: {}", uv.display());
+            tracing::info!("Project dir (DEV auto): {}", pyproject_dir.display());
             return Ok(UvPaths { uv, pyproject_dir });
         }
     }
@@ -84,6 +90,32 @@ pub fn resolve_uv_paths(_paths: &AppPaths) -> anyhow::Result<UvPaths> {
     tracing::info!("Project dir: {}", pyproject_dir.display());
 
     Ok(UvPaths { uv, pyproject_dir })
+}
+
+#[cfg(debug_assertions)]
+fn resolve_dev_pyproject_dir() -> Option<PathBuf> {
+    let mut starts = Vec::new();
+    if let Ok(cwd) = std::env::current_dir() {
+        starts.push(cwd);
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(parent) = exe.parent() {
+            starts.push(parent.to_path_buf());
+        }
+    }
+
+    starts
+        .into_iter()
+        .flat_map(|start| {
+            start
+                .ancestors()
+                .map(std::path::Path::to_path_buf)
+                .collect::<Vec<_>>()
+        })
+        .find(|candidate| {
+            candidate.join("pyproject.toml").exists()
+                && candidate.join("backend").join("app.py").exists()
+        })
 }
 
 /// Resolve pyproject directory based on platform

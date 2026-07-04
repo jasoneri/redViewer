@@ -1,0 +1,679 @@
+type CustomIconName =
+  | 'about'
+  | 'arrowsHorizontal'
+  | 'arrowsVertical'
+  | 'bookList'
+  | 'cacheAdd'
+  | 'cacheDownload'
+  | 'cacheClean'
+  | 'cached'
+  | 'changelog'
+  | 'cgsLibrary'
+  | 'cgsSearch'
+  | 'cgsSite'
+  | 'cgsSubmitJump'
+  | 'cgsSubmitNext'
+  | 'cgsSubmit'
+  | 'cursorPointer'
+  | 'data'
+  | 'dataSetting'
+  | 'detailSearch'
+  | 'docs'
+  | 'doujin'
+  | 'faq'
+  | 'feedback'
+  | 'key'
+  | 'mcp'
+  | 'menuExit'
+  | 'offline'
+  | 'releaseCheck'
+  | 'repair'
+  | 'reset'
+  | 'scrollToTop'
+  | 'sourceRefresh'
+  | 'toolbarTop'
+  | 'updatePackage'
+  | 'wireError'
+
+type CustomIconProps = {
+  name: CustomIconName
+  className?: string
+  size?: number
+}
+
+type IconSvgProps = Omit<CustomIconProps, 'name'>
+
+export function CustomIcon({ name, ...props }: CustomIconProps) {
+  if (name === 'about') return <AboutIcon {...props} />
+  if (name === 'arrowsHorizontal') return <ArrowsHorizontalIcon {...props} />
+  if (name === 'arrowsVertical') return <ArrowsVerticalIcon {...props} />
+  if (name === 'bookList') return <BookListIcon {...props} />
+  if (name === 'cacheAdd') return <CacheAddIcon {...props} />
+  if (name === 'cacheDownload') return <CacheDownloadIcon {...props} />
+  if (name === 'cacheClean') return <CacheCleanIcon {...props} />
+  if (name === 'cached') return <CachedIcon {...props} />
+  if (name === 'changelog') return <ChangelogIcon {...props} />
+  if (name === 'cgsLibrary') return <CgsLibraryIcon {...props} />
+  if (name === 'cgsSearch') return <CgsSearchIcon {...props} />
+  if (name === 'cgsSite') return <CgsSiteIcon {...props} />
+  if (name === 'cgsSubmitJump') return <CgsSubmitJumpIcon {...props} />
+  if (name === 'cgsSubmitNext') return <CgsSubmitNextIcon {...props} />
+  if (name === 'cgsSubmit') return <CgsSubmitIcon {...props} />
+  if (name === 'cursorPointer') return <CursorPointerIcon {...props} />
+  if (name === 'data') return <DataIcon {...props} />
+  if (name === 'dataSetting') return <DataSettingIcon {...props} />
+  if (name === 'detailSearch') return <DetailSearchIcon {...props} />
+  if (name === 'docs') return <DocsIcon {...props} />
+  if (name === 'faq') return <FaqIcon {...props} />
+  if (name === 'feedback') return <FeedbackIcon {...props} />
+  if (name === 'key') return <KeyIcon {...props} />
+  if (name === 'mcp') return <McpIcon {...props} />
+  if (name === 'menuExit') return <MenuExitIcon {...props} />
+  if (name === 'offline') return <OfflineIcon {...props} />
+  if (name === 'releaseCheck') return <ReleaseCheckIcon {...props} />
+  if (name === 'repair') return <RepairIcon {...props} />
+  if (name === 'reset') return <ResetIcon {...props} />
+  if (name === 'scrollToTop') return <ScrollToTopIcon {...props} />
+  if (name === 'sourceRefresh') return <SourceRefreshIcon {...props} />
+  if (name === 'toolbarTop') return <ToolbarTopIcon {...props} />
+  if (name === 'updatePackage') return <UpdatePackageIcon {...props} />
+  if (name === 'wireError') return <WireErrorIcon {...props} />
+  return <DoujinIcon {...props} />
+}
+
+function DataSettingIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path fill="currentColor" d="M12 14c-2.42 0-4.7-.6-6-1.55V9.64c1.47.83 3.61 1.36 6 1.36s4.53-.53 6-1.36v2.44c.33-.05.66-.08 1-.08s.67.03 1 .08V7c0-2.21-3.58-4-8-4S4 4.79 4 7v10c0 2.21 3.59 4 8 4h.29a7.4 7.4 0 0 1-.29-2c-3.87 0-6-1.5-6-2v-2.23c1.61.78 3.72 1.23 6 1.23c.24 0 .47 0 .7-.03c.4-.83.95-1.56 1.62-2.16c-.74.12-1.52.19-2.32.19m0-9c3.87 0 6 1.5 6 2s-2.13 2-6 2s-6-1.5-6-2s2.13-2 6-2m10.7 14.6v-1l1.1-.8c.1-.1.2-.2.1-.3l-1-1.7c0-.1-.2-.1-.3-.1l-1.2.5c-.3-.2-.6-.4-.9-.5l-.2-1.3c0-.1-.1-.2-.2-.2h-2c-.2 0-.3.1-.3.2l-.2 1.3c-.3.2-.5.3-.8.5l-1.2-.5c-.1 0-.2 0-.3.1l-1 1.7c0 .1 0 .2.1.3l1.1.8v1l-1.1.8c-.1.1-.2.2-.1.3l1 1.7c.1.1.2.1.3.1l1.2-.5c.2.2.5.4.8.5l.2 1.3c.1.1.2.2.3.2h2c.1 0 .2-.1.2-.2l.2-1.3c.3-.2.5-.3.8-.5l1.2.4c.1 0 .2 0 .3-.1l1-1.7c.1-.1.1-.2 0-.2zm-3.7.9c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5s1.5.7 1.5 1.5s-.7 1.5-1.5 1.5" />
+    </svg>
+  )
+}
+
+function AboutIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h16v16H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M12.5 2h-9A2.5 2.5 0 0 0 1 4.5v5A2.5 2.5 0 0 0 3.5 12H4v1.942c0 .842.992 1.292 1.625.737l3.063-2.68H12.5a2.5 2.5 0 0 0 2.5-2.5v-5a2.5 2.5 0 0 0-2.5-2.5zM14 9.5a1.5 1.5 0 0 1-1.5 1.5H8.312L5 13.898V11H3.5A1.5 1.5 0 0 1 2 9.5v-5A1.5 1.5 0 0 1 3.5 3h9A1.5 1.5 0 0 1 14 4.5zM7.508 7.09L7.5 7V4.5l.008-.09a.5.5 0 0 1 .984 0l.008.09V7l-.008.09a.5.5 0 0 1-.984 0M8.75 9.25a.75.75 0 1 1-1.5 0a.75.75 0 0 1 1.5 0"
+      />
+    </svg>
+  )
+}
+
+function BookListIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path
+        fill="currentColor"
+        fillRule="evenodd"
+        d="M20 4H4a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1M4 2a3 3 0 0 0-3 3v14a3 3 0 0 0 3 3h16a3 3 0 0 0 3-3V5a3 3 0 0 0-3-3zm2 5h2v2H6zm5 0a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2zm-3 4H6v2h2zm2 1a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2h-6a1 1 0 0 1-1-1m-2 3H6v2h2zm2 1a1 1 0 0 1 1-1h6a1 1 0 1 1 0 2h-6a1 1 0 0 1-1-1"
+        clipRule="evenodd"
+      />
+    </svg>
+  )
+}
+
+function CgsSiteIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path fill="currentColor" d="M16.36 14c.08-.66.14-1.32.14-2s-.06-1.34-.14-2h3.38c.16.64.26 1.31.26 2s-.1 1.36-.26 2m-5.15 5.56c.6-1.11 1.06-2.31 1.38-3.56h2.95a8.03 8.03 0 0 1-4.33 3.56M14.34 14H9.66c-.1-.66-.16-1.32-.16-2s.06-1.35.16-2h4.68c.09.65.16 1.32.16 2s-.07 1.34-.16 2M12 19.96c-.83-1.2-1.5-2.53-1.91-3.96h3.82c-.41 1.43-1.08 2.76-1.91 3.96M8 8H5.08A7.92 7.92 0 0 1 9.4 4.44C8.8 5.55 8.35 6.75 8 8m-2.92 8H8c.35 1.25.8 2.45 1.4 3.56A8 8 0 0 1 5.08 16m-.82-2C4.1 13.36 4 12.69 4 12s.1-1.36.26-2h3.38c-.08.66-.14 1.32-.14 2s.06 1.34.14 2M12 4.03c.83 1.2 1.5 2.54 1.91 3.97h-3.82c.41-1.43 1.08-2.77 1.91-3.97M18.92 8h-2.95a15.7 15.7 0 0 0-1.38-3.56c1.84.63 3.37 1.9 4.33 3.56M12 2C6.47 2 2 6.5 2 12a10 10 0 0 0 10 10a10 10 0 0 0 10-10A10 10 0 0 0 12 2" />
+    </svg>
+  )
+}
+
+function CgsSearchIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path fill="currentColor" d="M15.5 12c2.5 0 4.5 2 4.5 4.5c0 .88-.25 1.71-.69 2.4l3.08 3.1L21 23.39l-3.12-3.07c-.69.43-1.51.68-2.38.68c-2.5 0-4.5-2-4.5-4.5s2-4.5 4.5-4.5m0 2a2.5 2.5 0 0 0-2.5 2.5a2.5 2.5 0 0 0 2.5 2.5a2.5 2.5 0 0 0 2.5-2.5a2.5 2.5 0 0 0-2.5-2.5M13 4v8l-2.5-2.25L8 12V4H6v16h4c.54.81 1.23 1.5 2.03 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v7.81c-.58-.55-1.25-1-2-1.31V4z" />
+    </svg>
+  )
+}
+
+function DetailSearchIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path fill="currentColor" d="M15.5 12c2.5 0 4.5 2 4.5 4.5c0 .88-.25 1.71-.69 2.4l3.08 3.1L21 23.39l-3.12-3.07c-.69.43-1.51.68-2.38.68c-2.5 0-4.5-2-4.5-4.5s2-4.5 4.5-4.5m0 2a2.5 2.5 0 0 0-2.5 2.5a2.5 2.5 0 0 0 2.5 2.5a2.5 2.5 0 0 0 2.5-2.5a2.5 2.5 0 0 0-2.5-2.5M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h1v7l2.5-1.5L12 9V2h6a2 2 0 0 1 2 2v7.81A6.48 6.48 0 0 0 15.5 10A6.5 6.5 0 0 0 9 16.5c0 2.31 1.21 4.35 3.03 5.5z" />
+    </svg>
+  )
+}
+
+function CgsSubmitIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 256 256" aria-hidden="true" focusable="false">
+      <path d="M0 0h256v256H0z" fill="none" />
+      <path fill="currentColor" d="m246.15 65.46l-.07-.08l-23.93-23.53a20 20 0 0 0-28.23-.05l-90 88.83l-33.86-32.85a20 20 0 0 0-28.21.08l-24 24a20 20 0 0 0 0 28.26l71.62 72a20 20 0 0 0 28.29 0L246.15 93.74a20 20 0 0 0 0-28.28M103.61 202.33L37.64 136L56 117.61L95.65 156a12 12 0 0 0 16.78-.08L208 61.61l18.32 18Z" />
+    </svg>
+  )
+}
+
+function CgsSubmitNextIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path fill="currentColor" d="M16.175 13H5q-.425 0-.712-.288T4 12t.288-.712T5 11h11.175l-4.9-4.9q-.3-.3-.288-.7t.313-.7q.3-.275.7-.288t.7.288l6.6 6.6q.15.15.213.325t.062.375t-.062.375t-.213.325l-6.6 6.6q-.275.275-.687.275T11.3 19.3q-.3-.3-.3-.712t.3-.713z" />
+    </svg>
+  )
+}
+
+function CgsSubmitJumpIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path fill="currentColor" d="M19.175 11L15.3 7.125q-.3-.3-.3-.712t.3-.713q.3-.275.713-.275t.687.275l4.6 4.6q.15.15.213.325t.062.375t-.062.375t-.213.325l-4.6 4.6q-.3.3-.7.288t-.7-.288q-.3-.3-.312-.7t.287-.7zm-6 1H7q-1.25 0-2.125.875T4 15v3q0 .425-.288.713T3 19t-.712-.288T2 18v-3q0-2.075 1.463-3.537T7 10h6.175L10.3 7.125q-.3-.3-.3-.712t.3-.713q.3-.275.713-.275t.687.275l4.6 4.6q.15.15.213.325t.062.375t-.062.375t-.213.325l-4.6 4.6q-.3.3-.7.288t-.7-.288q-.3-.3-.312-.7t.287-.7z" />
+    </svg>
+  )
+}
+
+function CgsLibraryIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path fill="currentColor" d="M9 3v15h3V3zm3 2l4 13l3-1l-4-13zM5 5v13h3V5zM3 19v2h18v-2z" />
+    </svg>
+  )
+}
+
+function McpIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+      <path d="M0 0h16v16H0z" fill="none" />
+      <g fill="currentColor">
+        <path d="M5.85 1.24a3.263 3.263 0 0 1 5.534 2.654a3.262 3.262 0 0 1 2.568 5.574L9.117 14.23l.208.212a.75.75 0 0 1-1.07 1.053l-.734-.746a.75.75 0 0 1 .01-1.061l5.37-5.288a1.762 1.762 0 0 0-2.473-2.51L7.445 8.825a.751.751 0 0 1-1.22-.823a.8.8 0 0 1 .167-.246L9.376 4.82a1.763 1.763 0 0 0-2.473-2.512l-5.37 5.287A.75.75 0 0 1 .48 6.527z" />
+        <path d="M7.22 3.467a.751.751 0 0 1 1.052 1.07L5.6 7.167A1.743 1.743 0 0 0 8.045 9.65l2.673-2.63a.75.75 0 0 1 1.052 1.07l-2.672 2.63a3.243 3.243 0 0 1-4.55-4.622z" />
+      </g>
+    </svg>
+  )
+}
+
+function MenuExitIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg className={className} xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 512 512" aria-hidden="true" focusable="false">
+      <path d="M0 0h512v512H0z" fill="none" />
+      <path fill="currentColor" d="M469.3 469.3H42.7V42.7H256L298.7 0h-256C19.1 0 0 19.1 0 42.7v426.7C0 492.9 19.1 512 42.7 512h426.7c23.6 0 42.7-19.1 42.7-42.7V320l-42.7 42.7v106.6zm-384-42.6C149.1 255.7 234.7 256 362.7 256v85.3L512 192L362.7 42.7V128C85.3 128 85.1 341.1 85.3 426.7" />
+    </svg>
+  )
+}
+
+function CacheAddIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="M21 7c0 2.21-4.03 4-9 4S3 9.21 3 7m18 0c0-2.21-4.03-4-9-4S3 4.79 3 7m18 0v5M3 7v5m9 4c-4.97 0-9-1.79-9-4m0 0v5c0 2.21 4.03 4 9 4m6-6v3m0 3v-3m0 0h3m-3 0h-3"
+      />
+    </svg>
+  )
+}
+
+function CacheDownloadIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h16v16H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M8 1.75a.75.75 0 0 1 .75.75v5.19l1.72-1.72a.75.75 0 1 1 1.06 1.06l-3 3a.75.75 0 0 1-1.06 0l-3-3a.75.75 0 1 1 1.06-1.06l1.72 1.72V2.5A.75.75 0 0 1 8 1.75m-5 9a.75.75 0 0 1 .75.75c0 .552.448 1 1 1h6.5a1 1 0 0 0 1-1a.75.75 0 0 1 1.5 0A2.5 2.5 0 0 1 11.25 14h-6.5A2.5 2.5 0 0 1 2.25 11.5a.75.75 0 0 1 .75-.75"
+      />
+    </svg>
+  )
+}
+
+function CachedIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h16v16H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M4.75 2.25a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h6.5a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zm4.78 3.22a.75.75 0 1 1 1.06 1.06L7.5 9.62a.75.75 0 0 1-1.06 0L5.16 8.34a.75.75 0 0 1 1.06-1.06l.75.75z"
+      />
+    </svg>
+  )
+}
+
+function CacheCleanIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M12 3c4.97 0 9 1.79 9 4v5c0 1.48-1.8 2.78-4.48 3.47l2.19 2.18a1 1 0 0 1-1.42 1.42L15.1 16.9C14.13 16.97 13.1 17 12 17c-4.97 0-9-1.79-9-4V7c0-2.21 4.03-4 9-4m0 2C7.59 5 5 6.48 5 7s2.59 2 7 2s7-1.48 7-2s-2.59-2-7-2M5 10.09V13c0 .52 2.59 2 7 2c.44 0 .86-.01 1.26-.04L11.8 13.5a1 1 0 0 1 1.41-1.41l1.57 1.56C17.44 13.18 19 12.09 19 11v-.91C17.35 11.23 14.78 12 12 12s-5.35-.77-7-1.91"
+      />
+    </svg>
+  )
+}
+
+function DataIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <ellipse cx="12" cy="5" rx="9" ry="3" />
+      <path d="M3 5V19A9 3 0 0 0 21 19V5" />
+      <path d="M3 12A9 3 0 0 0 21 12" />
+    </svg>
+  )
+}
+
+function DocsIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M6 2h9l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2m8 1.5V8h4.5zM8 11a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2zm0 4a1 1 0 1 0 0 2h8a1 1 0 1 0 0-2z"
+      />
+    </svg>
+  )
+}
+
+function FaqIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 26 26"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h26v26H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M13 0c-1.7 0-3 1.3-3 3v6c0 1.7 1.3 3 3 3h6l4 4v-4c1.7 0 3-1.3 3-3V3c0-1.7-1.3-3-3-3zm4.188 3h1.718l1.688 6h-1.5l-.407-1.5h-1.5L16.813 9H15.5zM18 4c-.1.4-.212.888-.313 1.188l-.28 1.312h1.187l-.282-1.313C18.113 4.888 18 4.4 18 4M3 10c-1.7 0-3 1.3-3 3v6c0 1.7 1.3 3 3 3v4l4-4h6c1.7 0 3-1.3 3-3v-6h-3c-1.9 0-3.406-1.3-3.906-3zm4.594 2.906c1.7 0 2.5 1.4 2.5 3c0 1.4-.481 2.288-1.281 2.688c.4.2.874.306 1.374.406l-.374 1c-.7-.2-1.426-.512-2.126-.813c-.1-.1-.275-.093-.375-.093C6.112 18.994 5 18 5 16c0-1.7.994-3.094 2.594-3.094m0 1.094c-.8 0-1.188.9-1.188 2c0 1.2.388 2 1.188 2s1.218-.9 1.218-2s-.418-2-1.218-2"
+      />
+    </svg>
+  )
+}
+
+function FeedbackIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 28 28"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h28v28H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M17.75 14c-.13 0-.27-.02-.4-.06a1.25 1.25 0 0 1-.85-1.19v-1.76c-1.4-.13-2.5-1.31-2.5-2.74v-3.5C14 3.23 15.23 2 16.75 2h6.5C24.77 2 26 3.23 26 4.75v3.5C26 9.77 24.77 11 23.25 11h-2.62l-1.88 2.5c-.24.32-.61.5-1 .5M9.5 16.5a4.26 4.26 0 0 1-4.25-4.25A4.26 4.26 0 0 1 9.5 8a4.26 4.26 0 0 1 4.25 4.25A4.26 4.26 0 0 1 9.5 16.5m-6.029 7.42C4.781 25.3 6.811 26 9.501 26s4.72-.7 6.03-2.08c1.522-1.61 1.473-3.553 1.47-3.684v-.006c0-1.23-1-2.23-2.23-2.23H4.231c-1.23 0-2.23 1-2.23 2.19v.013c-.004.19-.042 2.117 1.47 3.717"
+      />
+    </svg>
+  )
+}
+
+function KeyIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M12.65 10a6 6 0 0 0-6.88-3.88c-2.29.46-4.15 2.29-4.63 4.58A6.006 6.006 0 0 0 7 18a5.99 5.99 0 0 0 5.65-4H17v2c0 1.1.9 2 2 2s2-.9 2-2v-2c1.1 0 2-.9 2-2s-.9-2-2-2zM7 14c-1.1 0-2-.9-2-2s.9-2 2-2s2 .9 2 2s-.9 2-2 2"
+      />
+    </svg>
+  )
+}
+
+function ChangelogIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h16v16H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M5 8.25a.75.75 0 0 1 .75-.75h4a.75.75 0 0 1 0 1.5h-4A.75.75 0 0 1 5 8.25M4 10.5A.75.75 0 0 0 4 12h4a.75.75 0 0 0 0-1.5z"
+      />
+      <path
+        fill="currentColor"
+        d="M13-.005c1.654 0 3 1.328 3 3c0 .982-.338 1.933-.783 2.818c-.443.879-1.028 1.758-1.582 2.588l-.011.017c-.568.853-1.104 1.659-1.501 2.446c-.398.789-.623 1.494-.623 2.136a1.5 1.5 0 1 0 2.333-1.248a.75.75 0 0 1 .834-1.246A3 3 0 0 1 13 16H3a3 3 0 0 1-3-3c0-1.582.891-3.135 1.777-4.506q.315-.483.623-.946c.473-.709.923-1.386 1.287-2.048H2.51c-.576 0-1.381-.133-1.907-.783A2.68 2.68 0 0 1 0 2.995a3 3 0 0 1 3-3Zm0 1.5a1.5 1.5 0 0 0-1.5 1.5c0 .476.223.834.667 1.132A.75.75 0 0 1 11.75 5.5H5.368c-.467 1.003-1.141 2.015-1.773 2.963c-.192.289-.381.571-.558.845C2.13 10.711 1.5 11.916 1.5 13A1.5 1.5 0 0 0 3 14.5h7.401A3 3 0 0 1 10 13c0-.979.338-1.928.784-2.812c.441-.874 1.023-1.748 1.575-2.576l.017-.026c.568-.853 1.103-1.658 1.501-2.448s.623-1.497.623-2.143c0-.838-.669-1.5-1.5-1.5m-10 0a1.5 1.5 0 0 0-1.5 1.5c0 .321.1.569.27.778c.097.12.325.227.74.227h7.674A2.7 2.7 0 0 1 10 2.995c0-.546.146-1.059.401-1.5Z"
+      />
+    </svg>
+  )
+}
+
+function ReleaseCheckIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M21.86 12.5A4.3 4.3 0 0 0 19 11c0-1.95-.68-3.6-2.04-4.96S13.95 4 12 4c-1.58 0-3 .47-4.25 1.43s-2.08 2.19-2.5 3.72c-1.25.28-2.29.93-3.08 1.95S1 13.28 1 14.58c0 1.51.54 2.8 1.61 3.85C3.69 19.5 5 20 6.5 20h12c1.25 0 2.31-.44 3.19-1.31c.87-.88 1.31-1.94 1.31-3.19q0-1.725-1.14-3M16.57 18L14 15.43c-.57.36-1.26.57-2 .57c-2.21 0-4-1.79-4-4s1.79-4 4-4s4 1.79 4 4c0 .74-.21 1.43-.57 2L18 16.57zM14 12c0 1.11-.89 2-2 2s-2-.89-2-2s.9-2 2-2s2 .9 2 2"
+      />
+    </svg>
+  )
+}
+
+function SourceRefreshIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.45 10.92a1 1 0 1 0-1.86-.74A6 6 0 1 1 12 6c1.3 0 2.5.42 3.47 1.13L13 9.6h7V2.6z"
+      />
+    </svg>
+  )
+}
+
+function UpdatePackageIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h32v32H0z" fill="none" />
+      <g fill="currentColor">
+        <path d="M14.5 24.823v1.96c0 .22-.24.35-.43.24l-2.8-1.69a.66.66 0 0 1-.31-.56v-1.96c0-.22.24-.35.43-.24l2.8 1.69c.19.12.31.33.31.56" />
+        <path d="M16.89 1.289h.003l10.921 6.642c.557.343.896.956.896 1.602v12.44c0 .936-.482 1.838-1.314 2.336l-10.543 6.406a1.9 1.9 0 0 1-1.996 0L4.311 24.307A2.73 2.73 0 0 1 3 21.973V9.533c0-.636.332-1.261.908-1.6l10.931-6.65a1.98 1.98 0 0 1 2.052.006m-1.03 1.714L6.083 8.95l3.51 2.145l9.79-5.951zm6.815 4.143l-9.805 5.952l3 1.832l9.905-5.898zM5 21.973c0 .259.137.496.35.625l9.513 5.78V16.659l-3.103-1.895v1.788c0 .24-.26.38-.46.27l-2.68-1.63a.31.31 0 0 1-.14-.26V12.76L5 10.634zm21.36.625l.008-.004a.72.72 0 0 0 .342-.622v-11.17l-9.847 5.865v11.702z" />
+      </g>
+    </svg>
+  )
+}
+
+function OfflineIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h16v16H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M7.25 2c-.69 0-1.351.13-1.957.371a.75.75 0 1 0 .554 1.394c.43-.17.903-.265 1.403-.265a3.72 3.72 0 0 1 3.541 2.496a.75.75 0 0 0 .709.504c1.676 0 3 1.324 3 3a3 3 0 0 1-.681 1.92a.75.75 0 0 0 1.156.955A4.5 4.5 0 0 0 16 9.5a4.47 4.47 0 0 0-3.983-4.471A5.22 5.22 0 0 0 7.25 2M.72 1.72a.75.75 0 0 1 1.06 0l2.311 2.31q.045.038.08.08l8.531 8.532l.035.034l2.043 2.044a.749.749 0 0 1-.326 1.275a.75.75 0 0 1-.734-.215l-1.8-1.799a5 5 0 0 1-.42.019h-8A3.474 3.474 0 0 1 0 10.5c0-1.41.809-2.614 2.001-3.17a5.2 5.2 0 0 1 .646-2.622L.72 2.78a.75.75 0 0 1 0-1.06M3.5 7.25q.006.242.041.481a.75.75 0 0 1-.557.833c-.86.22-1.484.986-1.484 1.936c0 1.124.876 2 2 2h6.94L3.771 5.832A3.8 3.8 0 0 0 3.5 7.25"
+      />
+    </svg>
+  )
+}
+
+function WireErrorIcon({ className, size = 16 }: IconSvgProps) {
+  return <OfflineIcon className={className} size={size} />
+}
+
+function ResetIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h24v24H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="m16.325 18.8l-1.15 1.15q-.425.425-1.05.438t-1.075-.438q-.425-.425-.425-1.062t.425-1.063l1.15-1.15q-.1-.275-.15-.575t-.05-.6q0-1.45 1.025-2.475T17.5 12q.225 0 .45.013t.425.087q.275.1.338.413t-.138.512L17.5 14.1q-.275.275-.275.7t.275.7t.7.275t.7-.275l1.075-1.075q.2-.2.512-.138t.413.338q.075.2.088.425t.012.45q0 1.45-1.025 2.475T17.5 19q-.325 0-.612-.05t-.563-.15M12 5Q9.075 5 7.038 7.038T5 12q0 1.8.813 3.3T8 17.75V16q0-.425.288-.712T9 15t.713.288T10 16v4q0 .425-.288.713T9 21H5q-.425 0-.712-.288T4 20t.288-.712T5 19h1.35Q4.8 17.75 3.9 15.938T3 12q0-1.875.713-3.512t1.924-2.85t2.85-1.925T12 3q2.85 0 5.1 1.563t3.25 4.062q.15.4 0 .775t-.55.525t-.788 0t-.537-.55q-.775-1.95-2.513-3.162T12 5"
+      />
+    </svg>
+  )
+}
+
+function RepairIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 512 512"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h512v512H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M477.2 477.2c-46.4 46.4-121.631 46.4-168.032 0L34.8 202.832c-46.401-46.4-46.401-121.631 0-168.032c46.4-46.4 121.631-46.4 168.032 0l274.366 274.366c46.4 46.4 46.4 121.631 0 168.032M221.92 128.381l-93.54 93.54l158.913 158.912l93.54-93.54zM86.838 180.384c-5.569 5.569-5.569 14.597 0 20.166c5.568 5.569 14.597 5.569 20.166 0c5.568-5.569 5.568-14.597 0-20.166c-5.569-5.569-14.598-5.569-20.166 0m47.231-47.232c-5.568 5.569-5.568 14.597 0 20.166c5.57 5.569 14.598 5.569 20.167 0c5.568-5.569 5.568-14.597 0-20.166c-5.57-5.569-14.598-5.569-20.167 0m47.232-47.232c-5.568 5.569-5.568 14.598 0 20.166c5.569 5.57 14.598 5.57 20.166 0c5.569-5.568 5.569-14.597 0-20.166s-14.597-5.568-20.166 0m-57.25-8.587c-5.57 5.568-5.57 14.597 0 20.166c5.568 5.568 14.597 5.568 20.166 0c5.568-5.569 5.568-14.598 0-20.166c-5.57-5.569-14.598-5.569-20.166 0m-45.8 45.8c-5.57 5.569-5.57 14.598 0 20.166c5.568 5.569 14.596 5.569 20.165 0c5.569-5.568 5.569-14.597 0-20.166c-5.569-5.568-14.597-5.568-20.166 0M65.368 64.451c-5.569 5.569-5.569 14.598 0 20.166c5.568 5.57 14.597 5.57 20.166 0c5.568-5.568 5.568-14.597 0-20.166c-5.569-5.568-14.598-5.568-20.166 0m359.376 264.913c5.569-5.569 5.569-14.598 0-20.166c-5.569-5.569-14.598-5.569-20.166 0c-5.569 5.568-5.569 14.597 0 20.166c5.568 5.569 14.597 5.569 20.166 0m-47.232 47.232c5.569-5.57 5.569-14.598 0-20.166c-5.569-5.57-14.597-5.57-20.166 0c-5.569 5.568-5.569 14.597 0 20.166c5.569 5.568 14.597 5.568 20.166 0m-47.232 47.231c5.569-5.568 5.569-14.597 0-20.166c-5.569-5.568-14.597-5.568-20.166 0c-5.569 5.569-5.569 14.598 0 20.166c5.569 5.57 14.597 5.57 20.166 0m57.25 8.588c5.57-5.569 5.57-14.597 0-20.166c-5.568-5.569-14.596-5.569-20.165 0s-5.569 14.597 0 20.166s14.597 5.569 20.166 0m45.801-45.8c5.57-5.57 5.57-14.598 0-20.167c-5.568-5.568-14.597-5.568-20.166 0c-5.568 5.57-5.568 14.598 0 20.166c5.57 5.57 14.598 5.57 20.166 0m12.882 58.681c5.569-5.568 5.569-14.597 0-20.166c-5.569-5.568-14.598-5.568-20.166 0c-5.569 5.57-5.569 14.598 0 20.166c5.568 5.57 14.597 5.57 20.166 0m-12.675-198.803l43.66-43.66c46.401-46.4 46.401-121.631 0-168.032c-46.4-46.401-121.631-46.401-168.032 0l-43.66 43.66zM78.461 265.507l-43.66 43.66c-46.401 46.4-46.401 121.631 0 168.032c46.4 46.401 121.631 46.401 168.032 0l43.66-43.66z"
+      />
+    </svg>
+  )
+}
+
+function ScrollToTopIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M0 0h16v16H0z" fill="none" />
+      <path
+        fill="currentColor"
+        d="M3 2.25a.75.75 0 0 1 .75-.75h8.5a.75.75 0 0 1 0 1.5h-8.5A.75.75 0 0 1 3 2.25m5.53 2.97l3.75 3.75a.749.749 0 1 1-1.06 1.06L8.75 7.561v6.689a.75.75 0 0 1-1.5 0V7.561L4.78 10.03a.749.749 0 1 1-1.06-1.06l3.75-3.75a.75.75 0 0 1 1.06 0"
+      />
+    </svg>
+  )
+}
+
+function ArrowsVerticalIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3">
+        <path d="M17 15l0 -11.5M7 9l0 11.5" />
+        <path d="M17 3l-4 4M17 3l4 4M7 21l-4 -4M7 21l4 -4" />
+      </g>
+    </svg>
+  )
+}
+
+function ArrowsHorizontalIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.8">
+        <path d="M15 7h-11.5M9 17h11.5" />
+        <path d="M3 7l4 4M3 7l4 -4M21 17l-4 4M21 17l-4 -4" />
+      </g>
+    </svg>
+  )
+}
+
+function ToolbarTopIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 256 256"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path
+        fill="currentColor"
+        transform="scale(2.66667 2.66667)"
+        d="M20.2127 12.0828C30.508 11.6222 43.4993 11.9781 54.1167 11.9753L67.2316 11.9738C71.6873 11.9739 78.0788 11.448 81.7119 14.3274C84.0666 16.207 85.5763 18.9465 85.9077 21.9411C86.1251 23.8778 85.2709 25.8009 83.1372 25.9746C79.5152 26.2254 80.4027 20.554 77.924 19.0407C75.338 17.4619 70.3177 18.0499 67.2385 18.0554L50.4826 18.0818L31.6596 18.0307C27.6555 18.018 22.9857 17.8823 19.0609 18.2905C14.6848 20.9936 16.043 27.3418 15.9877 31.9981C23.5085 32.0086 82.5778 31.3822 85.0521 32.5196C85.8955 33.7903 86.022 36.2845 86.0267 37.7869L86.0343 61.6367C86.0285 67.9323 87.2445 76.146 82.6618 80.7578C78.3622 85.0848 71.0975 84.0614 65.4793 84.0598L48.875 84.0418L30.6198 84.0632C20.9937 84.0737 9.86098 85.2345 10.0013 71.3083C10.0465 66.8206 9.69777 62.2222 10.2802 57.7614C10.5054 56.0365 12.3384 55.5218 13.9678 55.9235C17.8945 57.9389 15.3071 67.9461 15.9926 71.7099C16.5242 74.6288 15.9242 74.2229 17.3152 76.6021C18.9951 77.5343 20.0446 77.9523 21.9996 77.9667C33.4181 78.0504 44.8692 78.0144 56.2859 78.0115L68.2086 78.009C71.7234 78.0119 79.1 78.9994 79.7399 74.0774C80.2412 70.2204 80.0411 65.7958 80.0384 61.8457C80.0001 53.9461 80.0103 46.0464 80.0689 38.1469C74.6906 37.9523 68.6802 38.0695 63.2432 38.0685L33.3456 38.0826C28.1518 38.0867 21.0915 38.2845 16.0528 37.98C16.0213 41.4607 16.6368 46.9447 15.0656 50.0411C14.1151 51.9144 10.4467 51.1517 10.2451 48.7474C9.72506 42.5449 10.1167 36.1999 9.99725 29.9703C9.80674 21.1501 9.77198 13.7076 20.2127 12.0828Z"
+      />
+      <path
+        fill="currentColor"
+        transform="scale(2.66667 2.66667)"
+        d="M42.4496 22.0743C47.1099 21.906 71.6225 21.4109 74.4926 22.4973C75.0346 22.7025 75.4687 23.1518 75.7042 23.6763C76.0476 24.4409 76.0915 25.2159 75.7916 25.9997C75.394 27.0389 74.6963 27.5361 73.7093 27.9675C69.3415 28.1715 43.8062 28.6165 41.3094 27.447C40.7996 27.2082 40.4248 26.7062 40.2389 26.1861C39.9454 25.365 39.9618 24.3819 40.3537 23.5947C40.8007 22.6965 41.5402 22.3719 42.4496 22.0743Z"
+      />
+      <path fill="currentColor" transform="scale(2.66667 2.66667)" d="M22.6004 22.1057C24.1962 21.8955 25.6612 23.016 25.876 24.6112C26.0909 26.2063 24.9747 27.6746 23.3801 27.8942C21.779 28.1147 20.3033 26.9927 20.0875 25.3909C19.8717 23.7892 20.998 22.3167 22.6004 22.1057Z" />
+      <path fill="currentColor" transform="scale(2.66667 2.66667)" d="M32.6257 22.1073C34.2196 21.9079 35.675 23.0341 35.8819 24.6271C36.0888 26.2201 34.9694 27.6808 33.3774 27.8951C31.7748 28.1109 30.3023 26.9824 30.094 25.3788C29.8858 23.7753 31.0211 22.3081 32.6257 22.1073Z" />
+    </svg>
+  )
+}
+
+function CursorPointerIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 28 28"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <g transform="translate(28 0) scale(-1 1)">
+        <path className="cursor-frame" d="M0 0h28v28H0z" />
+        <path
+          className="cursor-body"
+          d="M6 3.604c0-1.346 1.56-2.09 2.607-1.243l16.88 13.669c1.018.824.435 2.47-.875 2.47h-9.377a2.25 2.25 0 0 0-1.749.835l-4.962 6.134C7.682 26.51 6 25.915 6 24.576z"
+        />
+      </g>
+    </svg>
+  )
+}
+
+function DoujinIcon({ className, size = 16 }: IconSvgProps) {
+  return (
+    <svg
+      className={className}
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 256 256"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path fill="currentColor" transform="scale(0.5 0.5)" d="M133.05 15.8645C134.879 16.1648 137.967 16.0648 139.862 16.019C149.071 15.7966 158.235 15.9749 167.428 15.9912L212.621 15.7596C216.161 15.7137 220.113 15.9722 223.764 15.9895L253.409 16.0049L344.599 15.9932L401.408 16.0016C412.314 15.9865 425.723 15.5587 436.473 16.2626C438.745 17.9707 439.312 18.5722 440.977 20.8999C441.611 31.351 441.345 43.9747 441.245 54.523L441.228 89.2717L441.226 228.276L441.222 399.007L441.229 456.086C441.244 466.562 441.576 477.059 441.198 487.538C441.132 489.353 440.509 492.114 439.232 493.523C437.002 495.983 433.166 496.082 430.089 496.108C425.126 496.15 420.162 496.014 415.2 496.021C413.158 496.194 411.031 496.383 408.996 496.079C407.092 495.933 403.24 496.065 401.199 496.07L386.901 496.004C385.222 496.199 382.995 496.353 381.318 496.118C379.514 495.86 359.431 495.929 358.269 496.15C356.573 496.275 354.869 496.258 353.176 496.096C351.357 495.98 330.993 495.912 330.255 496.155C327.976 496.326 325.888 496.167 323.621 495.963C318 496.481 307.77 495.954 301.603 496.068C299.906 496.235 297.926 496.331 296.234 496.089C294.626 495.937 290.49 496.063 288.664 496.067L274.157 496.027C272.192 496.197 269.949 496.374 267.996 496.079C266.647 495.976 265.004 496.036 263.641 496.056C257.653 496.145 251.608 495.895 245.628 496.067C243.867 496.246 242.094 496.273 240.329 496.147C238.845 495.9 218.075 495.979 217.262 496.164C215.401 496.335 212.809 496.165 210.952 495.969C204.299 496.419 195.415 495.948 188.471 496.075C186.769 496.163 185.255 496.276 183.552 496.15C182.144 495.926 177.333 496.051 175.533 496.055C170.556 496.026 165.579 496.029 160.602 496.065C158.768 496.23 156.821 496.35 154.996 496.077C153.071 495.934 149.262 496.065 147.169 496.069L133.159 496.017C131.221 496.196 129.164 496.377 127.236 496.077C126.068 495.98 124.666 496.035 123.485 496.05C117.204 496.126 110.905 495.938 104.627 496.056C103.077 496.279 100.79 496.307 99.239 496.079C92.9255 495.523 83.6001 496.694 77.0389 495.804C73.9794 495.389 72.6531 493.486 71.0149 491.155C70.6921 483.452 70.7685 475.636 70.5105 467.913C70.3648 463.554 70.8107 459.04 70.814 454.625L70.8149 399.467L70.8096 257.142L70.8141 88.5367C70.8319 83.1474 70.2479 77.2177 70.5045 71.9406C71.0319 61.0953 70.4496 50.4412 70.6018 39.6264C70.6751 34.4154 70.9334 29.2659 70.8183 24.0426C70.7601 21.4057 71.1846 20.8883 72.4892 18.6846C73.9132 17.3743 75.2955 16.261 77.2537 16.0582C81.8012 15.9927 86.3491 15.9737 90.897 16.0011C92.1605 16.001 96.0367 16.0828 97.1627 15.9337C98.7399 15.6814 103.401 15.6779 105.026 15.9338C107.229 16.1279 111.491 16.0148 113.765 16.0173C120.067 16.0557 126.368 15.9525 132.665 15.7077L133.05 15.8645ZM86.8425 480.052C89.5784 479.626 92.9563 479.913 95.7918 479.966C99.6479 480.014 103.504 480.022 107.361 479.989C133.228 479.754 159.096 479.761 184.963 480.008L419.563 480.019C421.467 479.825 422.991 479.66 424.915 480.003C425.668 472.086 424.923 460.51 425.015 452.354C425.33 424.486 424.944 396.485 425.043 368.625L425.167 130.222L425.034 86.5C425.069 72.1982 425.093 57.8972 425.15 43.596C425.163 40.3802 424.609 35.1807 425.119 32.2057L188.642 32.055L122.336 32.0535L98.1309 32.0521C95.3002 32.0556 89.7891 32.3477 87.3381 32.1086C86.8307 32.7619 86.8656 34.7373 86.8671 35.5987C86.8906 49.0918 86.9131 62.6111 86.9143 76.104L86.9191 162.125L86.8698 401.036L86.8574 459.932C86.8049 466.255 87.1798 473.83 86.8425 480.052Z" />
+      <path fill="currentColor" transform="scale(0.5 0.5)" d="M125.883 47.8567C127.533 47.5508 137.645 47.9925 140.101 48.012L175.999 48.0107L283.061 48.0147L316.008 48.0144C321.894 47.9981 327.703 47.8269 333.596 47.9657C340.642 48.1318 347.654 47.838 354.692 47.7931C360.892 47.7536 367.112 48.0288 373.322 48.0055C379.196 47.9834 400.61 47.2484 404.499 48.7361C406.258 49.4091 407.52 50.3948 408.283 52.1322C408.827 53.371 409.128 54.6195 409.197 55.9706C409.64 64.6661 409.346 73.4324 409.281 82.129L409.268 115.905L409.26 170.015C409.25 176.261 409.452 182.303 409.504 188.519C409.251 191.859 409.572 196.136 408.428 199.249C405.896 206.136 397.147 203.917 392.176 201.739C382.907 198.851 373.338 196.269 363.991 193.591C361.348 192.834 358.566 191.724 355.991 191.013C349.065 189.103 342.237 186.949 335.337 184.946C332.171 184.027 328.997 183.386 325.882 182.462L186.602 141.06L138.757 126.942L117.113 120.57C114.569 119.796 111.275 119.079 108.86 118.175C107.762 117.773 106.731 117.207 105.802 116.496C102.298 113.769 103.014 109.942 102.677 106.05C102.378 102.594 102.657 99.4977 102.722 96.0533C102.76 91.8664 102.773 87.6794 102.761 83.4924L102.721 65.6692C102.694 50.8165 101.996 47.0923 119.019 47.9981C120.885 48.0975 123.993 48.0777 125.883 47.8567ZM118.809 64.1961C118.996 66.2207 118.919 75.7147 118.855 78.1942C118.639 86.4928 119.159 96.0487 118.827 104.182C120.528 104.808 122.092 105.274 123.829 105.759C132.081 108.064 140.262 110.58 148.483 112.99L214.986 132.479L309 160.438L369.705 178.334C377.437 180.631 385.525 182.82 393.221 185.244L393.207 182.063C393.037 174.31 393.244 166.398 393.213 158.636L393.219 103.158L393.211 74.828C393.207 71.4248 392.931 67.5036 393.117 64.1985C385.553 64.3494 376.569 64.0439 368.875 64.0348L326.771 64.0372L193.75 64.167L148.877 64.1619C145.456 64.1313 142.276 64.0224 138.831 64.1447C133.73 64.3259 128.394 63.7237 123.283 64.1326C121.773 64.3066 120.328 64.2273 118.809 64.1961Z" />
+      <path fill="currentColor" transform="scale(0.5 0.5)" d="M326.607 74.3687C342.563 75.6039 359.78 73.8238 375.865 74.7808C385.472 75.3525 383.424 87.4548 383.435 94.0467L383.417 118.478L383.466 137.758C383.458 141.612 383.958 148.855 382.13 151.988C381.077 153.826 379.287 155.126 377.212 155.557C375.052 156.042 372.787 155.624 370.942 154.401C368.521 152.792 367.81 150.955 367.284 148.314C367.062 144.272 367.277 139.406 367.338 135.304C367.444 128.222 367.204 121.183 367.219 114.126C367.236 106.575 367.676 98.4672 367.118 90.944C361.033 90.547 353.756 90.7828 347.626 90.8072L325.624 90.7258C320.525 90.7351 315.159 91.0389 310.146 90.5947C307.036 89.9334 304.448 86.8136 304.216 83.6437C303.33 71.5391 318.357 75.2281 326.11 74.4233L326.607 74.3687Z" />
+      <path fill="currentColor" transform="scale(0.5 0.5)" d="M267.354 74.6477C269.546 74.3217 286.672 74.5621 288.774 75.0436C290.234 75.3749 291.578 76.0948 292.663 77.1271C294.216 78.6286 294.909 80.5938 294.866 82.7338C294.835 84.9604 293.895 87.0776 292.265 88.5945C289.777 90.9413 287.738 90.8218 284.688 90.7114C279.466 90.9106 273.247 90.41 268.257 90.768C254.849 91.7298 254.097 75.2846 267.354 74.6477Z" />
+      <path fill="currentColor" transform="scale(0.5 0.5)" d="M110.807 282.795C112.066 282.533 129.744 288.112 132.344 288.863L191.356 306.055C201.879 309.146 212.415 312.673 223 315.59C229.172 317.291 231.809 316.092 235.644 322.712L235.758 411.835L235.766 439.5C235.771 445.145 236.025 450.8 235.686 456.451C235.411 461.028 232.704 463.249 228.407 464.007C217.261 464.297 206.561 463.992 195.454 464.059C184.854 464.124 174.225 464.236 163.608 464.137C145.919 463.971 128.221 464.379 110.542 463.931C101.711 463.707 102.772 454.874 102.735 448.786L102.735 432.328L102.74 400.507L102.745 319.784C102.781 312.329 102.717 304.773 102.53 297.309C102.454 294.282 102.649 289.371 104.091 286.741C105.593 284.002 107.923 283.465 110.807 282.795ZM118.817 448.058C122.254 447.482 125.574 448.114 128.873 447.991C133.958 447.802 138.965 448.045 143.961 448.021L218.157 448.007C218.473 447.883 219.184 447.733 219.188 447.428C219.337 437.981 219.943 428.411 219.56 418.949C219.467 416.638 219.388 414.749 219.386 412.608L219.302 331.295C216.071 330.603 212.119 329.239 208.892 328.235C204.251 326.798 199.597 325.404 194.929 324.055L150.106 310.787C148.025 310.168 145.517 310.098 143.555 309.425C135.543 306.679 127.102 303.77 118.895 301.673C118.539 312.876 118.894 325.427 118.867 336.715L118.812 410.125L118.815 437.036C118.805 440.506 118.97 444.661 118.817 448.058Z" />
+      <path fill="currentColor" transform="scale(0.5 0.5)" d="M265.741 176.092C270.016 176.394 281.264 180.1 285.832 181.491L310.379 188.74L368.855 205.986C380.161 209.285 391.423 212.597 402.713 216.027C411.326 218.643 408.933 226.667 409.288 233.814C409.724 242.619 409.221 251.516 409.27 260.366L409.263 314.672L409.284 336.887C409.267 340.406 409.249 343.927 409.193 347.445C409.109 352.67 407.202 355.74 401.65 356.616C397.874 356.557 393.409 354.335 389.737 353.603C383.597 352.38 378.001 350.099 372.049 348.348L310.626 330.198L282.74 321.982C275.663 319.932 268.194 318.029 261.366 315.352C257.366 313.784 258.037 307.212 257.992 303.838C257.958 301.325 257.993 298.76 257.994 296.247L257.998 267.29L258 212.466C257.999 203.189 257.819 193.899 258.06 184.622C258.201 179.223 260.597 176.865 265.741 176.092ZM274.354 302.436C279.936 304.523 284.731 305.783 290.436 307.435L311.856 313.638L365.629 329.706L385.575 335.545C388.403 336.383 390.43 336.593 393.187 337.832C393.171 336.916 393.129 335.906 393.143 334.999C393.018 327.613 393.183 319.485 393.195 312.054L393.218 271.766L393.219 243.5C393.22 239.166 393.014 234.429 393.161 230.123C389.857 228.794 385.767 227.724 382.308 226.721L363.966 221.502C360.983 220.654 357.696 219.251 354.746 218.572C347.819 216.976 340.741 213.991 333.88 212.429C327.001 210.864 321.436 208.746 314.799 206.767L284.533 198.065C280.992 197.035 277.73 195.729 274.111 194.813C273.938 218.791 273.958 242.771 274.171 266.748C274.205 275.469 273.925 284.194 274.1 292.909C274.163 296.066 273.943 299.359 274.354 302.436Z" />
+      <path fill="currentColor" transform="scale(0.5 0.5)" d="M109.797 130.328C113.839 130.146 137.793 137.836 142.988 139.358L226.874 164.07C231.926 165.601 235.35 166.676 235.744 172.871C236.03 177.368 235.758 181.753 235.798 186.218L235.793 228L235.774 270.125C235.776 278.245 235.863 286.382 235.887 294.501C235.9 299.237 235.138 302.741 230.493 304.86C225.708 306.193 217.329 302.831 212.395 301.297L197.354 296.765L150.109 282.795L119.508 273.812C101.489 268.44 102.802 270.487 102.753 251.75L102.758 225.474L102.776 170.471C102.761 160.162 102.508 149.867 102.794 139.545C102.938 134.371 104.586 131.514 109.797 130.328ZM118.686 256.778C129.936 260.218 141.228 263.519 152.56 266.679L191.381 278.043C194.648 278.973 218.217 286.627 219.507 286.244L219.667 285.761C219.718 280.664 219.502 275.522 219.385 270.416C219.265 265.153 220.105 259.27 219.681 254.108C218.936 245.039 219.811 236.283 219.694 227.312C219.586 219.009 219.126 210.902 219.701 202.568C219.867 198.522 219.506 194.301 219.382 190.249C219.279 186.456 219.397 182.584 219.301 178.727C213.666 176.78 208 175.462 202.321 173.755C182.586 167.822 162.792 161.907 143.025 156.096L128.819 152.014C125.365 151.045 122.575 150.445 119.063 149.147C118.458 157.412 118.873 169.539 118.857 178.125L118.838 232.457C118.829 238.91 119.194 250.915 118.686 256.778Z" />
+      <path fill="currentColor" transform="scale(0.5 0.5)" d="M264.615 328.824C269.582 328.326 278.625 332.016 283.675 333.497L324.757 345.625L371.865 359.523C381.619 362.352 391.413 365.098 401.121 368.066C404.884 369.216 407.948 370.496 408.783 374.679C410.035 380.956 409.311 387.308 409.282 393.654L409.272 422.604C409.254 430.98 409.699 439.232 409.329 447.6C408.972 455.662 411.077 463.539 400.005 464.054L308.083 464.06L280.28 464.058C272.576 464.099 258.117 466.863 257.906 455.839C257.819 451.295 257.993 446.222 258.002 441.606L258.011 410.463L258.016 358.954C258.03 352.284 257.867 345.621 257.906 338.957C257.937 333.783 259.389 330.221 264.615 328.824ZM391.307 447.801L392.697 447.957C393.224 447.473 393.09 447.32 393.109 446.366C393.295 437.282 393.082 428.098 393.154 419.015L393.164 401.252C393.211 395.823 393.381 387.953 393.096 382.607C389.53 381.328 385.97 380.989 382.694 379.852C368.516 374.933 353.936 371.183 339.571 366.93L300.513 355.368C291.762 352.741 283.669 350.079 274.685 347.814C273.836 352.917 274.243 356.801 274.142 361.858C273.962 370.896 274.165 379.906 274.163 388.947L274.157 417.376C274.118 421.989 273.587 444.3 275.026 447.283C278.633 448.322 287.431 447.926 291.409 447.885L306.714 447.869L391.307 447.801Z" />
+    </svg>
+  )
+}

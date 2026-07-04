@@ -1,6 +1,6 @@
 [project]
 name = "backend"
-version = "1.6.0"
+version = "1.7.0"
 description = "Add your description here"
 requires-python = ">=3.12"
 dependencies = [
@@ -8,6 +8,7 @@ dependencies = [
     "fastapi",
     "httpx",
     "loguru>=0.7.3",
+    "mcp>=1.12.4",
     "packaging>=25.0",
     "platformdirs",
     "py7zr",

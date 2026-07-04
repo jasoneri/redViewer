@@ -52,7 +52,7 @@ impl Default for WebServerConfig {
     }
 }
 
-fn get_lan_ip() -> Option<IpAddr> {
+pub(crate) fn get_lan_ip() -> Option<IpAddr> {
     let interfaces = list_afinet_netifas().ok()?;
 
     // Priority 1: 192.168.* not ending with .1 (gateway)

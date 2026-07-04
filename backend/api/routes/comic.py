@@ -11,6 +11,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from infra import backend
+from core.logging import cleanup_log_files, is_valid_log_level, normalize_log_level
 from utils import executor
 from utils.file_handlers import execute_handle, cleanup_empty_dir
 from utils.cbz_cache import get_cbz_cache
@@ -43,8 +44,9 @@ async def get_books(request: Request, sort: str = Query(None)):
 
 
 class ConfContent(BaseModel):
-    path: str
-    kemono_path: str = None
+    path: str | None = None
+    kemono_path: str | None = None
+    log_level: str | None = None
 
 
 @index_router.get("/conf")
@@ -52,7 +54,9 @@ async def get_conf():
     return {
         "path": str(backend.config.comic_path),
         "path_configured": backend.config.is_path_configured,
-        "kemono_path": str(backend.config.kemono_path) if backend.config.kemono_path else ""
+        "kemono_path": str(backend.config.kemono_path) if backend.config.kemono_path else "",
+        "log_level": backend.config.log_level,
+        "log_level_restart_required": True,
     }
 
 
@@ -61,6 +65,20 @@ async def get_conf():
 async def update_conf(conf_content: ConfContent):
     if not backend.config.is_writable():
         raise HTTPException(403, "云平台模式下不支持修改配置")
+    updates = {}
+    if conf_content.log_level is not None:
+        if not is_valid_log_level(conf_content.log_level):
+            raise HTTPException(400, "log_level 必须是 trace/debug/info/warning/error/critical 之一")
+        updates['log_level'] = normalize_log_level(conf_content.log_level).lower()
+    if not conf_content.path:
+        if conf_content.kemono_path:
+            if error := validate_directory(Path(conf_content.kemono_path)):
+                return error
+            updates['kemono_path'] = conf_content.kemono_path
+        if updates:
+            backend.config.update(**updates)
+            return {"message": "update conf successfully", "restart_required": 'log_level' in updates}
+        return bad_request("配置内容不能为空")
     path = Path(conf_content.path)
     if error := validate_directory(path):
         return error
@@ -72,8 +90,10 @@ async def update_conf(conf_content: ConfContent):
     if not books_status["ero0"] and not books_status["ero1"]:
         return bad_request("路径下没有找到任何书籍，请检查路径是否正确")
     
-    backend.config.update(path=conf_content.path, **(
-        {'kemono_path': conf_content.kemono_path} if conf_content.kemono_path else {}))
+    updates['path'] = conf_content.path
+    if conf_content.kemono_path:
+        updates['kemono_path'] = conf_content.kemono_path
+    backend.config.update(**updates)
     if hasattr(backend.config, 'check_cbz_mode'):
         backend.config.check_cbz_mode()
     main_loop = asyncio.get_running_loop()
@@ -82,11 +102,19 @@ async def update_conf(conf_content: ConfContent):
     current_has = books_status["ero1"] if lib_mgr.ero else books_status["ero0"]
     other_has = books_status["ero0"] if lib_mgr.ero else books_status["ero1"]
     if current_has:
-        return "update conf and switched library successfully"
+        return {"message": "update conf and switched library successfully", "restart_required": 'log_level' in updates}
     if other_has:
         mode_hint = "非ero" if lib_mgr.ero else "ero"
         return {"message": f"路径已更新，当前模式无书籍，请切换到{mode_hint}模式", "switch_ero": not lib_mgr.ero}
     return no_content()
+
+
+@index_router.post("/logs/cleanup")
+async def cleanup_logs():
+    result = cleanup_log_files()
+    if result["failed"]:
+        raise HTTPException(500, {"message": "cleanup logs failed", "failed": result["failed"]})
+    return {"message": "cleanup logs successfully", **result}
 
 
 SYSTEM_DIRS = {'$Recycle.Bin', 'System Volume Information', '$RECYCLE.BIN', 'Recovery', 'ProgramData', 'Windows', 'Config.Msi'}

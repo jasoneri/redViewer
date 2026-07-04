@@ -2,11 +2,14 @@
  
 ## 📦1. [安装包](https://github.com/jasoneri/redViewer/releases)
 
-**安装**: 过程中 Mirror 页选 China，能加速 python下载 与 依赖安装  
+**desktop 安装**: 过程中 Mirror 页选 China，能加速 python下载 与 依赖安装  
 **运行**: 打开应用后在主界面 点击正中`rv`按钮 或 通过托盘右键菜单进入
 
-**使用**: (局域网/手机) 手机浏览器输入rv窗口的 ip端口，例如 `192.168.xxx.xx:8080`
+**使用**:
 
+方式一: ✨[rv-app](/guide/mobile), 当前仅安卓 arm64   
+&emsp;&emsp;( 已验证安卓 16 ，使用时仍需要 rv-desktop 等作为后端配合 )  
+方式二: (局域网/手机) 手机浏览器输入rv窗口的 ip端口，例如 `192.168.xxx.xx:8080`
 
 ## ⌘ 2. 命令行 部署/运行—多合一脚本
 

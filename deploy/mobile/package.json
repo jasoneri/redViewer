@@ -1,0 +1,36 @@
+{
+  "name": "rv-mobile",
+  "private": true,
+  "version": "1.7.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "android:apk": "pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ./scripts/android-apk.ps1",
+    "android:icons": "pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -Command \". ./scripts/android-tools.ps1; Sync-AndroidIconResources -ProjectRoot (Get-Location); Apply-AndroidCustomizations -ProjectRoot (Get-Location)\"",
+    "mumu:dev": "pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ./scripts/mumu-dev.ps1",
+    "mumu:hotreload": "pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ./scripts/mumu-hotreload.ps1",
+    "tauri": "tauri"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "2.9.1",
+    "antd": "^6.4.3",
+    "crypto-js": "^4.2.0",
+    "js-yaml": "^4.1.0",
+    "lucide-react": "^1.21.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "2.9.5",
+    "@types/crypto-js": "^4.2.2",
+    "@types/js-yaml": "^4.0.9",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.2",
+    "playwright": "^1.60.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.1"
+  }
+}

@@ -11,3 +11,8 @@ kemono_path: ""
 
 # Storage backend: local | r2
 storage_backend: local
+
+# rv-backend global log level: trace | debug | info | warning | error | critical
+# Changes take effect after restarting backend.
+log_level: info
+

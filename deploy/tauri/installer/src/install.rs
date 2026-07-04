@@ -2,10 +2,10 @@
 //!
 //! Handles Python installation, dependency management, and backend source staging.
 
-use anyhow::{anyhow, Context};
+use anyhow::{Context, anyhow};
 use std::fs::File;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use lib::{AppPaths, resolve_uv};
@@ -13,49 +13,7 @@ use lib::{AppPaths, resolve_uv};
 /// Run the installation process
 pub fn run_install(paths: &AppPaths, pyenv: Option<String>) -> anyhow::Result<()> {
     let uv = resolve_uv()?;
-
-    // Platform-specific pyproject_dir resolution
-    #[cfg(target_os = "windows")]
-    let pyproject_dir = {
-        // Windows: Use $INSTDIR/res/src directly, no staging to Roaming
-        let exe_dir = std::env::current_exe()
-            .context("get exe path")?
-            .parent()
-            .ok_or_else(|| anyhow!("cannot get exe dir"))?
-            .to_path_buf();
-        exe_dir.join("res").join("src")
-    };
-
-    #[cfg(any(target_os = "macos", target_os = "linux"))]
-    let pyproject_dir = {
-        // macOS/Linux: Stage backend to $DATA_LOCAL_DIR/redViewer/backend
-        let base = dirs::data_local_dir().context("failed to resolve data_local_dir")?;
-        let dst = base.join("redViewer").join("backend");
-
-        let exe_dir = std::env::current_exe()
-            .context("get exe path")?
-            .parent()
-            .ok_or_else(|| anyhow!("cannot get exe dir"))?
-            .to_path_buf();
-
-        // On macOS, resources are in Contents/Resources, not Contents/MacOS
-        #[cfg(target_os = "macos")]
-        let src = exe_dir
-            .parent() // Contents
-            .map(|p| p.join("Resources").join("res").join("src"))
-            .ok_or_else(|| anyhow!("cannot resolve macOS resources path"))?;
-
-        #[cfg(target_os = "linux")]
-        let src = exe_dir.join("res").join("src");
-
-        if !dst.join("pyproject.toml").exists() {
-            tracing::info!("Staging backend source to {}", dst.display());
-            std::fs::create_dir_all(&dst).context("create backend dir")?;
-            copy_dir_all(&src, &dst).context("stage backend source")?;
-        }
-
-        dst
-    };
+    let pyproject_dir = resolve_pyproject_dir()?;
 
     tracing::info!("Using uv at: {}", uv.display());
     tracing::info!("Project dir: {}", pyproject_dir.display());
@@ -80,11 +38,158 @@ pub fn run_install(paths: &AppPaths, pyenv: Option<String>) -> anyhow::Result<()
     tracing::info!("Syncing dependencies via uv...");
     uv_sync(&uv, &pyproject_dir)?;
 
+    configure_python_firewall_for_project(&pyproject_dir)?;
+
     // Create default config if needed
     ensure_default_config(paths)?;
 
     tracing::info!("Installation completed successfully");
     Ok(())
+}
+
+/// Configure Windows firewall state for the Python backend runtime.
+pub fn configure_python_firewall() -> anyhow::Result<()> {
+    let pyproject_dir = resolve_pyproject_dir()?;
+    configure_python_firewall_for_project(&pyproject_dir)
+}
+
+fn resolve_pyproject_dir() -> anyhow::Result<PathBuf> {
+    #[cfg(target_os = "windows")]
+    {
+        // Windows: Use $INSTDIR/res/src directly, no staging to Roaming.
+        let exe_dir = std::env::current_exe()
+            .context("get exe path")?
+            .parent()
+            .ok_or_else(|| anyhow!("cannot get exe dir"))?
+            .to_path_buf();
+        return Ok(exe_dir.join("res").join("src"));
+    }
+
+    #[cfg(any(target_os = "macos", target_os = "linux"))]
+    {
+        // macOS/Linux: Stage backend to $DATA_LOCAL_DIR/redViewer/backend.
+        let base = dirs::data_local_dir().context("failed to resolve data_local_dir")?;
+        let dst = base.join("redViewer").join("backend");
+
+        let exe_dir = std::env::current_exe()
+            .context("get exe path")?
+            .parent()
+            .ok_or_else(|| anyhow!("cannot get exe dir"))?
+            .to_path_buf();
+
+        #[cfg(target_os = "macos")]
+        let src = exe_dir
+            .parent()
+            .map(|p| p.join("Resources").join("res").join("src"))
+            .ok_or_else(|| anyhow!("cannot resolve macOS resources path"))?;
+
+        #[cfg(target_os = "linux")]
+        let src = exe_dir.join("res").join("src");
+
+        if !dst.join("pyproject.toml").exists() {
+            tracing::info!("Staging backend source to {}", dst.display());
+            std::fs::create_dir_all(&dst).context("create backend dir")?;
+            copy_dir_all(&src, &dst).context("stage backend source")?;
+        }
+
+        Ok(dst)
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn configure_python_firewall_for_project(pyproject_dir: &Path) -> anyhow::Result<()> {
+    let venv_python = pyproject_dir
+        .join(".venv")
+        .join("Scripts")
+        .join("python.exe");
+    if !venv_python.exists() {
+        return Err(anyhow!(
+            "venv python not found for firewall setup: {}",
+            venv_python.display()
+        ));
+    }
+
+    for target in python_firewall_targets(&venv_python)? {
+        disable_inbound_blocks(&target)
+            .with_context(|| format!("disable firewall blocks for {}", target.display()))?;
+    }
+    Ok(())
+}
+
+#[cfg(not(target_os = "windows"))]
+fn configure_python_firewall_for_project(_pyproject_dir: &Path) -> anyhow::Result<()> {
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn python_firewall_targets(venv_python: &Path) -> anyhow::Result<Vec<PathBuf>> {
+    let output = Command::new(venv_python)
+        .args([
+            "-c",
+            "import sys; print(getattr(sys, '_base_executable', sys.executable))",
+        ])
+        .output()
+        .context("resolve Python base executable")?;
+    if !output.status.success() {
+        return Err(anyhow!("resolve Python base executable failed"));
+    }
+
+    let mut targets = vec![venv_python.to_path_buf()];
+    let base = String::from_utf8(output.stdout)
+        .context("decode Python base executable")?
+        .trim()
+        .to_string();
+    if !base.is_empty() {
+        let base_path = PathBuf::from(base);
+        let base_text = base_path.to_string_lossy();
+        if !targets.iter().any(|target| {
+            target
+                .to_string_lossy()
+                .eq_ignore_ascii_case(base_text.as_ref())
+        }) {
+            targets.push(base_path);
+        }
+    }
+
+    Ok(targets)
+}
+
+#[cfg(target_os = "windows")]
+fn disable_inbound_blocks(program: &Path) -> anyhow::Result<()> {
+    let target = escape_powershell_single_quoted(&program.to_string_lossy());
+    let script = format!(
+        "$ErrorActionPreference = 'Stop'; \
+         $target = '{}'; \
+         $rules = @(Get-NetFirewallRule -Direction Inbound -Action Block -Enabled True | \
+           Where-Object {{ (($_ | Get-NetFirewallApplicationFilter).Program) -ieq $target }}); \
+         if ($rules.Count -gt 0) {{ $rules | Disable-NetFirewallRule }}; \
+         Write-Output \"disabled=$($rules.Count)\"",
+        target
+    );
+
+    tracing::info!(
+        "Disabling inbound firewall blocks for {}",
+        program.display()
+    );
+    let status = Command::new("powershell.exe")
+        .args([
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            &script,
+        ])
+        .status()
+        .context("run firewall PowerShell")?;
+    if !status.success() {
+        return Err(anyhow!("firewall PowerShell failed"));
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn escape_powershell_single_quoted(value: &str) -> String {
+    value.replace('\'', "''")
 }
 
 /// Update backend code only (without reinstalling Python/deps)
@@ -125,7 +230,10 @@ fn copy_uv_config(pyproject_dir: &Path, profile: &str) -> anyhow::Result<()> {
     // Check if uv.toml already exists in target directory
     let target = pyproject_dir.join("uv.toml");
     if target.exists() {
-        tracing::info!("uv.toml already exists at {}, skipping copy", target.display());
+        tracing::info!(
+            "uv.toml already exists at {}, skipping copy",
+            target.display()
+        );
         return Ok(());
     }
 

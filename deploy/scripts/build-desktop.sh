@@ -16,6 +16,64 @@ SKIP_FRONTEND=false
 TARGET="all"  # all, installer, bundle
 CROSS_TARGET=""
 
+find_windows_command() {
+    local name="$1"
+    local ps_name=""
+
+    case "$name" in
+        cargo) ps_name="cargo.exe" ;;
+        bun) ps_name="bun.exe" ;;
+        uv) ps_name="uv.exe" ;;
+        *) ps_name="$name.exe" ;;
+    esac
+
+    powershell.exe -NoProfile -Command \
+        "(Get-Command '$ps_name' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)" \
+        2>/dev/null | tr -d '\r' | tail -n 1
+}
+
+windows_path_to_unix() {
+    local win_path="$1"
+
+    if command -v wslpath >/dev/null 2>&1; then
+        wslpath -u "$win_path"
+        return 0
+    fi
+
+    # Fallback for simple drive-letter paths when wslpath is unavailable.
+    if [[ "$win_path" =~ ^([A-Za-z]):\\(.*)$ ]]; then
+        local drive="${BASH_REMATCH[1],,}"
+        local rest="${BASH_REMATCH[2]//\\//}"
+        printf '/mnt/%s/%s\n' "$drive" "$rest"
+        return 0
+    fi
+
+    return 1
+}
+
+ensure_tool_on_path() {
+    local name="$1"
+    if command -v "$name" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    local win_path=""
+    win_path="$(find_windows_command "$name")"
+    if [ -z "$win_path" ]; then
+        return 1
+    fi
+
+    local win_dir=""
+    win_dir="$(dirname "$win_path")"
+    local unix_dir=""
+    unix_dir="$(windows_path_to_unix "$win_dir")"
+    export PATH="$unix_dir:$PATH"
+}
+
+ensure_tool_on_path cargo || true
+ensure_tool_on_path bun || true
+ensure_tool_on_path uv || true
+
 # Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -262,27 +320,32 @@ copy_uv_binary() {
     local uv_path
     uv_path=$(command -v uv)
 
-    # Detect target triple for Sidecar naming
+    # Detect target triple for Sidecar naming.
+    # Prefer the explicit cross target so staged artifacts match the bundle target.
     local target_triple=""
-    local os_type="$(uname -s)"
-    local arch="$(uname -m)"
+    if [ -n "$CROSS_TARGET" ]; then
+        target_triple="$CROSS_TARGET"
+    else
+        local os_type="$(uname -s)"
+        local arch="$(uname -m)"
 
-    case "$os_type" in
-        Linux)
-            target_triple="x86_64-unknown-linux-gnu"
-            ;;
-        Darwin)
-            if [ "$arch" = "arm64" ] || [ "$arch" = "aarch64" ]; then
-                target_triple="aarch64-apple-darwin"
-            else
-                target_triple="x86_64-apple-darwin"
-            fi
-            ;;
-        *)
-            echo "Unknown OS: $os_type, using generic naming"
-            target_triple="unknown"
-            ;;
-    esac
+        case "$os_type" in
+            Linux)
+                target_triple="x86_64-unknown-linux-gnu"
+                ;;
+            Darwin)
+                if [ "$arch" = "arm64" ] || [ "$arch" = "aarch64" ]; then
+                    target_triple="aarch64-apple-darwin"
+                else
+                    target_triple="x86_64-apple-darwin"
+                fi
+                ;;
+            *)
+                echo "Unknown OS: $os_type, using generic naming"
+                target_triple="unknown"
+                ;;
+        esac
+    fi
 
     local sidecar_name="uv-${target_triple}"
     local dest_path="$STAGE_DIR/$sidecar_name"
