@@ -1,6 +1,6 @@
 <div align="center">
   <a href="https://rv.101114105.xyz" target="_blank">
-    <img src="https://img-cgs.101114105.xyz/file/rv/1769934512064_logo.png" alt="logo" height="156">
+    <img src="https://img-cgs.101114105.xyz/file/rv/1783438655018_rv-new-logo.png" alt="gif">
   </a>
   <h1 id="logo">redViewer(rV)</h1>
   <img src="https://img.shields.io/badge/Platform-Win%20|%20macOS%20|%20linux-blue?color=red" alt="tag">

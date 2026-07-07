@@ -60,10 +60,8 @@ jobs:
         body_path: full_body.md
         draft: true
         prerelease: ${{ steps.compose_notes.outputs.is_beta == 'true' }}
+        fail_on_unmatched_files: true
         files: |
           artifacts/**/*.exe
-          artifacts/**/*.dmg
-          artifacts/**/*.AppImage
-          artifacts/**/*.deb
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

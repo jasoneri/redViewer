@@ -1,0 +1,82 @@
+name: MCP 报告 / MCP Report
+description: 反馈 MCP/RV 的结果不符合预期、行为异常或能力缺失 / Report MCP/RV result mismatch, unexpected behavior, or missing capability
+title: "🧩[MCP] (标题这里简述一下，多个问题请取最重点的那个)"
+labels: ["mcp", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🧩 MCP/RV 反馈说明(Report Guide)
+
+        感谢帮助我们改进 MCP/RV 体验。请尽量让每个 issue 聚焦一个问题，并提供足够信息，方便维护者复现、对比“当前现状”和“期待行为”。
+
+        Thanks for helping us improve MCP/RV. Please keep each issue focused on one problem, and include enough detail for maintainers to reproduce it and compare the observed result with the expected behavior.
+
+  - type: textarea
+    id: prompt
+    attributes:
+      label: 📝 Prompt 写了什么(Prompt / Request)
+      description: >-
+        请贴出当时写给 MCP/RV 的完整 prompt、命令或关键指令，尽量保留原文 / Paste the exact prompt,
+        command, or key instructions you gave to MCP/RV if possible
+      placeholder: |
+        例如 / Example:
+        "请使用 MCP ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-rv
+    attributes:
+      label: 👀 RV 现状(Current RV / Observed Result)
+      description: >-
+        请描述 RV 当前显示了什么、MCP 实际做了什么，以及哪里和 prompt 不一致。可以补充输出、截图、日志或错误信息 /
+        Describe what RV currently shows, what MCP actually did, and where it diverged from your prompt.
+        Include output, screenshots, logs, or errors if helpful
+      placeholder: |
+        例如 / Example:
+        - RV 当前显示：...
+        - MCP 实际执行：...
+        - 不符合预期的地方：...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: ✅ 期待行为(Expected Behavior)
+      description: >-
+        请具体说明你希望 MCP/RV 应该如何响应、展示或执行 / Describe as concretely as possible what
+        MCP/RV should have returned, displayed, or done instead
+      placeholder: |
+        例如 / Example:
+        - 应该展示：...
+        - 应该执行：...
+        - 理想结果：...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 🔁 复现与环境(Reproduction & Environment)
+      description: >-
+        可选但很有帮助。请补充复现步骤、MCP server/tool 名称、版本、系统、相关链接或其他环境信息 /
+        Optional but helpful. Add steps, MCP server/tool names, versions, OS, links, or other context
+        that helps reproduce the issue
+      placeholder: |
+        1. 打开 / Open ...
+        2. 输入 / Run ...
+        3. 观察 / Observe ...
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs-screenshots
+    attributes:
+      label: 📄 日志/截图/补充信息(Logs / Screenshots / Additional Context)
+      description: >-
+        如果有报错、日志、截图或其他补充信息，可以贴在这里；涉及隐私的信息请先打码 /
+        Paste errors, logs, screenshots, or any additional context here. Please redact private information
+    validations:
+      required: false

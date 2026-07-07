@@ -1,0 +1,193 @@
+name: Build Optional Release Assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing release tag to attach assets to (e.g. v1.0.0)'
+        required: true
+        type: string
+      source_ref:
+        description: 'Git ref to build. Leave empty to build the release tag.'
+        required: false
+        default: ''
+        type: string
+      target:
+        description: 'Non-Windows Rust target triple'
+        required: true
+        default: x86_64-apple-darwin
+        type: choice
+        options:
+          - x86_64-apple-darwin
+          - aarch64-apple-darwin
+          - x86_64-unknown-linux-gnu
+      runner:
+        description: 'Runner label. Keep runner OS/architecture aligned with target.'
+        required: true
+        default: macos-15-intel
+        type: choice
+        options:
+          - macos-15-intel
+          - macos-latest
+          - ubuntu-22.04
+      upload_to_release:
+        description: 'Attach generated assets to the existing GitHub Release.'
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  build-optional-assets:
+    name: Optional assets (${{ inputs.target }})
+    runs-on: ${{ inputs.runner }}
+
+    steps:
+      - name: Checkout source ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.source_ref || inputs.release_tag }}
+
+      - name: Display build context
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          SOURCE_REF: ${{ inputs.source_ref || inputs.release_tag }}
+          TARGET_TRIPLE: ${{ inputs.target }}
+          RUNNER_LABEL: ${{ inputs.runner }}
+        run: |
+          echo "Release tag: ${RELEASE_TAG}"
+          echo "Source ref: ${SOURCE_REF}"
+          echo "Target triple: ${TARGET_TRIPLE}"
+          echo "Runner label: ${RUNNER_LABEL}"
+
+      - name: Verify runner and target pairing
+        shell: bash
+        env:
+          TARGET_TRIPLE: ${{ inputs.target }}
+          RUNNER_LABEL: ${{ inputs.runner }}
+        run: |
+          runner_os="$(uname -s)"
+          runner_arch="$(uname -m)"
+
+          case "${TARGET_TRIPLE}" in
+            x86_64-apple-darwin)
+              expected_os="Darwin"
+              expected_arch="x86_64"
+              expected_runner="macos-15-intel"
+              ;;
+            aarch64-apple-darwin)
+              expected_os="Darwin"
+              expected_arch="arm64"
+              expected_runner="macos-latest"
+              ;;
+            x86_64-unknown-linux-gnu)
+              expected_os="Linux"
+              expected_arch="x86_64"
+              expected_runner="ubuntu-22.04"
+              ;;
+            *)
+              echo "::error::Unsupported optional target triple: ${TARGET_TRIPLE}"
+              exit 1
+              ;;
+          esac
+
+          if [ "${runner_os}" != "${expected_os}" ] || [ "${runner_arch}" != "${expected_arch}" ]; then
+            echo "::error::Runner ${runner_os}/${runner_arch} does not match target ${TARGET_TRIPLE}."
+            echo "::error::Expected ${expected_os}/${expected_arch} on ${expected_runner}."
+            exit 1
+          fi
+
+          if [ "${RUNNER_LABEL}" != "${expected_runner}" ]; then
+            echo "::error::Runner label ${RUNNER_LABEL} does not match target ${TARGET_TRIPLE}."
+            echo "::error::Use ${expected_runner} for ${TARGET_TRIPLE}."
+            exit 1
+          fi
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ inputs.target }}
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: deploy/tauri
+          cache-targets: true
+          cache-all-crates: true
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: latest
+
+      - name: Install workspace dependencies
+        run: bun install
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --locked
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev \
+            rsync
+
+      - name: Build optional desktop bundle
+        shell: bash
+        run: |
+          chmod +x deploy/scripts/build-desktop.sh
+          ./deploy/scripts/build-desktop.sh --cross-target ${{ inputs.target }}
+
+      - name: Upload optional workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rv-optional-${{ inputs.target }}
+          if-no-files-found: error
+          path: |
+            __temp/tauri_dist/release/bundle/dmg/*.dmg
+            __temp/tauri_dist/${{ inputs.target }}/release/bundle/dmg/*.dmg
+            __temp/tauri_dist/release/bundle/appimage/*.AppImage
+            __temp/tauri_dist/${{ inputs.target }}/release/bundle/appimage/*.AppImage
+            __temp/tauri_dist/release/bundle/deb/*.deb
+            __temp/tauri_dist/${{ inputs.target }}/release/bundle/deb/*.deb
+
+      - name: Attach optional assets to release
+        if: ${{ inputs.upload_to_release }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          TARGET_TRIPLE: ${{ inputs.target }}
+        run: |
+          shopt -s nullglob
+          release_assets=(
+            "__temp/tauri_dist/release/bundle/dmg/"*.dmg
+            "__temp/tauri_dist/${TARGET_TRIPLE}/release/bundle/dmg/"*.dmg
+            "__temp/tauri_dist/release/bundle/appimage/"*.AppImage
+            "__temp/tauri_dist/${TARGET_TRIPLE}/release/bundle/appimage/"*.AppImage
+            "__temp/tauri_dist/release/bundle/deb/"*.deb
+            "__temp/tauri_dist/${TARGET_TRIPLE}/release/bundle/deb/"*.deb
+          )
+
+          if [ "${#release_assets[@]}" -eq 0 ]; then
+            echo "::error::No optional release assets found to upload."
+            exit 1
+          fi
+
+          gh release view "${RELEASE_TAG}" >/dev/null
+          gh release upload "${RELEASE_TAG}" "${release_assets[@]}" --clobber
