@@ -296,6 +296,26 @@ build_frontend() {
     echo "Frontend built successfully"
 }
 
+build_tauri_frontend() {
+    if [ "$SKIP_FRONTEND" = true ]; then
+        echo ""
+        echo "--- Skipping guide frontend build ---"
+        return
+    fi
+
+    echo ""
+    echo "--- Building Guide Frontend ---"
+    cd "$TAURI_DIR"
+
+    echo "Installing dependencies..."
+    bun install
+
+    echo "Building production bundle..."
+    bun run build
+
+    echo "Guide frontend built successfully"
+}
+
 copy_frontend_dist() {
     echo ""
     echo "--- Staging frontend dist ---"
@@ -476,6 +496,7 @@ if [[ "$TARGET" == "bundle" || "$TARGET" == "all" ]]; then
     # Stage 2 resources preparation
     copy_installer_to_stage
     build_frontend
+    build_tauri_frontend
     copy_frontend_dist
     copy_uv_binary
     copy_backend_source

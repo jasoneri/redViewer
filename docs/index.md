@@ -6,7 +6,7 @@ hero:
   text: 轻简风漫画阅读器
   tagline: 纳尼索咧, 一米哇嘎乃
   image:
-    src: /logo.png
+    src: https://img-cgs.101114105.xyz/file/rv/1783438655018_rv-new-logo.png
     alt: redViewer
   actions:
     - theme: brand
