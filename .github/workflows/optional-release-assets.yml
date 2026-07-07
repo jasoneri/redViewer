@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       source_ref:
-        description: 'Git ref to build. Leave empty to build the release tag.'
+        description: 'Git ref to build. Leave empty to build the selected workflow branch.'
         required: false
         default: ''
         type: string
@@ -48,20 +48,23 @@ jobs:
       - name: Checkout source ref
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.source_ref || inputs.release_tag }}
+          ref: ${{ inputs.source_ref || github.ref_name }}
 
       - name: Display build context
         shell: bash
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
-          SOURCE_REF: ${{ inputs.source_ref || inputs.release_tag }}
+          SOURCE_REF: ${{ inputs.source_ref || github.ref_name }}
+          WORKFLOW_REF_NAME: ${{ github.ref_name }}
           TARGET_TRIPLE: ${{ inputs.target }}
           RUNNER_LABEL: ${{ inputs.runner }}
         run: |
           echo "Release tag: ${RELEASE_TAG}"
+          echo "Workflow ref: ${WORKFLOW_REF_NAME}"
           echo "Source ref: ${SOURCE_REF}"
           echo "Target triple: ${TARGET_TRIPLE}"
           echo "Runner label: ${RUNNER_LABEL}"
+          echo "Checked out commit: $(git rev-parse HEAD)"
 
       - name: Verify runner and target pairing
         shell: bash
